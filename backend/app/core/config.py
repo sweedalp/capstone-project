@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/lms_db"
-    MONGODB_URL: str = "mongodb://localhost:27017/lms_knowledge"
     REDIS_URL: str = "redis://localhost:6379"
     
     # JWT

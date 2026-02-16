@@ -15,21 +15,21 @@ frontend/
 │   ├── hooks/           # Custom React hooks
 │   ├── utils/           # Utility functions
 │   ├── styles/          # Global styles
-│   ├── types/           # TypeScript types
-│   ├── App.tsx          # Main App component
-│   └── main.tsx         # Entry point
+│   ├── App.jsx          # Main App component
+│   ├── main.jsx         # Entry point
+│   └── index.css        # Global CSS
 ├── package.json
-└── vite.config.ts
+└── vite.config.js
 ```
 
 ## Tech Stack
-- **Framework**: React 18 + TypeScript
+- **Framework**: React 18 with JavaScript
 - **Build Tool**: Vite
 - **UI Library**: Material-UI (MUI)
 - **State Management**: Zustand / Redux Toolkit
 - **Routing**: React Router v6
 - **API Client**: Axios
-- **Forms**: React Hook Form + Zod
+- **Forms**: React Hook Form
 - **Charts**: Recharts
 - **Video Player**: Video.js
 

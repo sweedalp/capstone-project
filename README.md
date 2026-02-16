@@ -98,19 +98,13 @@ Every team must demonstrate at least one AI-generated learning enhancement:
 - **Cache**: Redis
 
 ### Frontend
-- **Framework**: React/Vue.js
+- **Framework**: React with JavaScript
 - **UI Library**: Material-UI/Tailwind CSS
-- **State Management**: Redux/Zustand
-
-### AI/ML
-- **NLP**: OpenAI API, Hugging Face Transformers
-- **Speech**: Whisper, ElevenLabs/Google TTS
-- **Video**: FFmpeg, MoviePy
-- **Vector DB**: Pinecone/Chroma
+- **State Management**: Zustand
 
 ### DevOps
 - **Containerization**: Docker
-- **Orchestration**: Docker Compose/Kubernetes
+- **Orchestration**: Docker Compose
 - **CI/CD**: GitHub Actions
 - **Cloud**: AWS/Azure/GCP
 

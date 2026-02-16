@@ -1,7 +1,7 @@
 # Database Schema Documentation
 
 ## Overview
-The LMS platform uses PostgreSQL for relational data and MongoDB for unstructured content/knowledge storage.
+The LMS platform uses PostgreSQL for all data storage including relational data and JSON-based knowledge storage.
 
 ## PostgreSQL Schema
 
@@ -117,66 +117,68 @@ CREATE INDEX idx_progress_user ON progress(user_id);
 CREATE INDEX idx_progress_lesson ON progress(lesson_id);
 ```
 
-## MongoDB Collections
+## Additional Tables for AI/Knowledge Features
 
 ### knowledge_base
-Stores extracted knowledge and intelligence.
+Stores extracted knowledge and intelligence using PostgreSQL's JSONB for flexible schema.
 
-```javascript
-{
-  _id: ObjectId,
-  course_id: Integer,
-  lesson_id: Integer,
-  content_type: String, // "transcript", "summary", "concept", "topic"
-  title: String,
-  content: String,
-  metadata: {
-    extracted_at: Date,
-    topics: [String],
-    concepts: [String],
-    key_takeaways: [String]
-  },
-  embeddings: [Float], // Vector embeddings for semantic search
-  created_at: Date
-}
+```sql
+CREATE TABLE knowledge_base (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+    content_type VARCHAR(50), -- "transcript", "summary", "concept", "topic"
+    title VARCHAR(255),
+    content TEXT,
+    metadata JSONB, -- Flexible JSON storage for topics, concepts, key_takeaways
+    embeddings FLOAT[], -- Vector embeddings for semantic search (can use pgvector extension)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_knowledge_course ON knowledge_base(course_id);
+CREATE INDEX idx_knowledge_lesson ON knowledge_base(lesson_id);
+CREATE INDEX idx_knowledge_type ON knowledge_base(content_type);
 ```
 
 ### ai_generated_content
 Stores AI-generated learning materials.
 
-```javascript
-{
-  _id: ObjectId,
-  course_id: Integer,
-  lesson_id: Integer,
-  content_type: String, // "narrated_summary", "explainer_video", "micro_clip", "quiz"
-  title: String,
-  content_url: String,
-  metadata: {
-    duration: Integer,
-    voice: String,
-    script: String,
-    language: String
-  },
-  created_at: Date
-}
+```sql
+CREATE TABLE ai_generated_content (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+    content_type VARCHAR(50), -- "narrated_summary", "explainer_video", "micro_clip", "quiz"
+    title VARCHAR(255),
+    content_url VARCHAR(500),
+    metadata JSONB, -- Duration, voice, script, language, etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_ai_content_course ON ai_generated_content(course_id);
+CREATE INDEX idx_ai_content_lesson ON ai_generated_content(lesson_id);
+CREATE INDEX idx_ai_content_type ON ai_generated_content(content_type);
 ```
 
 ### qa_history
 Stores Q&A interactions for analytics.
 
-```javascript
-{
-  _id: ObjectId,
-  user_id: Integer,
-  course_id: Integer,
-  question: String,
-  answer: String,
-  sources: [String],
-  confidence: Float,
-  helpful: Boolean,
-  created_at: Date
-}
+```sql
+CREATE TABLE qa_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    course_id INTEGER REFERENCES courses(id),
+    question TEXT NOT NULL,
+    answer TEXT,
+    sources JSONB, -- Array of source references
+    confidence FLOAT,
+    helpful BOOLEAN,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_qa_user ON qa_history(user_id);
+CREATE INDEX idx_qa_course ON qa_history(course_id);
+CREATE INDEX idx_qa_created ON qa_history(created_at);
 ```
 
 ## Relationships
@@ -193,8 +195,9 @@ users (TRAINER) (1) ----< (N) courses
 - Email and username for fast user lookup
 - Course and user IDs in enrollments for quick enrollment checks
 - User and lesson IDs in progress for progress tracking
-- MongoDB indexes on course_id, lesson_id, and content_type
-- Vector index on embeddings for semantic search
+- Course and lesson IDs in knowledge_base for knowledge retrieval
+- Content type indexes for filtering AI-generated content
+- Optional: pgvector extension for efficient vector similarity search
 
 ## Migration Commands
 

@@ -6,7 +6,6 @@ Before starting, ensure you have the following installed:
 - **Python 3.9+** ([Download](https://www.python.org/downloads/))
 - **Node.js 16+** ([Download](https://nodejs.org/))
 - **PostgreSQL 14+** ([Download](https://www.postgresql.org/download/))
-- **MongoDB 6+** ([Download](https://www.mongodb.com/try/download/community))
 - **Git** ([Download](https://git-scm.com/downloads))
 - **Docker** (Optional, recommended) ([Download](https://www.docker.com/))
 
@@ -123,7 +122,6 @@ Create a `.env` file in the root directory with the following:
 ```env
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/lms_db
-MONGODB_URL=mongodb://localhost:27017/lms_knowledge
 REDIS_URL=redis://localhost:6379
 
 # API Keys

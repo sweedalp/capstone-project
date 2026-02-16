@@ -107,3 +107,55 @@ VALUES ('trainer@lms.com', 'trainer', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN
 -- Insert sample learner
 INSERT INTO users (email, username, hashed_password, full_name, role) 
 VALUES ('learner@lms.com', 'learner', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzxN6L9xS6', 'Sample Learner', 'learner');
+
+-- AI/Knowledge Tables
+
+-- Knowledge Base (using JSONB for flexible schema)
+CREATE TABLE knowledge_base (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+    content_type VARCHAR(50),
+    title VARCHAR(255),
+    content TEXT,
+    metadata JSONB,
+    embeddings FLOAT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_knowledge_course ON knowledge_base(course_id);
+CREATE INDEX idx_knowledge_lesson ON knowledge_base(lesson_id);
+CREATE INDEX idx_knowledge_type ON knowledge_base(content_type);
+
+-- AI Generated Content
+CREATE TABLE ai_generated_content (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+    content_type VARCHAR(50),
+    title VARCHAR(255),
+    content_url VARCHAR(500),
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_ai_content_course ON ai_generated_content(course_id);
+CREATE INDEX idx_ai_content_lesson ON ai_generated_content(lesson_id);
+CREATE INDEX idx_ai_content_type ON ai_generated_content(content_type);
+
+-- Q&A History
+CREATE TABLE qa_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    course_id INTEGER REFERENCES courses(id),
+    question TEXT NOT NULL,
+    answer TEXT,
+    sources JSONB,
+    confidence FLOAT,
+    helpful BOOLEAN,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_qa_user ON qa_history(user_id);
+CREATE INDEX idx_qa_course ON qa_history(course_id);
+CREATE INDEX idx_qa_created ON qa_history(created_at);

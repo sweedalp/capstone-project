@@ -58,18 +58,15 @@ capstone_project/
 ├── frontend/                     # React Frontend (Team 4)
 │   ├── src/
 │   │   ├── services/            # API services
-│   │   │   └── api.ts           # API client
-│   │   ├── types/               # TypeScript types
-│   │   │   └── index.ts         # Type definitions
-│   │   ├── App.tsx              # Main App component
-│   │   ├── main.tsx             # Entry point
+│   │   │   └── api.js           # API client
+│   │   ├── App.jsx              # Main App component
+│   │   ├── main.jsx             # Entry point
 │   │   └── index.css            # Global styles
 │   ├── Dockerfile               # Frontend container
 │   ├── index.html               # HTML template
 │   ├── package.json             # Node dependencies
 │   ├── README.md                # Frontend documentation
-│   ├── tsconfig.json            # TypeScript config
-│   └── vite.config.ts           # Vite configuration
+│   └── vite.config.js           # Vite configuration
 │
 ├── shared/                       # Shared utilities
 │   └── README.md                # Shared resources documentation
