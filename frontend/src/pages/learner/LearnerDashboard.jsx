@@ -19,6 +19,17 @@ const LearnerDashboard = () => {
     navigate('/login');
   };
 
+  // Handle smart navigation for course cards
+  const handleContinueCourse = (course) => {
+    // If there's a current lesson (user was in middle of learning), go directly to that lesson
+    if (course.currentLessonId) {
+      navigate(`/learner/courses/${course.id}/lessons/${course.currentLessonId}`);
+    } else {
+      // Otherwise, go to course overview
+      navigate(`/learner/courses/${course.id}`);
+    }
+  };
+
   const learningProgressCourses = [
     {
       id: 1,
@@ -28,7 +39,8 @@ const LearnerDashboard = () => {
       progress: 80,
       progressColor: 'bg-blue-600',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCEwCakavR3A6U55aIk20ecNCSiHfO5-8XkHl7owlqewa-s_YC2HvlP4Yj9YcLmbvZcsxllvuZ1OFu655TVftAvhdyIewOeUeIiADmmSTJW8TAGPuZxtjPmfS1PuQ7y4EjMa6ULSAAi8PPocjemGCLhIA_qtmaZP2-GeObETmtdcFb0x-1GDFMDNhm98bTASVFeXY6LpfAOiAR_Igmk4Y1gHXscZSd3wfd2cKevnV9rGdss-oxqbPMZmYJzColbgPhgTdK0y7A6tu4',
-      badges: ['headphones', 'movie']
+      badges: ['headphones', 'movie'],
+      currentLessonId: 6 // User is in middle of lesson 6 (Recurrent Neural Networks)
     },
     {
       id: 2,
@@ -38,7 +50,8 @@ const LearnerDashboard = () => {
       progress: 45,
       progressColor: 'bg-emerald-500',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZGqjGEsJtIJdLpr2eHWtA_mxTA8JjXKD0oAC8TNRtZ2iLTiAVYxVYboHriKP-kP3KCVtmdxSd_IbzcBrk3QXfD_RZ5nrv_H8kogpeoFDqliYPns4c6lHxUNRwkBXeeJWbiKGArqcNw-dwxEXfZ1Pni3p2pQ29wXzEGJ6LBqOZ4eaYmzzr3guWnv1-hGbwcb-JRiSs9kv3DU4HnNPdBXZevNwD3LXJZNwUA9QVLGED-I20ADhoVLOi8pWpBKQxyxYiKdYi_0AuwJ8',
-      badges: ['interactive_space']
+      badges: ['interactive_space'],
+      currentLessonId: 3 // User is in middle of lesson 3 (User Flows)
     },
     {
       id: 3,
@@ -48,7 +61,8 @@ const LearnerDashboard = () => {
       progress: 10,
       progressColor: 'bg-purple-500',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBaLYiP9VaOCz7WiGtgrKkPS2TG0llmLr17e_euYME5mtBkCC6d6Qr6Zv1XF2R6WOYlwtO4I0Le0UPWkxhZ0wqJ3y4KonX1eX9svaBtmTbBWfqJW_VKypsOR6E9jSvgM5Tk_732Vnh6UNdMB_8dCmu0xBtQIUcTCCpq88gKxFi8av9B35STgv89YG_cn4RGR9BS3qsz_D69Fjo-l6hkz552ZipegTU2HAkRP9GWBhBP01vgQWxZEWzjddXktlykpI4sg7MOT2Rr5X0',
-      badges: ['clinical_notes']
+      badges: ['clinical_notes'],
+      currentLessonId: null // No current lesson, will go to overview
     }
   ];
 
@@ -208,12 +222,21 @@ const LearnerDashboard = () => {
                 <span className="material-symbols-outlined text-blue-600">rocket_launch</span>
                 My Learning Progress
               </h2>
-              <a className="text-sm font-medium text-blue-600 hover:underline cursor-pointer" href="#">View All</a>
+              <button 
+                className="text-sm font-medium text-blue-600 hover:underline cursor-pointer"
+                onClick={() => navigate('/learner/courses')}
+              >
+                View All →
+              </button>
             </div>
             
             <div className="flex gap-6 overflow-x-auto pb-4 hide-scrollbar">
               {learningProgressCourses.map((course) => (
-                <div key={course.id} className="flex-shrink-0 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all cursor-pointer">
+                <div 
+                  key={course.id} 
+                  className="flex-shrink-0 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => handleContinueCourse(course)}
+                >
                   <div className="relative h-36">
                     <img
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

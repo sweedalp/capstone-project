@@ -54,3 +54,50 @@ code {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* No Scrollbar for Tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Additional Custom Styles */
+@layer utilities {
+  .progress-ring-circle {
+    transition: stroke-dashoffset 0.35s;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+}
+
+/* Smooth Transitions for Interactive Elements */
+button, a, input {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom Focus Ring */
+input:focus, button:focus {
+  outline: none;
+}

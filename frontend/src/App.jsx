@@ -4,6 +4,9 @@ import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import ForgotPassword from './pages/ForgotPassword'
 import LearnerDashboard from './pages/learner/LearnerDashboard'
+import CourseCatalog from './pages/learner/CourseCatalog'
+import CourseOverview from './pages/learner/CourseOverview'
+import LessonContent from './pages/learner/LessonContent'
 import TrainerDashboard from './pages/trainer/TrainerDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import LeadershipDashboard from './pages/leadership/LeadershipDashboard'
@@ -17,6 +20,9 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/dashboard/learner" element={<LearnerDashboard />} />
+        <Route path="/learner/courses" element={<CourseCatalog />} />
+        <Route path="/learner/courses/:courseId" element={<CourseOverview />} />
+        <Route path="/learner/courses/:courseId/lessons/:lessonId" element={<LessonContent />} />
         <Route path="/dashboard/trainer" element={<TrainerDashboard />} />
         <Route path="/dashboard/admin" element={<AdminDashboard />} />
         <Route path="/dashboard/leadership" element={<LeadershipDashboard />} />
