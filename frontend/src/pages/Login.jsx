@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './login.css';
 
 const Login = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -57,18 +59,33 @@ const Login = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // TODO: Replace with actual API call
-      console.log('Login submitted:', formData);
+      // Dummy credentials for different roles
+      const dummyCredentials = {
+        'learner@demo.com': { password: 'learner123', role: 'learner', name: 'John Doe', dashboard: '/dashboard/learner' },
+        'trainer@demo.com': { password: 'trainer123', role: 'trainer', name: 'Sarah Smith', dashboard: '/dashboard/trainer' },
+        'admin@demo.com': { password: 'admin123', role: 'admin', name: 'Admin User', dashboard: '/dashboard/admin' },
+        'leadership@demo.com': { password: 'leadership123', role: 'leadership', name: 'Michael Johnson', dashboard: '/dashboard/leadership' }
+      };
       
-      // Store remember me preference
+      // Check credentials
+      const user = dummyCredentials[formData.email.toLowerCase()];
+      
+      if (!user || user.password !== formData.password) {
+        setErrors({ submit: 'Invalid email or password' });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Store remember me preference and user info
       if (formData.rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
+      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userEmail', formData.email);
+      localStorage.setItem('userName', user.name);
       
-      // Redirect to dashboard based on user role
-      // window.location.href = '/dashboard';
-      
-      alert('Login successful! (This is a demo)');
+      // Navigate to role-specific dashboard
+      navigate(user.dashboard);
     } catch (error) {
       setErrors({ submit: 'Login failed. Please try again.' });
     } finally {
@@ -90,7 +107,7 @@ const Login = () => {
     <div className="login-container">
       <div className="flex h-screen w-full overflow-hidden">
         {/* Left Side: Visual/Hero Section (Hidden on Mobile) */}
-        <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-center p-8 overflow-hidden">
+        <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-start pl-12 pr-8 py-8 overflow-hidden">
           {/* Decorative Elements */}
           <div className="absolute inset-0 ai-pattern opacity-30"></div>
           <div className="absolute -top-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse-slow"></div>
@@ -149,8 +166,8 @@ const Login = () => {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-background-dark justify-center px-8 sm:px-12 lg:px-16 xl:px-20 py-6">
-          <div className="max-w-md w-full mx-auto">
+        <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-background-dark justify-center px-8 sm:px-12 lg:pl-6 lg:pr-12 xl:pl-8 xl:pr-16 py-6">
+          <div className="max-w-lg w-full mx-auto">
             <div className="mb-6 animate-fade-in">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome Back
@@ -169,12 +186,8 @@ const Login = () => {
                 >
                   Email Address
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-gray-400 text-xl">mail</span>
-                  </div>
-                  <input
-                    className={`block w-full pl-10 pr-3 py-2.5 border ${
+                <input
+                    className={`block w-full px-3 py-2.5 border ${
                       errors.email ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
                     } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
                     id="email"
@@ -185,7 +198,6 @@ const Login = () => {
                     onChange={handleInputChange}
                     disabled={isLoading}
                   />
-                </div>
                 {errors.email && (
                   <p className="mt-1 text-sm text-red-500 animate-fade-in">{errors.email}</p>
                 )}
@@ -200,44 +212,26 @@ const Login = () => {
                   >
                     Password
                   </label>
-                  <a 
-                    className="text-sm font-medium text-primary hover:text-blue-700 transition-colors cursor-pointer" 
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert('Password reset functionality will be implemented');
-                    }}
+                  <button
+                    className="text-sm font-medium text-primary hover:text-blue-700 transition-colors cursor-pointer bg-transparent border-0"
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
                   >
                     Forgot Password?
-                  </a>
+                  </button>
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-gray-400 text-xl">lock</span>
-                  </div>
-                  <input
-                    className={`block w-full pl-10 pr-12 py-2.5 border ${
+                <input
+                    className={`block w-full px-3 py-2.5 border ${
                       errors.password ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
                     } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
                     id="password"
                     name="password"
                     placeholder="••••••••"
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     disabled={isLoading}
                   />
-                  <button
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    <span className="material-symbols-outlined text-xl">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-500 animate-fade-in">{errors.password}</p>
                 )}
@@ -281,10 +275,10 @@ const Login = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Signing in...
+                    Logging in...
                   </>
                 ) : (
-                  'Sign In to Dashboard'
+                  'Log In to Dashboard'
                 )}
               </button>
             </form>
@@ -338,16 +332,13 @@ const Login = () => {
             <div className="mt-6 text-center animate-fade-in animation-delay-1000">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have an account yet?
-                <a 
-                  className="font-bold text-primary hover:text-blue-700 transition-colors ml-1 cursor-pointer" 
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert('Request access functionality will be implemented');
-                  }}
+                <button
+                  className="font-bold text-primary hover:text-blue-700 transition-colors ml-1 cursor-pointer bg-transparent border-0 text-sm"
+                  onClick={() => navigate('/signup')}
+                  type="button"
                 >
-                  Request Access
-                </a>
+                  Sign Up
+                </button>
               </p>
             </div>
           </div>
