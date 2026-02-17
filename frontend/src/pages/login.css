@@ -13,7 +13,13 @@
 .login-container {
   font-family: 'Lexend', sans-serif;
   min-height: 100vh;
+  max-height: 100vh;
   overflow: hidden;
+}
+
+.login-container .flex.h-screen {
+  height: 100vh;
+  max-height: 100vh;
 }
 
 /* ============================================
@@ -55,7 +61,7 @@
 
 .ai-pattern {
   background-image: radial-gradient(circle at 2px 2px, rgba(19, 127, 236, 0.2) 1px, transparent 0);
-  background-size: 24px 24px;
+  background-size: 20px 20px;
   animation: pattern-shift 20s linear infinite;
 }
 
@@ -640,16 +646,28 @@ form:has(button:disabled) {
 
 @media (max-width: 639px) {
   h1 {
-    font-size: 2.5rem;
+    font-size: 2rem;
     line-height: 1.2;
   }
 
   h2 {
-    font-size: 1.875rem;
+    font-size: 1.5rem;
   }
 
   p {
     font-size: 0.875rem;
+  }
+}
+
+/* Desktop optimization for single viewport */
+@media (min-width: 1024px) {
+  h1 {
+    font-size: 2.5rem;
+    line-height: 1.1;
+  }
+  
+  .login-container {
+    overflow: hidden;
   }
 }
 

@@ -90,14 +90,14 @@ const Login = () => {
     <div className="login-container">
       <div className="flex h-screen w-full overflow-hidden">
         {/* Left Side: Visual/Hero Section (Hidden on Mobile) */}
-        <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-center p-12 overflow-hidden">
+        <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-center p-8 overflow-hidden">
           {/* Decorative Elements */}
           <div className="absolute inset-0 ai-pattern opacity-30"></div>
-          <div className="absolute -top-20 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse-slow"></div>
-          <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
+          <div className="absolute -top-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse-slow"></div>
+          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
           
           <div className="relative z-10 text-white max-w-md">
-            <div className="mb-8 flex items-center gap-3 animate-fade-in">
+            <div className="mb-6 flex items-center gap-3 animate-fade-in">
               <div className="bg-white p-2 rounded-lg shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <svg 
                   className="w-8 h-8 text-primary" 
@@ -120,15 +120,15 @@ const Login = () => {
               <span className="text-xl font-bold tracking-tight">AI LMS Intelligence</span>
             </div>
 
-            <h1 className="text-5xl font-extrabold leading-tight mb-6 animate-fade-in animation-delay-200">
+            <h1 className="text-4xl font-extrabold leading-tight mb-4 animate-fade-in animation-delay-200">
               Knowledge transformation powered by AI.
             </h1>
             
-            <p className="text-blue-100 text-lg leading-relaxed mb-10 animate-fade-in animation-delay-400">
+            <p className="text-blue-100 text-base leading-relaxed mb-6 animate-fade-in animation-delay-400">
               Experience the future of enterprise learning with our intelligent management system. Tailored pathways for every professional.
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center gap-3 animate-slide-in animation-delay-600 hover:translate-x-2 transition-transform duration-300">
                 <span className="material-symbols-outlined text-blue-200">check_circle</span>
                 <span>Personalized Learning Copilot</span>
@@ -149,22 +149,22 @@ const Login = () => {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-background-dark justify-center px-8 sm:px-16 lg:px-24 xl:px-32">
+        <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-background-dark justify-center px-8 sm:px-12 lg:px-16 xl:px-20 py-6">
           <div className="max-w-md w-full mx-auto">
-            <div className="mb-10 animate-fade-in">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="mb-6 animate-fade-in">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome Back
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Enter your credentials to access your dashboard.
               </p>
             </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Email Input */}
               <div className="animate-fade-in animation-delay-200">
                 <label 
-                  className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" 
+                  className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5" 
                   htmlFor="email"
                 >
                   Email Address
@@ -174,7 +174,7 @@ const Login = () => {
                     <span className="material-symbols-outlined text-gray-400 text-xl">mail</span>
                   </div>
                   <input
-                    className={`block w-full pl-10 pr-3 py-3 border ${
+                    className={`block w-full pl-10 pr-3 py-2.5 border ${
                       errors.email ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
                     } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
                     id="email"
@@ -193,7 +193,7 @@ const Login = () => {
 
               {/* Password Input */}
               <div className="animate-fade-in animation-delay-400">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <label 
                     className="block text-sm font-semibold text-gray-700 dark:text-gray-300" 
                     htmlFor="password"
@@ -216,7 +216,7 @@ const Login = () => {
                     <span className="material-symbols-outlined text-gray-400 text-xl">lock</span>
                   </div>
                   <input
-                    className={`block w-full pl-10 pr-12 py-3 border ${
+                    className={`block w-full pl-10 pr-12 py-2.5 border ${
                       errors.password ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
                     } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
                     id="password"
@@ -271,7 +271,7 @@ const Login = () => {
 
               {/* Login Button */}
               <button
-                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in animation-delay-800"
+                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in animation-delay-800"
                 type="submit"
                 disabled={isLoading}
               >
@@ -289,7 +289,7 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-8">
+            <div className="mt-5">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
@@ -301,7 +301,7 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-4">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
                   type="button"
@@ -335,7 +335,7 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="mt-10 text-center animate-fade-in animation-delay-1000">
+            <div className="mt-6 text-center animate-fade-in animation-delay-1000">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have an account yet?
                 <a 
@@ -353,7 +353,7 @@ const Login = () => {
           </div>
 
           {/* Footer */}
-          <footer className="mt-auto py-8 text-center text-xs text-gray-400 dark:text-gray-600 uppercase tracking-widest font-medium">
+          <footer className="mt-auto py-4 text-center text-xs text-gray-400 dark:text-gray-600 uppercase tracking-widest font-medium">
             © 2024 AI LMS Knowledge Intelligence. All rights reserved.
           </footer>
         </div>
