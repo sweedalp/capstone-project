@@ -3,8 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv()
+#  MUST be first — before any app imports
+# Goes one level up from backend/ to find .env in project root
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+from app.core.database import Base, engine
+from app.models import user
+from app.api import auth
+
+# Create tables automatically
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="LMS & Knowledge Intelligence Platform API",
@@ -12,7 +20,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
 origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 
 app.add_middleware(
@@ -35,15 +42,8 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# Import routers (to be implemented)
-# from app.api import auth, courses, content, knowledge, ai_services, progress, analytics
-# app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-# app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
-# app.include_router(content.router, prefix="/api/content", tags=["Content"])
-# app.include_router(knowledge.router, prefix="/api/knowledge", tags=["Knowledge"])
-# app.include_router(ai_services.router, prefix="/api/ai", tags=["AI Services"])
-# app.include_router(progress.router, prefix="/api/progress", tags=["Progress"])
-# app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+# Include authentication router
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './login.css';
+import apiClient from "../services/api";
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -48,50 +50,65 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+
+    if (!validateForm()) return;
 
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Dummy credentials for different roles
-      const dummyCredentials = {
-        'learner@demo.com': { password: 'learner123', role: 'learner', name: 'John Doe', dashboard: '/dashboard/learner' },
-        'trainer@demo.com': { password: 'trainer123', role: 'trainer', name: 'Sarah Smith', dashboard: '/dashboard/trainer' },
-        'admin@demo.com': { password: 'admin123', role: 'admin', name: 'Admin User', dashboard: '/dashboard/admin' },
-        'leadership@demo.com': { password: 'leadership123', role: 'leadership', name: 'Michael Johnson', dashboard: '/dashboard/leadership' }
-      };
-      
-      // Check credentials
-      const user = dummyCredentials[formData.email.toLowerCase()];
-      
-      if (!user || user.password !== formData.password) {
-        setErrors({ submit: 'Invalid email or password' });
+      // OAuth2PasswordRequestForm requires x-www-form-urlencoded, NOT JSON
+      const response = await apiClient.post(
+        "/api/auth/login",
+        new URLSearchParams({
+          username: formData.email,
+          password: formData.password,
+        }),
+        {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        }
+      );
+
+      const token = response.data.access_token;
+
+      //  rememberMe now actually works
+      if (formData.rememberMe) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("userEmail", formData.email);
+      } else {
+        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("userEmail", formData.email);
+      }
+
+      // /me call separated so its errors don't show as "wrong password"
+      let user;
+      try {
+        const userResponse = await apiClient.get("/api/auth/me");
+        user = userResponse.data;
+      } catch {
+        setErrors({ submit: "Login succeeded but failed to load your profile. Please try again." });
         setIsLoading(false);
         return;
       }
-      
-      // Store remember me preference and user info
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-      }
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('userName', user.name);
-      
-      // Navigate to role-specific dashboard
-      navigate(user.dashboard);
-    } catch (error) {
-      setErrors({ submit: 'Login failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+      localStorage.setItem("userRole", user.role);
+      localStorage.setItem("userName", user.full_name || user.username);
+    // Redirect by role
+    const dashboardRoutes = {
+      learner: "/dashboard/learner",
+      trainer: "/dashboard/trainer",
+      admin: "/dashboard/admin",
+      leadership: "/dashboard/leadership",
+    };
+
+    navigate(dashboardRoutes[user.role] || "/dashboard/learner");
+
+  } catch (error) {
+    setErrors({ submit: "Invalid email or password" });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication

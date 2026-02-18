@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './signup.css';
+import apiClient from "../services/api";
+
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -72,39 +74,35 @@ const SignUp = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  e.preventDefault();
 
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Store user info
-      localStorage.setItem('userRole', formData.role);
-      localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('userName', formData.fullName);
-      
-      // Navigate to role-specific dashboard
-      const dashboardRoutes = {
-        'learner': '/dashboard/learner',
-        'trainer': '/dashboard/trainer',
-        'admin': '/dashboard/admin',
-        'leadership': '/dashboard/leadership'
-      };
-      
-      const dashboardRoute = dashboardRoutes[formData.role] || '/dashboard/learner';
-      navigate(dashboardRoute);
-    } catch (error) {
-      setErrors({ submit: 'Registration failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
+  if (!validateForm()) return;
+
+  setIsLoading(true);
+
+  try {
+    await apiClient.post("/api/auth/register", {
+      email: formData.email,
+      username: formData.email,
+      password: formData.password,
+      full_name: formData.fullName,
+      role: formData.role,
+    });
+
+    alert("Account created successfully! Please login.");
+    navigate("/login");
+
+  } catch (error) {
+    if (error.response?.status === 400) {
+      setErrors({ submit: "User already exists" });
+    } else {
+      setErrors({ submit: "Registration failed. Try again." });
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication
