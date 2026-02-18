@@ -329,6 +329,13 @@ export default function Search() {
             <span>AI Learning Hub</span>
           </button>
           <button 
+            onClick={() => navigate('/learner/analytics')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left"
+          >
+            <span className="material-symbols-outlined">monitoring</span>
+            <span>Analytics</span>
+          </button>
+          <button 
             onClick={() => navigate('/learner/search')}
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-600 font-semibold cursor-pointer w-full text-left"
           >

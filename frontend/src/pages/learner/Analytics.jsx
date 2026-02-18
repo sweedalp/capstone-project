@@ -569,37 +569,115 @@ export default function Analytics() {
                 </div>
 
                 {/* Bar Chart */}
-                <div className="flex items-end justify-between h-48 w-full px-2 gap-2 md:gap-4 mt-4">
-                  {weeklyData.map((data, index) => (
-                    <div 
-                      key={index}
-                      className="flex flex-col items-center flex-1 gap-2"
-                      onMouseEnter={() => setHoveredDay(index)}
-                      onMouseLeave={() => setHoveredDay(null)}
-                    >
-                      <div 
-                        className={`w-full rounded-t transition-all duration-300 cursor-pointer relative ${
-                          data.day === 'Fri' 
-                            ? 'bg-blue-600' 
-                            : hoveredDay === index 
-                              ? 'bg-blue-600/40' 
-                              : 'bg-blue-600/20'
-                        }`}
-                        style={{ height: `${data.height}%` }}
-                      >
-                        {(hoveredDay === index || data.day === 'Fri') && (
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap animate-fade-in">
-                            {data.hours}h
-                          </div>
-                        )}
-                      </div>
-                      <span className={`text-[10px] md:text-xs font-medium transition-colors ${
-                        data.day === 'Fri' ? 'font-bold text-blue-600' : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                        {data.day}
-                      </span>
+                <div className="relative mt-2 bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/40">
+                  {/* Chart header row */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Hours / Day</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm bg-gradient-to-b from-blue-400 to-blue-600 inline-block"></span>
+                      <span className="text-[10px] text-slate-400 font-medium">Study Time</span>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Chart area */}
+                  <div className="flex gap-3 items-end">
+                    {/* Y-axis labels */}
+                    <div className="flex flex-col justify-between h-48 pb-6 flex-shrink-0">
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <span key={v} className="text-[9px] text-slate-400 font-medium leading-none">{v}h</span>
+                      ))}
+                    </div>
+
+                    {/* Grid + Bars */}
+                    <div className="relative flex-1 h-48">
+                      {/* Horizontal grid lines */}
+                      <div className="absolute inset-0 flex flex-col justify-between pb-6 pointer-events-none">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <div key={i} className="w-full border-t border-dashed border-slate-200 dark:border-slate-700/50"></div>
+                        ))}
+                      </div>
+
+                      {/* Bars row */}
+                      <div className="absolute inset-0 flex items-end gap-2 pb-6 px-1">
+                        {weeklyData.map((data, index) => {
+                          const isActive = data.day === 'Fri';
+                          const isHovered = hoveredDay === index;
+                          return (
+                            <div
+                              key={index}
+                              className="flex-1 flex flex-col items-center justify-end h-full gap-1"
+                              onMouseEnter={() => setHoveredDay(index)}
+                              onMouseLeave={() => setHoveredDay(null)}
+                            >
+                              {/* Value label above bar */}
+                              <span className={`text-[9px] font-bold leading-none mb-0.5 transition-all duration-200 ${
+                                isActive ? 'text-blue-600' : isHovered ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400'
+                              }`}>
+                                {data.hours}h
+                              </span>
+
+                              {/* Bar */}
+                              <div
+                                className={`w-full rounded-lg cursor-pointer transition-all duration-300 relative overflow-hidden ${
+                                  isActive ? 'shadow-lg shadow-blue-500/40 scale-x-105' : isHovered ? 'shadow-md shadow-blue-400/30' : ''
+                                }`}
+                                style={{
+                                  height: `${data.height}%`,
+                                  background: isActive
+                                    ? 'linear-gradient(180deg, #60a5fa 0%, #1d4ed8 100%)'
+                                    : isHovered
+                                    ? 'linear-gradient(180deg, #93c5fd 0%, #3b82f6 100%)'
+                                    : 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)',
+                                }}
+                              >
+                                {/* Inner shine */}
+                                <div className="absolute top-0 left-0 right-0 h-2 bg-white/30 rounded-t-lg"></div>
+                                {/* Active badge on bar */}
+                                {isActive && (
+                                  <div className="absolute bottom-1 left-0 right-0 flex justify-center">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white/70"></span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Day labels row at bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 flex gap-2 px-1 h-6 items-center">
+                        {weeklyData.map((data, index) => {
+                          const isActive = data.day === 'Fri';
+                          const isHovered = hoveredDay === index;
+                          return (
+                            <div key={index} className="flex-1 flex justify-center">
+                              <span className={`text-[10px] font-bold transition-colors ${
+                                isActive
+                                  ? 'text-blue-600'
+                                  : isHovered
+                                  ? 'text-slate-700 dark:text-slate-200'
+                                  : 'text-slate-400 dark:text-slate-500'
+                              }`}>
+                                {data.day}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary row */}
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/40 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="material-symbols-outlined text-sm text-blue-500">bar_chart</span>
+                      <span>Total this week: <strong className="text-slate-700 dark:text-slate-200">17.1h</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                      <span className="material-symbols-outlined text-sm">trending_up</span>
+                      <span>Best day: Fri 4.2h</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* AI Content Breakdown */}

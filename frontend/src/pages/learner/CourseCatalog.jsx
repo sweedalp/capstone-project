@@ -260,6 +260,13 @@ const CourseCatalog = () => {
             <span className="material-symbols-outlined">monitoring</span>
             <span>Analytics</span>
           </button>
+          <button 
+            onClick={() => navigate('/learner/search')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left"
+          >
+           <span className="material-symbols-outlined">search</span>
+            <span>Search & QA</span>
+          </button>
           
           <div className="pt-8 pb-2 px-4">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Personal</p>
