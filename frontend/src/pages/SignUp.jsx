@@ -138,7 +138,7 @@ const SignUp = () => {
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <span className="material-symbols-outlined text-xl">lightbulb</span>
+           <span className="material-symbols-outlined text-xl">auto_awesome</span>
           </div>
           <span className="text-xl font-bold tracking-tight">LTC Platform</span>
         </div>
