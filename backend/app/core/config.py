@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
     # Database
-    DATABASE_URL: str = "postgresql://postgres:sammy@localhost:5433/lms_db"
+    DATABASE_URL: str =  "postgresql://username:password@localhost:5432/sample_db"
     REDIS_URL: str = "redis://localhost:6379"
     
     # JWT
