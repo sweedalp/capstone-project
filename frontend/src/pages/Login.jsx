@@ -29,70 +29,67 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setIsLoading(true);
+  setIsLoading(true);
 
+  try {
+    const response = await apiClient.post(
+      "/api/auth/login",
+      new URLSearchParams({
+        username: formData.email,
+        password: formData.password,
+      }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    const token = response.data.access_token;
+
+    if (formData.rememberMe) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("userEmail", formData.email);
+    } else {
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("userEmail", formData.email);
+    }
+
+    let user;
     try {
-      // OAuth2PasswordRequestForm requires x-www-form-urlencoded, NOT JSON
-      const response = await apiClient.post(
-        "/api/auth/login",
-        new URLSearchParams({
-          username: formData.email,
-          password: formData.password,
-        }),
-        {
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        }
-      );
+      const userResponse = await apiClient.get("/api/auth/me");
+      user = userResponse.data;
+    } catch {
+      setErrors({ submit: "Login succeeded but failed to load profile. Try again." });
+      setIsLoading(false);
+      return;
+    }
 
-      const token = response.data.access_token;
+    localStorage.setItem("userRole", user.role);
+    localStorage.setItem("userName", user.full_name || user.username);
 
-      //  rememberMe now actually works
-      if (formData.rememberMe) {
-        localStorage.setItem("token", token);
-        localStorage.setItem("userEmail", formData.email);
-      } else {
-        sessionStorage.setItem("token", token);
-        sessionStorage.setItem("userEmail", formData.email);
-      }
-
-      // /me call separated so its errors don't show as "wrong password"
-      let user;
-      try {
-        const userResponse = await apiClient.get("/api/auth/me");
-        user = userResponse.data;
-      } catch {
-        setErrors({ submit: "Login succeeded but failed to load your profile. Please try again." });
-        setIsLoading(false);
-        return;
-      }
-
-      localStorage.setItem("userRole", user.role);
-      localStorage.setItem("userName", user.full_name || user.username);
-    // Redirect by role
     const dashboardRoutes = {
       learner: "/dashboard/learner",
       trainer: "/dashboard/trainer",
@@ -103,13 +100,17 @@ const Login = () => {
     navigate(dashboardRoutes[user.role] || "/dashboard/learner");
 
   } catch (error) {
-    setErrors({ submit: "Invalid email or password" });
+    if (error.response?.status === 401) {
+      setErrors({ submit: "Invalid email or password. Please try again." });
+    } else if (!error.response) {
+      setErrors({ submit: "Cannot reach server. Check your connection." });
+    } else {
+      setErrors({ submit: "Something went wrong. Please try again." });
+    }
   } finally {
     setIsLoading(false);
   }
 };
-
-
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication
     console.log(`${provider} SSO login clicked`);
@@ -121,252 +122,285 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="flex h-screen w-full overflow-hidden">
-        {/* Left Side: Visual/Hero Section (Hidden on Mobile) */}
-        <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-start pl-12 pr-8 py-8 overflow-hidden">
-          {/* Decorative Elements */}
-          <div className="absolute inset-0 ai-pattern opacity-30"></div>
-          <div className="absolute -top-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse-slow"></div>
-          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
-          
-          <div className="relative z-10 text-white max-w-md">
-            <div className="mb-6 flex items-center gap-3 animate-fade-in">
-              <div className="bg-white p-2 rounded-lg shadow-xl hover:shadow-2xl transition-shadow duration-300">
-                <svg 
-                  className="w-8 h-8 text-primary" 
-                  fill="none" 
-                  viewBox="0 0 48 48" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path 
-                    d="M13.8261 30.5736C16.7203 29.8826 20.2244 29.4783 24 29.4783C27.7756 29.4783 31.2797 29.8826 34.1739 30.5736C36.9144 31.2278 39.9967 32.7669 41.3563 33.8352L24.8486 7.36089C24.4571 6.73303 23.5429 6.73303 23.1514 7.36089L6.64374 33.8352C8.00331 32.7669 11.0856 31.2278 13.8261 30.5736Z" 
-                    fill="currentColor"
-                  />
-                  <path 
-                    clipRule="evenodd" 
-                    d="M39.998 35.764C39.9944 35.7463 39.9875 35.7155 39.9748 35.6706C39.9436 35.5601 39.8949 35.4259 39.8346 35.2825C39.8168 35.2403 39.7989 35.1993 39.7813 35.1602C38.5103 34.2887 35.9788 33.0607 33.7095 32.5189C30.9875 31.8691 27.6413 31.4783 24 31.4783C20.3587 31.4783 17.0125 31.8691 14.2905 32.5189C12.0012 33.0654 9.44505 34.3104 8.18538 35.1832C8.17384 35.2075 8.16216 35.233 8.15052 35.2592C8.09919 35.3751 8.05721 35.4886 8.02977 35.589C8.00356 35.6848 8.00039 35.7333 8.00004 35.7388C8.00004 35.739 8 35.7393 8.00004 35.7388C8.00004 35.7641 8.0104 36.0767 8.68485 36.6314C9.34546 37.1746 10.4222 37.7531 11.9291 38.2772C14.9242 39.319 19.1919 40 24 40C28.8081 40 33.0758 39.319 36.0709 38.2772C37.5778 37.7531 38.6545 37.1746 39.3151 36.6314C39.9006 36.1499 39.9857 35.8511 39.998 35.764ZM4.95178 32.7688L21.4543 6.30267C22.6288 4.4191 25.3712 4.41909 26.5457 6.30267L43.0534 32.777C43.0709 32.8052 43.0878 32.8338 43.104 32.8629L41.3563 33.8352C43.104 32.8629 43.1038 32.8626 43.104 32.8629L43.1051 32.865L43.1065 32.8675L43.1101 32.8739L43.1199 32.8918C43.1276 32.906 43.1377 32.9246 43.1497 32.9473C43.1738 32.9925 43.2062 33.0545 43.244 33.1299C43.319 33.2792 43.4196 33.489 43.5217 33.7317C43.6901 34.1321 44 34.9311 44 35.7391C44 37.4427 43.003 38.7775 41.8558 39.7209C40.6947 40.6757 39.1354 41.4464 37.385 42.0552C33.8654 43.2794 29.133 44 24 44C18.867 44 14.1346 43.2794 10.615 42.0552C8.86463 41.4464 7.30529 40.6757 6.14419 39.7209C4.99695 38.7775 3.99999 37.4427 3.99999 35.7391C3.99999 34.8725 4.29264 34.0922 4.49321 33.6393C4.60375 33.3898 4.71348 33.1804 4.79687 33.0311C4.83898 32.9556 4.87547 32.8935 4.9035 32.8471C4.91754 32.8238 4.92954 32.8043 4.93916 32.7889L4.94662 32.777L4.95178 32.7688ZM35.9868 29.004L24 9.77997L12.0131 29.004C12.4661 28.8609 12.9179 28.7342 13.3617 28.6282C16.4281 27.8961 20.0901 27.4783 24 27.4783C27.9099 27.4783 31.5719 27.8961 34.6383 28.6282C35.082 28.7342 35.5339 28.8609 35.9868 29.004Z" 
-                    fill="currentColor" 
-                    fillRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <span className="text-xl font-bold tracking-tight">AI LMS Intelligence</span>
+    <main className="w-full h-screen flex flex-col md:flex-row bg-slate-50 overflow-hidden">
+      {/* Left Section:  Knowledge Intelligence Branding */}
+      <section className="hidden md:flex md:w-1/2 lg:w-3/5 relative overflow-hidden bg-white border-r border-slate-100">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            alt="Intelligence and Growth"
+            className="w-full h-full object-cover opacity-20 mix-blend-multiply"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYAfZjF9ZfjKjoLpq9kBZeofxZb3D-bltjzYWhctYxJ9QZqGiM1YCZMFxte0EpF5tfGvPvs6mOZhap_7XjDeWlTrzMvjXUT459GVOUJ7_1ejLM2YjcivNh8CfrxPqby9ztnio8ZSwP7xpAAbc-cgMPfeACh5WwcOJOpK6bMPKaEm9TkOqbvFr2q1XH5k0flvmPcvXZqOI-3JF4wXdgEttmDLjMTI-_0lQIEZhSu9HdTuukx2g0swlYfjRbvyte-thdpyAHxie_5xoc"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-blue-50/30 to-white/80"></div>
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 30%, #DBEAFE 0%, transparent 40%), radial-gradient(circle at 80% 70%, #F1F5F9 0%, transparent 40%)'
+            }}
+          ></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 p-8 lg:p-16 flex flex-col justify-between h-full w-full">
+          <div>
+            {/* Logo */}
+            <div className="flex items-center gap-2 mb-8">
+              <div className="bg-blue-600 text-white p-1.5 rounded-lg">
+            <span className="material-symbols-outlined text-xl">auto_awesome</span>
+          </div>
+              <span className="text-xl font-bold tracking-tight text-slate-900">LTC Platform</span>
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-tight mb-4 animate-fade-in animation-delay-200">
-              Knowledge transformation powered by AI.
+            {/* Heading */}
+            <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight max-w-lg">
+              Next-gen <span className="text-blue-600">Knowledge Intelligence.</span>
             </h1>
-            
-            <p className="text-blue-100 text-base leading-relaxed mb-6 animate-fade-in animation-delay-400">
-              Experience the future of enterprise learning with our intelligent management system. Tailored pathways for every professional.
+
+            {/* Subheading */}
+            <p className="mt-4 text-base text-slate-500 max-w-md font-light leading-relaxed">
+              A unified learning ecosystem powered by AI to empower learners, trainers, and executive
+              leadership.
             </p>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 animate-slide-in animation-delay-600 hover:translate-x-2 transition-transform duration-300">
-                <span className="material-symbols-outlined text-blue-200">check_circle</span>
-                <span>Personalized Learning Copilot</span>
-              </div>
-              <div className="flex items-center gap-3 animate-slide-in animation-delay-800 hover:translate-x-2 transition-transform duration-300">
-                <span className="material-symbols-outlined text-blue-200">check_circle</span>
-                <span>Automated Knowledge Extraction</span>
-              </div>
-              <div className="flex items-center gap-3 animate-slide-in animation-delay-1000 hover:translate-x-2 transition-transform duration-300">
-                <span className="material-symbols-outlined text-blue-200">check_circle</span>
-                <span>Real-time Skill Gap Analysis</span>
-              </div>
+            {/* GPT-4 Badge */}
+            <div className="mt-6 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-xs font-medium text-blue-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+              Now with GPT-4 Core Integration
             </div>
           </div>
 
-          {/* Abstract Image Element */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-primary to-transparent z-0"></div>
-        </div>
-
-        {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-background-dark justify-center px-8 sm:px-12 lg:pl-6 lg:pr-12 xl:pl-8 xl:pr-16 py-6">
-          <div className="max-w-lg w-full mx-auto">
-            <div className="mb-6 animate-fade-in">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Welcome Back
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Enter your credentials to access your dashboard.
-              </p>
+          {/* Stats Section */}
+          <div className="grid grid-cols-3 gap-6 pt-8 border-t border-slate-100">
+            <div>
+              <div className="text-2xl font-bold text-slate-900">99%</div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 mt-1">
+                Accuracy
+              </div>
             </div>
-
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Email Input */}
-              <div className="animate-fade-in animation-delay-200">
-                <label 
-                  className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5" 
-                  htmlFor="email"
-                >
-                  Email Address
-                </label>
-                <input
-                    className={`block w-full px-3 py-2.5 border ${
-                      errors.email ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
-                    } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
-                    id="email"
-                    name="email"
-                    placeholder="name@company.com"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                  />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-500 animate-fade-in">{errors.email}</p>
-                )}
+            <div>
+              <div className="text-2xl font-bold text-slate-900">24/7</div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 mt-1">
+                Insights
               </div>
-
-              {/* Password Input */}
-              <div className="animate-fade-in animation-delay-400">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label 
-                    className="block text-sm font-semibold text-gray-700 dark:text-gray-300" 
-                    htmlFor="password"
-                  >
-                    Password
-                  </label>
-                  <button
-                    className="text-sm font-medium text-primary hover:text-blue-700 transition-colors cursor-pointer bg-transparent border-0"
-                    type="button"
-                    onClick={() => navigate('/forgot-password')}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-                <input
-                    className={`block w-full px-3 py-2.5 border ${
-                      errors.password ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary/20 focus:border-primary'
-                    } rounded-lg bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm`}
-                    id="password"
-                    name="password"
-                    placeholder="••••••••"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                  />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-500 animate-fade-in">{errors.password}</p>
-                )}
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-slate-900">500+</div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 mt-1">
+                Partners
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              {/* Remember Me */}
-              <div className="flex items-center animate-fade-in animation-delay-600">
+      {/* Right Section: Login Form */}
+      <section className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center items-center px-6 py-6 lg:px-12 bg-slate-50 overflow-y-auto">
+        <div className="w-full max-w-md bg-white p-6 md:p-7 rounded-2xl shadow-sm border border-slate-100">
+          {/* Mobile Logo */}
+          <div className="md:hidden flex items-center gap-2 mb-6 justify-center">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="material-symbols-outlined text-white text-[18px]">psychology</span>
+            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-900">LTC Platform</span>
+          </div>
+
+          {/* Form Header */}
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-900 mb-1">Welcome Back</h2>
+            <p className="text-sm text-slate-500">Log in to your account to continue.</p>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Field */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5" htmlFor="email">
+                Email Address
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
+                  mail
+                </span>
                 <input
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
-                  id="remember-me"
-                  name="rememberMe"
-                  type="checkbox"
-                  checked={formData.rememberMe}
+                  className={`w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border ${
+                    errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-blue-600/20 focus:border-blue-600'
+                  } rounded-lg transition-all outline-none placeholder:text-slate-400 text-slate-900`}
+                  id="email"
+                  name="email"
+                  placeholder="jane.doe@company.com"
+                  required
+                  type="email"
+                  value={formData.email}
                   onChange={handleInputChange}
                   disabled={isLoading}
                 />
-                <label 
-                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer" 
-                  htmlFor="remember-me"
-                >
-                  Keep me logged in
-                </label>
               </div>
-
-              {/* Error message */}
-              {errors.submit && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg animate-fade-in">
-                  <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
-                </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-500">{errors.email}</p>
               )}
-
-              {/* Login Button */}
-              <button
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in animation-delay-800"
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Logging in...
-                  </>
-                ) : (
-                  'Log In to Dashboard'
-                )}
-              </button>
-            </form>
-
-            <div className="mt-5">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white dark:bg-background-dark text-gray-500 font-medium">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
-                  type="button"
-                  onClick={() => handleSSOLogin('Google')}
-                  disabled={isLoading}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                  </svg>
-                  Google
-                </button>
-
-                <button
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
-                  type="button"
-                  onClick={() => handleSSOLogin('Microsoft')}
-                  disabled={isLoading}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 23 23">
-                    <path d="M0 0h23v23H0z" fill="#f3f3f3" />
-                    <path d="M1 1h10v10H1z" fill="#f35325" />
-                    <path d="M12 1h10v10H12z" fill="#81bc06" />
-                    <path d="M1 12h10v10H1z" fill="#05a6f0" />
-                    <path d="M12 12h10v10H12z" fill="#ffba08" />
-                  </svg>
-                  Microsoft
-                </button>
-              </div>
             </div>
 
-            <div className="mt-6 text-center animate-fade-in animation-delay-1000">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Don't have an account yet?
+            {/* Password Field */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700" htmlFor="password">
+                  Password
+                </label>
                 <button
-                  className="font-bold text-primary hover:text-blue-700 transition-colors ml-1 cursor-pointer bg-transparent border-0 text-sm"
-                  onClick={() => navigate('/signup')}
+                  className="text-xs font-bold text-blue-600 hover:underline"
                   type="button"
+                  onClick={() => navigate('/forgot-password')}
                 >
-                  Sign Up
+                  Forgot Password?
                 </button>
-              </p>
+              </div>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
+                  lock
+                </span>
+                <input
+                  className={`w-full pl-10 pr-11 py-2.5 text-sm bg-slate-50 border ${
+                    errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-blue-600/20 focus:border-blue-600'
+                  } rounded-lg transition-all outline-none placeholder:text-slate-400 text-slate-900`}
+                  id="password"
+                  name="password"
+                  placeholder="••••••••"
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                />
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center">
+              <input
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-600 transition-colors cursor-pointer"
+                id="remember"
+                name="rememberMe"
+                type="checkbox"
+                checked={formData.rememberMe}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <label
+                className="ml-2 text-sm text-slate-600 cursor-pointer select-none"
+                htmlFor="remember"
+              >
+                Keep me signed in
+              </label>
+            </div>
+
+            {/* Error Message */}
+            {errors.submit && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              className="w-full py-2.5 px-4 text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md shadow-blue-200 transition-all active:scale-[0.99] flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Logging In...
+                </>
+              ) : (
+                <>
+                  Log In
+                  <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">
+                    arrow_forward
+                  </span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Footer Links */}
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <p className="text-xs text-center text-slate-500">
+              Don't have an account?{' '}
+              <button
+                className="text-blue-600 font-bold hover:underline cursor-pointer bg-transparent border-0 text-xs"
+                onClick={() => navigate('/signup')}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </p>
+
+            {/* Terms/Privacy/Support */}
+            <div className="mt-4 flex items-center justify-center gap-4 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+              <a className="hover:text-slate-600 transition-colors cursor-pointer" href="#">
+                Terms
+              </a>
+              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+              <a className="hover:text-slate-600 transition-colors cursor-pointer" href="#">
+                Privacy
+              </a>
+              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+              <a className="hover:text-slate-600 transition-colors cursor-pointer" href="#">
+                Support
+              </a>
             </div>
           </div>
 
-          {/* Footer */}
-          <footer className="mt-auto py-4 text-center text-xs text-gray-400 dark:text-gray-600 uppercase tracking-widest font-medium">
-            © 2024 AI LMS Knowledge Intelligence. All rights reserved.
-          </footer>
+          {/* Powered By Footer */}
+          <div className="mt-6 flex justify-center border-t border-slate-50 pt-5">
+            <div className="flex items-center gap-2 group cursor-default">
+              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+                Powered by
+              </span>
+              <div className="flex items-center gap-1 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                <span className="material-symbols-outlined text-[14px] text-blue-600">
+                  psychology
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">LTC Intelligence</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 
