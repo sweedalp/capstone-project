@@ -14,7 +14,17 @@ import Search from './pages/learner/Search'
 import RevisionAssistant from './pages/learner/RevisionAssistant'
 import Analytics from './pages/learner/Analytics'
 import TrainerDashboard from './pages/trainer/TrainerDashboard'
-import AdminDashboard from './pages/admin/AdminDashboard'
+//admin import ==================================================X
+import AdminLayout from './components/layout/AdminLayout'
+import AdminDashboard from './pages/admin/sub/Dashboard'
+import AdminUsers from './pages/admin/sub/Users'
+import KnowledgeRepo from './pages/admin/sub/KnowledgeRepository'
+import AIConfig from './pages/admin/sub/AIConfiguration'
+import AdminReports from './pages/admin/sub/Reports'
+import AdminCourses from './pages/admin/sub/Courses'
+import AdminSettings from './pages/admin/sub/Settings'
+import PrivateAdminRoute from './components/PrivateAdminRoute'
+//admin import ==================================================X
 import LeadershipDashboard from './pages/leadership/LeadershipDashboard'
 
 function App() {
@@ -39,7 +49,17 @@ function App() {
         <Route path="/learner/analytics" element={<Analytics />} />
         <Route path="/learner/progress" element={<Analytics />} />
         <Route path="/dashboard/trainer" element={<TrainerDashboard />} />
-        <Route path="/dashboard/admin" element={<AdminDashboard />} />
+
+        <Route path="/dashboard/admin" element={<AdminLayout />} >
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="knowledge" element={<KnowledgeRepo />} />
+          <Route path="ai" element={<AIConfig />} />
+          <Route path="reports" element={<AdminReports />} />
+          <Route path="courses" element={<AdminCourses />} />
+          <Route path="settings" element={<AdminSettings />} />
+        </Route>
+
         <Route path="/dashboard/leadership" element={<LeadershipDashboard />} />
         <Route path="/dashboard" element={<div>Dashboard - Coming Soon</div>} />
         <Route path="/courses" element={<div>Courses - Coming Soon</div>} />
