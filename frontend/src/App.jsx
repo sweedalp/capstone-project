@@ -25,8 +25,12 @@ import AdminCourses from './pages/admin/sub/Courses'
 import AdminSettings from './pages/admin/sub/Settings'
 import PrivateAdminRoute from './components/PrivateAdminRoute'
 //admin import ==================================================X
-import LeadershipDashboard from './pages/leadership/LeadershipDashboard'
-
+import LeadershipDashboard from './pages/leadership/Dashboard'
+import LeadershipStudentProgress from './pages/leadership/Students'
+import LeadershipCurriculum from './pages/leadership/Curriculum'
+import LeadershipAnalytics from './pages/leadership/Analytics'
+import LeadershipManagement from './pages/leadership/Management'
+import LeadershipSettings from './pages/leadership/Settings'
 function App() {
   return (
     <Router>
@@ -61,9 +65,13 @@ function App() {
         </Route>
 
         <Route path="/dashboard/leadership" element={<LeadershipDashboard />} />
-        <Route path="/dashboard" element={<div>Dashboard - Coming Soon</div>} />
-        <Route path="/courses" element={<div>Courses - Coming Soon</div>} />
-        <Route path="/learn/:courseId" element={<div>Learning Interface - Coming Soon</div>} />
+
+        <Route path="/leadership/dashboard" element={<LeadershipDashboard />} />
+        <Route path="/leadership/students" element={<LeadershipStudentProgress />} />
+        <Route path="/leadership/curriculum" element={<LeadershipCurriculum />} />
+        <Route path="/leadership/analytics" element={<LeadershipAnalytics />} />
+        <Route path="/leadership/management" element={<LeadershipManagement />} />
+        <Route path="/leadership/settings" element={<LeadershipSettings />} />
       </Routes>
     </Router>
   )
