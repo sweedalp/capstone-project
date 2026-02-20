@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
     # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/lms_db"
+    DATABASE_URL: str =  "postgresql://username:password@localhost:5432/sample_db"
     REDIS_URL: str = "redis://localhost:6379"
     
     # JWT
@@ -27,9 +27,18 @@ class Settings(BaseSettings):
     
     # AI Services
     OPENAI_API_KEY: Optional[str] = None
-    
+
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = ""
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_FROM_NAME: str = "AI LMS Platform"
+
     class Config:
-        env_file = ".env"
+        env_file = r"D:\capstone-project\.env"
         case_sensitive = True
 
 settings = Settings()
+
+

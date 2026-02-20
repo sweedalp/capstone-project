@@ -24,5 +24,5 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    enrollments = relationship("Enrollment", back_populates="user")
-    progress = relationship("Progress", back_populates="user")
+   # enrollments = relationship("Enrollment", back_populates="user")
+    #progress = relationship("Progress", back_populates="user")

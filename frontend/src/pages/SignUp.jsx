@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './signup.css';
+import apiClient from "../services/api";
+
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -71,39 +74,35 @@ const SignUp = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  e.preventDefault();
 
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Store user info
-      localStorage.setItem('userRole', formData.role);
-      localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('userName', formData.fullName);
-      
-      // Navigate to role-specific dashboard
-      const dashboardRoutes = {
-        'learner': '/dashboard/learner',
-        'trainer': '/dashboard/trainer',
-        'admin': '/dashboard/admin',
-        'leadership': '/dashboard/leadership'
-      };
-      
-      const dashboardRoute = dashboardRoutes[formData.role] || '/dashboard/learner';
-      navigate(dashboardRoute);
-    } catch (error) {
-      setErrors({ submit: 'Registration failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
+  if (!validateForm()) return;
+
+  setIsLoading(true);
+
+  try {
+    await apiClient.post("/api/auth/register", {
+      email: formData.email,
+      username: formData.email,
+      password: formData.password,
+      full_name: formData.fullName,
+      role: formData.role,
+    });
+
+    alert("Account created successfully! Please login.");
+    navigate("/login");
+
+  } catch (error) {
+    if (error.response?.status === 400) {
+      setErrors({ submit: "User already exists" });
+    } else {
+      setErrors({ submit: "Registration failed. Try again." });
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication
@@ -124,13 +123,13 @@ const SignUp = () => {
       {/* Left Section: Visual/Branding */}
       <section className="relative w-full md:w-1/2 flex flex-col justify-between p-8 md:p-12 lg:p-16 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
         {/* Background Pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.05] dark:opacity-[0.1]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
         ></div>
-        
+
         {/* Gradient Orbs */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-400/10 rounded-full blur-[100px]"></div>
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px]"></div>
@@ -189,11 +188,11 @@ const SignUp = () => {
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="fullName">Full Name</label>
               <div className="relative group">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">person</span>
-                <input 
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.fullName ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`} 
-                  id="fullName" 
+                <input
+                  className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.fullName ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
+                  id="fullName"
                   name="fullName"
-                  placeholder="John Doe" 
+                  placeholder="John Doe"
                   type="text"
                   value={formData.fullName}
                   onChange={handleInputChange}
@@ -208,11 +207,11 @@ const SignUp = () => {
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="email">Email Address</label>
               <div className="relative group">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">mail</span>
-                <input 
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.email ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`} 
-                  id="email" 
+                <input
+                  className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.email ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
+                  id="email"
                   name="email"
-                  placeholder="jane.doe@company.com" 
+                  placeholder="jane.doe@company.com"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
@@ -227,8 +226,8 @@ const SignUp = () => {
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="role">Select Your Role</label>
               <div className="relative group">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">groups</span>
-                <select 
-                  className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none appearance-none bg-none cursor-pointer" 
+                <select
+                  className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none appearance-none bg-none cursor-pointer"
                   id="role"
                   name="role"
                   value={formData.role}
@@ -250,11 +249,11 @@ const SignUp = () => {
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="password">Password</label>
                 <div className="relative group">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
-                  <input 
-                    className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.password ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`} 
-                    id="password" 
+                  <input
+                    className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.password ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
+                    id="password"
                     name="password"
-                    placeholder="••••••••" 
+                    placeholder="••••••••"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleInputChange}
@@ -275,11 +274,11 @@ const SignUp = () => {
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="confirm">Confirm</label>
                 <div className="relative group">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
-                  <input 
-                    className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.confirmPassword ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`} 
-                    id="confirm" 
+                  <input
+                    className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.confirmPassword ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
+                    id="confirm"
                     name="confirmPassword"
-                    placeholder="••••••••" 
+                    placeholder="••••••••"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
@@ -300,9 +299,9 @@ const SignUp = () => {
 
             {/* Terms and Conditions */}
             <div className="flex items-start gap-2.5 pt-0.5">
-              <input 
-                className={`mt-0.5 h-3.5 w-3.5 rounded text-blue-600 focus:ring-offset-0 focus:ring-blue-600/20 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 transition-colors cursor-pointer ${errors.agreeToTerms ? 'border-red-500 ring-1 ring-red-500/20' : ''}`} 
-                id="terms" 
+              <input
+                className={`mt-0.5 h-3.5 w-3.5 rounded text-blue-600 focus:ring-offset-0 focus:ring-blue-600/20 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 transition-colors cursor-pointer ${errors.agreeToTerms ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
+                id="terms"
                 name="agreeToTerms"
                 type="checkbox"
                 checked={formData.agreeToTerms}
@@ -315,8 +314,8 @@ const SignUp = () => {
             </div>
 
             {/* Submit Button */}
-            <button 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1.5" 
+            <button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1.5"
               type="submit"
               disabled={isLoading}
             >
@@ -345,7 +344,7 @@ const SignUp = () => {
 
             {/* SSO Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <button 
+              <button
                 className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-100 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-[12px] font-semibold text-slate-700 dark:text-slate-300"
                 type="button"
                 onClick={() => handleSSOLogin('Google')}
@@ -359,7 +358,7 @@ const SignUp = () => {
                 </svg>
                 Google
               </button>
-              <button 
+              <button
                 className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-100 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-[12px] font-semibold text-slate-700 dark:text-slate-300"
                 type="button"
                 onClick={() => handleSSOLogin('SSO')}
@@ -374,16 +373,16 @@ const SignUp = () => {
           {/* Footer Section */}
           <div className="mt-4 text-center">
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Already have an account? 
-              <button 
-                className="text-blue-600 font-bold hover:underline bg-transparent border-0 ml-1" 
+              Already have an account?
+              <button
+                className="text-blue-600 font-bold hover:underline bg-transparent border-0 ml-1"
                 onClick={() => navigate('/login')}
                 type="button"
               >
                 Sign In
               </button>
             </p>
-            
+
             <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
               <a className="text-[9px] uppercase tracking-widest font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">Terms</a>
               <span className="w-1 h-1 rounded-full bg-slate-200"></span>

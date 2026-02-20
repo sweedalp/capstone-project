@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './login.css';
+import apiClient from "../services/api";
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,72 +29,88 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
+  e.preventDefault();
+
+  if (!validateForm()) return;
+
+  setIsLoading(true);
+
+  try {
+    const response = await apiClient.post(
+      "/api/auth/login",
+      new URLSearchParams({
+        username: formData.email,
+        password: formData.password,
+      }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    const token = response.data.access_token;
+
+    if (formData.rememberMe) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("userEmail", formData.email);
+    } else {
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("userEmail", formData.email);
+    }
+
+    let user;
+    try {
+      const userResponse = await apiClient.get("/api/auth/me");
+      user = userResponse.data;
+    } catch {
+      setErrors({ submit: "Login succeeded but failed to load profile. Try again." });
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Dummy credentials for different roles
-      const dummyCredentials = {
-        'learner@test.com': { password: 'Learner123', role: 'learner', name: 'Learner User', dashboard: '/dashboard/learner' },
-        'trainer@test.com': { password: 'Trainer123', role: 'trainer', name: 'Trainer User', dashboard: '/dashboard/trainer' },
-        'admin@test.com': { password: 'Admin123', role: 'admin', name: 'Admin User', dashboard: '/dashboard/admin' },
-        'leadership@test.com': { password: 'Leadership123', role: 'leadership', name: 'Executive Leadership', dashboard: '/dashboard/leadership' }
-      };
-      
-      // Check credentials
-      const user = dummyCredentials[formData.email.toLowerCase()];
-      
-      if (!user || user.password !== formData.password) {
-        setErrors({ submit: 'Invalid email or password. Hint: learner@test.com / Learner123' });
-        setIsLoading(false);
-        return;
-      }
-      
-      // Store remember me preference and user info
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-      }
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userEmail', formData.email.toLowerCase());
-      localStorage.setItem('userName', user.name);
-      
-      // Navigate to role-specific dashboard
-      navigate(user.dashboard);
-    } catch (error) {
-      setErrors({ submit: 'Login failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    localStorage.setItem("userRole", user.role);
+    localStorage.setItem("userName", user.full_name || user.username);
 
+    const dashboardRoutes = {
+      learner: "/dashboard/learner",
+      trainer: "/dashboard/trainer",
+      admin: "/dashboard/admin",
+      leadership: "/dashboard/leadership",
+    };
+
+    navigate(dashboardRoutes[user.role] || "/dashboard/learner");
+
+  } catch (error) {
+    if (error.response?.status === 401) {
+      setErrors({ submit: "Invalid email or password. Please try again." });
+    } else if (!error.response) {
+      setErrors({ submit: "Cannot reach server. Check your connection." });
+    } else {
+      setErrors({ submit: "Something went wrong. Please try again." });
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication
     console.log(`${provider} SSO login clicked`);
