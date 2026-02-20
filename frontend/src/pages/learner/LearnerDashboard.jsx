@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import VoiceAIDrawer from '../../components/VoiceAIDrawer';
 import '../../index.css';
 
 const LearnerDashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   const notificationsRef = useRef(null);
   
   // Get user info from localStorage
@@ -364,13 +366,7 @@ const LearnerDashboard = () => {
           </div>
           
           <div className="flex items-center gap-4 ml-8">
-            <button 
-              onClick={handleAskAI}
-              className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-              <span>Ask AI</span>
-            </button>
+          
             
             <div className="relative" ref={notificationsRef}>
               <button 
@@ -453,6 +449,15 @@ const LearnerDashboard = () => {
                 </div>
               )}
             </div>
+            
+            {/* Voice AI Button */}
+            <button 
+              onClick={() => setShowVoiceDrawer(true)}
+              className="relative p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+              title="Voice AI Assistant"
+            >
+              <span className="material-symbols-outlined">mic</span>
+            </button>
             
             <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
             
@@ -639,18 +644,18 @@ const LearnerDashboard = () => {
           {/* Section 4: AI Hub Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div 
-              onClick={() => navigate('/learner/ai-hub')}
+              onClick={() => setShowVoiceDrawer(true)}
               className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-600/50 transition-colors cursor-pointer group"
             >
               <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-600 mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <span className="material-symbols-outlined">hub</span>
+                <span className="material-symbols-outlined">mic</span>
               </div>
-              <h3 className="text-lg font-bold mb-2">AI Learning Hub</h3>
+              <h3 className="text-lg font-bold mb-2">🎤 Voice AI</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Access all neural-enhanced tools and custom GPT models tailored to your curriculum.
+                Ask questions using your voice and get instant AI responses with audio playback.
               </p>
               <div className="flex items-center text-sm font-bold text-blue-600 gap-1">
-                Explore Tools <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                Start Speaking <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </div>
             </div>
 
@@ -745,6 +750,21 @@ const LearnerDashboard = () => {
           </p>
         </div>
       </aside>
+
+      {/* Voice AI Drawer - Header assistant */}
+      <VoiceAIDrawer 
+        isOpen={showVoiceDrawer}
+        onClose={() => setShowVoiceDrawer(false)}
+        courseContext={{
+          courseId: null, // Set to current course ID when available
+          lessonId: null
+        }}
+        userProfile={{
+          name: userName,
+          email: userEmail,
+          role: userRole
+        }}
+      />
     </div>
   );
 };

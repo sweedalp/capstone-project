@@ -253,9 +253,23 @@ Alternative Flows:
 │  └─────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────┐     │
-│  │ AI Learning  │  │ Quick Search │  │ Revision │     │
-│  │ Hub 🤖       │  │ Concepts 🔍  │  │ Assistant│     │
+│  │ 🎤 Voice AI  │  │ Quick Search │  │ Revision │     │
+│  │ Ask Questions│  │ Concepts 🔍  │  │ Assistant│     │
 │  └──────────────┘  └──────────────┘  └──────────┘     │
+│                                                          │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  🎤 VOICE AI ASSISTANT          [🔴 Listening]  │   │
+│  │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │   │
+│  │                                                  │   │
+│  │  💬 "Ask me anything about your courses..."     │   │
+│  │                                                  │   │
+│  │  [🎤 Press to speak]  or  [⌨️ Type question]    │   │
+│  │                                                  │   │
+│  │  Recent voice queries:                           │   │
+│  │  • "Explain Python functions"                   │   │
+│  │  • "What did I learn yesterday?"                │   │
+│  │  • "Create a study plan"                        │   │
+│  └─────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -272,6 +286,11 @@ Alternative Flows:
 - AI enhancement badges (🎤 🎬 🧭 🤖)
 - Quick action buttons
 - Personalization indicators
+- **Voice AI Widget:** Real-time voice interaction (US #6, #7)
+  - Voice input for questions
+  - WebSocket-based streaming
+  - Multi-language support
+  - Text fallback option
 
 ---
 
@@ -443,10 +462,10 @@ Alternative Flows:
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-│  │ 🎤 Audio │  │ 🎬 Video │  │🧭 Walk   │  │🤖 AI Q&A││
-│  │ Summary  │  │Explainer │  │through   │  │ Ask Me  ││
-│  │          │  │          │  │          │  │         ││
-│  │[Listen]  │  │[Watch]   │  │[Start]   │  │[Ask]    ││
+│  │ 🎤 Audio │  │ 🎬 Video │  │🧭 Walk   │  │🎤 Voice││
+│  │ Summary  │  │Explainer │  │through   │  │AI Q&A  ││
+│  │          │  │          │  │          │  │  🔴    ││
+│  │[Listen]  │  │[Watch]   │  │[Start]   │  │[Speak] ││
 │  └──────────┘  └──────────┘  └──────────┘  └────────┘ │
 │                                                          │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
@@ -563,6 +582,31 @@ Alternative Flows:
 │  │                                               │      │
 │  │  [Start Personalized Session]                │      │
 │  └────━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┘      │
+│                                                          │
+│  ┌────━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┐      │
+│  │  🎤 VOICE AI CHAT                             │      │
+│  │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │      │
+│  │                                               │      │
+│  │  💬 Real-time Voice Conversations             │      │
+│  │                                               │      │
+│  │  ┌───────────────────────────────────────┐   │      │
+│  │  │ 🎤 [Press & Hold to Speak]            │   │      │
+│  │  │                                       │   │      │
+│  │  │ You: "Explain Python functions"       │   │      │
+│  │  │ 🤖 AI: [🔊 Speaking...] "Functions    │   │      │
+│  │  │      are reusable code blocks..."     │   │      │
+│  │  │                                       │   │      │
+│  │  │ [🎤 Ask Another Question]             │   │      │
+│  │  └───────────────────────────────────────┘   │      │
+│  │                                               │      │
+│  │  Features:                                    │      │
+│  │  • Real-time voice streaming (WebSocket)     │      │
+│  │  • Hands-free learning                       │      │
+│  │  • Multi-language support                    │      │
+│  │  • Context-aware responses                   │      │
+│  │                                               │      │
+│  │  [Start Voice Session]                       │      │
+│  └────━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┘      │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -587,6 +631,12 @@ Alternative Flows:
    - Custom recommendations
    - Adaptive content
 
+5. **Voice AI Chat** (US #6, #7) - NEW!
+   - Real-time voice conversations
+   - WebSocket streaming (Whisper → Ollama → Coqui TTS)
+   - Hands-free learning experience
+   - Context-aware AI responses
+
 ---
 
 ### PAGE 9: Concept Search & Q&A
@@ -601,10 +651,11 @@ Alternative Flows:
 │  🔍 Search Concepts or Ask Questions                    │
 │                                                          │
 │  ┌────────────────────────────────────────────────┐    │
-│  │ What is a Python function?            [Search] │    │
+│  │ What is a Python function?   🎤 [Speak] [Search]│    │
 │  └────────────────────────────────────────────────┘    │
 │                                                          │
 │  💡 Suggested: "variables" "loops" "data types"        │
+│  🎤 Or just ask me anything out loud!                   │
 │                                                          │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
 │                                                          │
@@ -645,12 +696,17 @@ Alternative Flows:
 
 **Features:**
 - Smart search with autocomplete
+- **Voice input:** Speak your question (US #6, #7)
+  - Microphone button with recording indicator
+  - Real-time speech-to-text via Whisper
+  - Automatic query submission
 - Natural language Q&A
-- AI-powered answers
+- AI-powered answers via Ollama/Llama
 - Related content suggestions
 - Cross-reference links (US #8)
 - Multi-modal content (audio, video, text)
 - Course context highlighting
+- **Voice output:** Listen to answers via Coqui TTS
 
 ---
 
@@ -2048,6 +2104,353 @@ Increments: 8, 16, 24, 32, 48, 64px
 - Use Heroicons, FontAwesome, or Material Icons
 - Consistent size: 20px, 24px
 - AI feature badges always visible
+
+---
+
+## Voice AI Components (Real-Time Voice Interaction)
+
+### Technical Architecture:
+The platform uses an open-source AI pipeline for real-time voice interaction:
+- **Whisper** (OpenAI): Speech-to-Text transcription (99 languages)
+- **Ollama**: Local LLM runtime (Llama 3.1, Mistral 7B, Phi-3)
+- **Coqui TTS**: Text-to-Speech voice synthesis
+- **WebSocket**: Real-time streaming (wss://localhost:8000/api/voice)
+
+### Component 1: Voice AI Widget
+**File:** `VoiceAIWidget.jsx`
+**Location:** Learner Dashboard, all learner pages
+**User Stories:** Learner #6, #7
+
+**Features:**
+- Floating widget (bottom-right corner)
+- Collapsible/expandable interface
+- Voice activity detection
+- Real-time transcription display
+- Connection status indicator
+
+**UI States:**
+```
+Idle: [🎤 Ask me anything]
+Listening: [🔴 Listening...] + waveform animation
+Processing: [⏳ Thinking...] + spinner
+Speaking: [🔊 Speaking...] + audio waveform
+Error: [⚠️ Connection lost] + retry button
+```
+
+**Technical Implementation:**
+```javascript
+// WebSocket connection to voice backend
+const ws = new WebSocket('wss://localhost:8000/api/voice');
+
+// MediaRecorder for microphone input
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(stream => {
+    const mediaRecorder = new MediaRecorder(stream);
+    // Stream audio chunks to backend
+  });
+```
+
+**Props:**
+- `courseContext`: Current course ID for contextualized answers
+- `userProfile`: User learning history for personalization
+- `language`: Target language for responses (default: English)
+
+---
+
+### Component 2: Voice Chat Modal
+**File:** `VoiceChatModal.jsx`
+**Location:** AI Learning Hub (PAGE 8)
+**User Stories:** Learner #6, #7
+
+**Features:**
+- Full-screen or windowed mode
+- Conversation history display
+- Voice input (press & hold or toggle)
+- Text input fallback
+- Conversation export (transcript download)
+
+**Layout:**
+```
+┌────────────────────────────────────────┐
+│  🎤 Voice AI Chat        [−][□][×]    │
+├────────────────────────────────────────┤
+│                                        │
+│  You: "Explain Python functions"      │
+│  🤖 AI: "Functions are reusable..."   │
+│  [🔊 Audio playing...]                 │
+│                                        │
+│  You: "Give me an example"            │
+│  🤖 AI: "Here's a simple example..."  │
+│                                        │
+├────────────────────────────────────────┤
+│  [🎤 Hold to speak] or [Type...]      │
+│  ● Connected  • 2.1s latency          │
+└────────────────────────────────────────┘
+```
+
+**Backend Flow:**
+```
+1. Microphone → Audio chunks (WebSocket send)
+2. Backend: Whisper STT → Text transcription
+3. Backend: Ollama LLM → AI response text
+4. Backend: Coqui TTS → Audio synthesis
+5. Frontend: Audio playback
+```
+
+**Response Time Targets:**
+- Speech-to-Text: < 1s
+- LLM Response: < 3s
+- Text-to-Speech: < 2s
+- **Total Latency: < 6s**
+
+---
+
+### Component 3: Voice Search Button
+**File:** Enhanced `Search.jsx`
+**Location:** Search & Q&A page (PAGE 9)
+**User Stories:** Learner #6, #7
+
+**Features:**
+- Microphone icon button in search bar
+- Inline voice recording
+- Visual feedback (pulsing animation)
+- Automatic search submission after transcription
+
+**UI Integration:**
+```jsx
+<div className="search-bar">
+  <input 
+    type="text" 
+    placeholder="What is a Python function?"
+    value={query}
+  />
+  <button 
+    className="voice-button" 
+    onMouseDown={startRecording}
+    onMouseUp={stopRecording}
+  >
+    {isRecording ? '🔴' : '🎤'}
+  </button>
+  <button type="submit">Search</button>
+</div>
+```
+
+---
+
+### Component 4: Voice Q&A Button
+**File:** Enhanced `LessonContent.jsx`
+**Location:** Lesson Content page (PAGE 7), AI Enhancement Panel
+**User Stories:** Learner #2, #7
+
+**Features:**
+- Contextual to current lesson
+- Understands lesson content (RAG-enabled)
+- Quick questions about video/transcript
+- Related concept queries
+
+**Context Awareness:**
+- Current lesson transcript
+- Video timestamps
+- Related course materials
+- User's previous questions in this lesson
+
+---
+
+### Component 5: Audio Player (Enhanced)
+**File:** `AudioPlayer.jsx`
+**Location:** AI Learning Hub, Lesson Content
+**User Stories:** Learner #10-13
+
+**New Features:**
+- **Source metadata:** "Auto-generated from: Lesson 3 video"
+- **Generation timestamp:** "Created: Feb 20, 2026"
+- **Quality indicator:** "⭐ High-quality AI narration"
+- **Language selector:** Switch between available languages
+- **Speed controls:** 0.5x to 2x playback
+- **Transcript toggle:** Show/hide synchronized transcript
+
+**UI Enhancement:**
+```
+┌──────────────────────────────────────┐
+│ 🔊 Python Functions Explained        │
+│ 12:45 • Generated from: Lesson 3     │
+│ Auto-created: Today at 2:30 PM       │
+│                                      │
+│ [▶️ Play]  [⬇️ Download]  [📄 Script] │
+│ ████████░░░░░░░░ 8:30 / 12:45       │
+│ Speed: [1.0x ▼]  Lang: [EN ▼]       │
+└──────────────────────────────────────┘
+```
+
+---
+
+### UI/UX Indicators for Voice AI
+
+**1. Recording States:**
+- Idle: Gray microphone icon 🎤
+- Listening: Red pulsing icon 🔴 + waveform
+- Processing: Spinner ⏳
+- Speaking: Blue speaker icon 🔊 + waveform
+- Error: Yellow warning ⚠️
+
+**2. Connection Status:**
+- 🟢 Connected (< 2s latency)
+- 🟡 Slow connection (2-5s latency)
+- 🔴 Disconnected / Error
+
+**3. Microphone Permissions:**
+```jsx
+// Permission request flow
+if (!microphoneAccess) {
+  showPermissionModal({
+    title: "Microphone Access Required",
+    message: "Enable microphone to use voice features",
+    actions: ["Allow", "Use Text Instead"]
+  });
+}
+```
+
+**4. AI-Generated Content Badges:**
+- ℹ️ "Auto-generated by AI"
+- 🤖 "Powered by Llama 3.1"
+- 🎤 "Voice synthesis by Coqui TTS"
+- 📝 "Transcribed by Whisper"
+
+---
+
+### WebSocket API Specification
+
+**Endpoint:** `wss://localhost:8000/api/voice`
+
+**Connection:**
+```javascript
+const voiceSocket = new WebSocket('wss://localhost:8000/api/voice');
+
+voiceSocket.onopen = () => {
+  // Send authentication token and context
+  voiceSocket.send(JSON.stringify({
+    type: 'init',
+    token: userAuthToken,
+    context: {
+      courseId: currentCourse,
+      lessonId: currentLesson,
+      language: 'en'
+    }
+  }));
+};
+```
+
+**Message Types:**
+
+1. **Audio Stream (Client → Server):**
+```json
+{
+  "type": "audio_chunk",
+  "data": "base64_encoded_audio",
+  "timestamp": 1708444800000
+}
+```
+
+2. **Transcription (Server → Client):**
+```json
+{
+  "type": "transcription",
+  "text": "What is a Python function?",
+  "confidence": 0.95,
+  "language": "en"
+}
+```
+
+3. **AI Response (Server → Client):**
+```json
+{
+  "type": "ai_response",
+  "text": "A Python function is...",
+  "audio_url": "/api/tts/response_12345.mp3",
+  "duration": 15.5
+}
+```
+
+4. **Error (Server → Client):**
+```json
+{
+  "type": "error",
+  "code": "STT_FAILED",
+  "message": "Speech transcription failed",
+  "retry": true
+}
+```
+
+---
+
+### Accessibility for Voice Features
+
+**1. Keyboard Shortcuts:**
+- `Ctrl + M`: Activate microphone
+- `Escape`: Stop recording
+- `Ctrl + T`: Toggle text mode
+
+**2. Screen Reader Support:**
+```jsx
+<button 
+  aria-label="Press and hold to speak your question"
+  aria-pressed={isRecording}
+  role="button"
+>
+  🎤
+</button>
+```
+
+**3. Visual Alternatives:**
+- All voice features have text input fallback
+- Transcriptions displayed in real-time
+- Closed captions for AI audio responses
+
+**4. Error Handling:**
+- Clear error messages
+- Graceful degradation to text mode
+- Retry mechanisms with user feedback
+
+---
+
+### Performance Considerations
+
+**1. Audio Buffer Management:**
+- Buffer size: 4096 samples
+- Sample rate: 16kHz (optimal for Whisper)
+- Format: 16-bit PCM
+
+**2. Bandwidth Requirements:**
+- Audio upload: ~16 Kbps
+- Audio download: ~32 Kbps (TTS)
+- Total: ~50 Kbps for voice features
+
+**3. Latency Optimization:**
+- WebSocket connection pooling
+- Audio chunk streaming (no wait for full recording)
+- LLM response streaming (word-by-word)
+- TTS streaming (sentence-by-sentence)
+
+**4. Caching Strategy:**
+- Cache common AI responses (24 hours)
+- Cache TTS audio files (7 days)
+- Cache transcriptions (30 days)
+
+---
+
+### Browser Compatibility
+
+**Supported Browsers:**
+- Chrome/Edge: ✅ Full support (MediaRecorder, WebSocket)
+- Firefox: ✅ Full support
+- Safari: ⚠️ Requires getUserMedia polyfill
+- Mobile Chrome/Safari: ✅ Full support (iOS 14.3+)
+
+**Fallback Strategy:**
+- If WebSocket fails → Long polling
+- If MediaRecorder unavailable → File upload
+- If TTS fails → Text-only responses
+- Always provide text input alternative
 
 ---
 
