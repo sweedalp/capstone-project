@@ -13,8 +13,16 @@ import AILearningHub from './pages/learner/AILearningHub'
 import Search from './pages/learner/Search'
 import RevisionAssistant from './pages/learner/RevisionAssistant'
 import Analytics from './pages/learner/Analytics'
-import TrainerDashboard from './pages/trainer/TrainerDashboard'
-//admin import ==================================================X
+
+// trainer imports
+import TrainerDashboard        from './pages/trainer/TrainerDashboard'
+import TrainerCourseManagement from './pages/trainer/TrainerCourseManagement'
+import TrainerUploadContent    from './pages/trainer/TrainerUploadContent'
+import TrainerAIContentStudio  from './pages/trainer/TrainerAIContentStudio'
+import TrainerStudentAnalytics from './pages/trainer/TrainerStudentAnalytics'
+import TrainerContentLibrary   from './pages/trainer/TrainerContentLibrary'
+
+//admin import
 import AdminLayout from './components/layout/AdminLayout'
 import AdminDashboard from './pages/admin/sub/Dashboard'
 import AdminUsers from './pages/admin/sub/Users'
@@ -24,13 +32,14 @@ import AdminReports from './pages/admin/sub/Reports'
 import AdminCourses from './pages/admin/sub/Courses'
 import AdminSettings from './pages/admin/sub/Settings'
 import PrivateAdminRoute from './components/PrivateAdminRoute'
-//admin import ==================================================X
+
 import LeadershipDashboard from './pages/leadership/Dashboard'
 import LeadershipStudentProgress from './pages/leadership/Students'
 import LeadershipCurriculum from './pages/leadership/Curriculum'
 import LeadershipAnalytics from './pages/leadership/Analytics'
 import LeadershipManagement from './pages/leadership/Management'
 import LeadershipSettings from './pages/leadership/Settings'
+
 function App() {
   return (
     <Router>
@@ -52,9 +61,18 @@ function App() {
         <Route path="/learner/revision" element={<RevisionAssistant />} />
         <Route path="/learner/analytics" element={<Analytics />} />
         <Route path="/learner/progress" element={<Analytics />} />
-        <Route path="/dashboard/trainer" element={<TrainerDashboard />} />
 
-        <Route path="/dashboard/admin" element={<AdminLayout />} >
+        {/* ── Trainer Routes (Pages 13–18) ── */}
+        <Route path="/dashboard/trainer"                   element={<TrainerDashboard />} />
+        <Route path="/trainer/dashboard"                   element={<TrainerDashboard />} />
+        <Route path="/trainer/courses/:courseId"           element={<TrainerCourseManagement />} />
+        <Route path="/trainer/courses/:courseId/upload"    element={<TrainerUploadContent />} />
+        <Route path="/trainer/ai-studio"                   element={<TrainerAIContentStudio />} />
+        <Route path="/trainer/courses/:courseId/analytics" element={<TrainerStudentAnalytics />} />
+        <Route path="/trainer/analytics"                   element={<TrainerStudentAnalytics />} />
+        <Route path="/trainer/content-library"             element={<TrainerContentLibrary />} />
+
+        <Route path="/dashboard/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="knowledge" element={<KnowledgeRepo />} />
@@ -65,7 +83,6 @@ function App() {
         </Route>
 
         <Route path="/dashboard/leadership" element={<LeadershipDashboard />} />
-
         <Route path="/leadership/dashboard" element={<LeadershipDashboard />} />
         <Route path="/leadership/students" element={<LeadershipStudentProgress />} />
         <Route path="/leadership/curriculum" element={<LeadershipCurriculum />} />
