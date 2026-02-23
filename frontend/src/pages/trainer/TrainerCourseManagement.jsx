@@ -44,6 +44,42 @@ const Icon = ({ name, className = "" }) => (
 /* ─────────────────────────────────────────────
    INITIAL DATA
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   COURSE METADATA MAP
+   Keyed by courseId from URL params — drives
+   title, status, and notifications dynamically.
+───────────────────────────────────────────── */
+const COURSES_DATA = {
+  "python-101": {
+    title: "Python 101",
+    status: "Active",
+    notifications: [
+      "AI Audio Summary completed for Lesson 1.1",
+      "3 students enrolled in Python 101",
+      "Quiz Ready for Chapter 2",
+    ],
+  },
+  "data-science": {
+    title: "Data Science Fundamentals",
+    status: "Active",
+    notifications: [
+      "AI Audio Summary completed for Module 2",
+      "12 students enrolled in Data Science Fundamentals",
+      "Quiz Ready for Chapter 1",
+    ],
+  },
+  "digital-mktg": {
+    title: "Digital Marketing",
+    status: "Draft",
+    notifications: [
+      "Draft saved for Digital Marketing",
+      "5 students enrolled in Digital Marketing",
+    ],
+  },
+};
+
+const DEFAULT_COURSE = { title: "Course", status: "Active", notifications: [] };
+
 const INITIAL_CHAPTERS = [
   {
     id: 1,
@@ -383,19 +419,87 @@ function AddContentModal({ onClose, onAdd }) {
 }
 
 /* ─────────────────────────────────────────────
+   PREVIEW MODAL
+   Opens when trainer clicks "Preview" button.
+   Shows course title + chapter/lesson structure
+   in a student-facing read-only view.
+───────────────────────────────────────────── */
+function PreviewModal({ courseTitle, chapters, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7edf3] bg-[#f6f7f8]">
+          <div className="flex items-center gap-3">
+            <div className="size-8 bg-[#137fec]/10 rounded-lg flex items-center justify-center">
+              <Icon name="visibility" className="text-[#137fec] text-[18px]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[#4c739a] uppercase tracking-widest">Student Preview</p>
+              <h2 className="text-base font-black text-[#0d141b] leading-tight">{courseTitle}</h2>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-8 flex items-center justify-center rounded-lg hover:bg-[#e7edf3] text-[#4c739a] transition-colors cursor-pointer">
+            <Icon name="close" className="text-[20px]" />
+          </button>
+        </div>
+        {/* Course content preview */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <p className="text-sm text-[#4c739a] mb-4">This is how students will see the course curriculum.</p>
+          {chapters.map((chapter, ci) => (
+            <div key={chapter.id} className="border border-[#e7edf3] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-[#f6f7f8]">
+                <div className="flex items-center gap-2">
+                  <span className="size-6 rounded-full bg-[#137fec] text-white text-xs font-bold flex items-center justify-center">{ci + 1}</span>
+                  <h3 className="font-bold text-[#0d141b] text-sm">{chapter.title}</h3>
+                </div>
+                <span className="text-xs text-[#4c739a]">{chapter.lessons.length} Lesson{chapter.lessons.length !== 1 ? "s" : ""}</span>
+              </div>
+              {chapter.lessons.length > 0 && (
+                <div className="divide-y divide-[#f0f4f8]">
+                  {chapter.lessons.map((lesson, li) => (
+                    <div key={lesson.id} className="flex items-center gap-3 px-5 py-3">
+                      <span className="size-5 rounded-full border-2 border-[#cfdbe7] flex-shrink-0" />
+                      <span className="text-sm text-[#0d141b]">{lesson.title}</span>
+                      {lesson.aiTags?.length > 0 && (
+                        <span className="ml-auto text-[10px] font-bold text-[#8b5cf6] bg-purple-50 px-2 py-0.5 rounded ring-1 ring-purple-200/50 flex items-center gap-1">
+                          <Icon name="auto_awesome" className="text-[10px]" /> AI Enhanced
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-[#e7edf3] flex justify-end">
+          <button onClick={onClose} className="px-6 py-2 rounded-lg bg-[#137fec] text-white text-sm font-bold hover:bg-[#0f6fd4] transition-colors cursor-pointer">
+            Close Preview
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 export default function TrainerCourseManagement() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const course = COURSES_DATA[courseId] || DEFAULT_COURSE;
   const [activeTab, setActiveTab] = useState("Content");
   const [activeNav, setActiveNav] = useState("Courses");
   const [chapters, setChapters] = useState(INITIAL_CHAPTERS);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Modals / panels
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAddContent, setShowAddContent] = useState(false);
+  const [showPreview, setShowPreview]               = useState(false);
+  const [showSettings, setShowSettings]             = useState(false);
+  const [showAddContent, setShowAddContent]         = useState(false);
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
   const [addLessonTarget, setAddLessonTarget] = useState(null); // chapter id
   const [renameTarget, setRenameTarget] = useState(null); // chapter id
@@ -450,6 +554,7 @@ export default function TrainerCourseManagement() {
       `}</style>
 
       {/* ── Modals ── */}
+      {showPreview && <PreviewModal courseTitle={course.title} chapters={chapters} onClose={() => setShowPreview(false)} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
       {showAddContent && <AddContentModal onClose={() => setShowAddContent(false)} onAdd={() => {}} />}
       {showAddChapterModal && (
@@ -515,7 +620,7 @@ export default function TrainerCourseManagement() {
                 {notifOpen && (
                   <div className="absolute right-0 top-12 w-72 bg-white border border-[#e7edf3] rounded-xl shadow-xl p-4 z-50">
                     <p className="font-bold text-sm text-[#0d141b] mb-3">Notifications</p>
-                    {["AI Audio Summary completed for Lesson 1.1", "3 students enrolled in Python 101", "Quiz Ready for Chapter 2"].map((n, i) => (
+                    {(course.notifications.length > 0 ? course.notifications : ["No notifications yet."]).map((n, i) => (
                       <div key={i} className="flex gap-3 py-2 border-b border-slate-50 last:border-0">
                         <div className="size-2 bg-[#137fec] rounded-full mt-1.5 flex-shrink-0" />
                         <p className="text-xs text-[#4c739a]">{n}</p>
@@ -539,20 +644,20 @@ export default function TrainerCourseManagement() {
             <Icon name="chevron_right" className="text-xs" />
             <button onClick={() => navigate("/dashboard/trainer")} className="hover:text-[#137fec] transition-colors cursor-pointer">Courses</button>
             <Icon name="chevron_right" className="text-xs" />
-            <span className="text-[#0d141b] font-medium">Python 101</span>
+            <span className="text-[#0d141b] font-medium">{course.title}</span>
           </nav>
 
           {/* Page heading */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div className="space-y-1">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-3xl font-black tracking-tight text-[#0d141b]">Python 101</h1>
-                <span className="px-2 py-0.5 rounded bg-[#137fec]/10 text-[#137fec] text-[10px] font-bold uppercase tracking-wider">Active</span>
+                <h1 className="text-3xl font-black tracking-tight text-[#0d141b]">{course.title}</h1>
+                <span className="px-2 py-0.5 rounded bg-[#137fec]/10 text-[#137fec] text-[10px] font-bold uppercase tracking-wider">{course.status}</span>
               </div>
               <p className="text-[#4c739a] text-base">Manage your curriculum and AI-enhanced learning materials.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="px-4 py-2 rounded-lg bg-[#e7edf3] text-[#0d141b] text-sm font-bold hover:bg-[#dce4ec] transition-all flex items-center gap-2">
+              <button onClick={() => setShowPreview(true)} className="px-4 py-2 rounded-lg bg-[#e7edf3] text-[#0d141b] text-sm font-bold hover:bg-[#dce4ec] transition-all flex items-center gap-2 cursor-pointer">
                 <Icon name="visibility" className="text-[18px]" />Preview
               </button>
               <button onClick={() => setShowSettings(true)}

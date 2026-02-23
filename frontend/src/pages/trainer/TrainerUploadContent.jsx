@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import TrainerSidebar from './TrainerSidebar';
 import TrainerProfileDropdown from './TrainerProfileDropdown';
 
-// ─── Icon helper ─────────────────────────────────────────────────────────────
+// ─── Icon helper ──────────────────────────────────────────────────────────────
 const Icon = ({ name, className = '' }) => (
   <span
     className={`material-symbols-outlined select-none leading-none ${className}`}
@@ -13,15 +13,83 @@ const Icon = ({ name, className = '' }) => (
   </span>
 );
 
-// ─── AI option card ───────────────────────────────────────────────────────────
-const AIOptionCard = ({ icon, label, description, checked, onChange }) => (
-  <label className="relative flex cursor-pointer rounded-xl border border-gray-200 p-4 hover:border-primary/50 transition-all has-[:checked]:bg-primary/5 has-[:checked]:border-primary">
+// ─── Toggle Switch ─────────────────────────────────────────────────────────────
+const Toggle = ({ checked, onChange }) => (
+  <label className="inline-flex relative items-center cursor-pointer flex-shrink-0">
     <input
       type="checkbox"
-      className="peer sr-only"
+      className="sr-only peer"
       checked={checked}
       onChange={onChange}
     />
+    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer
+      peer-checked:after:translate-x-full peer-checked:after:border-white
+      after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+      after:bg-white after:border-gray-300 after:border after:rounded-full
+      after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
+  </label>
+);
+
+// ─── AI Output Card ────────────────────────────────────────────────────────────
+const AIOutputCard = ({ icon, label, checked, onChange }) => (
+  <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl"
+       style={{ boxShadow: '0 0 15px rgba(19,127,236,0.05)' }}>
+    <div className="flex items-center gap-3">
+      <div className="size-10 rounded-lg bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+        <Icon name={icon} className="text-primary text-xl" />
+      </div>
+      <div>
+        <p className="text-sm font-bold text-gray-800 flex items-center gap-1">
+          {label} ✨
+        </p>
+        <p className="text-[10px] text-gray-500">Auto-generate from video</p>
+      </div>
+    </div>
+    <Toggle checked={checked} onChange={onChange} />
+  </div>
+);
+
+// ─── Upload Zone ───────────────────────────────────────────────────────────────
+const UploadZone = ({ icon, label, hint, required, uploadedFile, onSelect, onRemove }) => (
+  <div
+    className="group border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-primary transition-all bg-gray-50/30 hover:bg-primary/5 cursor-pointer"
+    onClick={!uploadedFile ? onSelect : undefined}
+  >
+    {uploadedFile ? (
+      <>
+        <div className="size-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+          <Icon name="check_circle" className="text-green-600 text-2xl" />
+        </div>
+        <p className="font-bold text-sm text-green-700 mb-1 truncate max-w-full px-2">{uploadedFile}</p>
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="text-xs font-bold text-rose-500 px-3 py-1.5 rounded bg-rose-50 hover:bg-rose-100 transition-all mt-2"
+        >
+          Remove
+        </button>
+      </>
+    ) : (
+      <>
+        <Icon name={icon} className="text-4xl text-gray-400 group-hover:text-primary mb-3 transition-colors" />
+        <p className="font-bold text-sm mb-1 text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </p>
+        <p className="text-xs text-gray-500 mb-4 italic">{hint}</p>
+        <button
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          className="text-xs font-bold text-primary px-4 py-2 rounded bg-primary/10 group-hover:bg-primary group-hover:text-white transition-all"
+        >
+          Select File
+        </button>
+      </>
+    )}
+  </div>
+);
+
+// ─── AI Enhancement Option Card ────────────────────────────────────────────────
+const AIOptionCard = ({ icon, label, description, checked, onChange }) => (
+  <label className="relative flex cursor-pointer rounded-xl border border-gray-200 p-4 hover:border-primary/50 transition-all has-[:checked]:bg-primary/5 has-[:checked]:border-primary">
+    <input type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
     <div className="flex flex-1 items-start gap-4">
       <div className="p-2 bg-primary/10 rounded-lg text-primary flex-shrink-0">
         <Icon name={icon} />
@@ -31,66 +99,52 @@ const AIOptionCard = ({ icon, label, description, checked, onChange }) => (
         <span className="text-xs text-gray-500 leading-relaxed">{description}</span>
       </div>
     </div>
-    <Icon name="check_circle" className="text-primary opacity-0 peer-checked:opacity-100 transition-opacity self-start" />
+    <Icon name="check_circle" className="text-primary opacity-0 peer-checked:opacity-100 transition-opacity self-start flex-shrink-0" />
   </label>
 );
 
-// ─── Upload drop zone ─────────────────────────────────────────────────────────
-const UploadZone = ({ icon, label, hint, onSelect }) => (
-  <div className="group border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-primary transition-all bg-gray-50/30 hover:bg-primary/5 cursor-pointer"
-       onClick={onSelect}>
-    <Icon name={icon} className="text-4xl text-gray-400 group-hover:text-primary mb-3 transition-colors" />
-    <p className="font-bold text-sm mb-1 text-gray-700">{label}</p>
-    <p className="text-xs text-gray-500 mb-4 italic">{hint}</p>
-    <button
-      onClick={(e) => { e.stopPropagation(); onSelect?.(); }}
-      className="text-xs font-bold text-primary px-3 py-1.5 rounded bg-primary/10 group-hover:bg-primary group-hover:text-white transition-all"
-    >
-      Select File
-    </button>
-  </div>
-);
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function TrainerUploadContent() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const [searchParams] = useSearchParams();
-  const lessonId = searchParams.get('lessonId');
   const isEdit = searchParams.get('edit') === 'true';
 
   const [lessonTitle, setLessonTitle] = useState('');
   const [description, setDescription] = useState('');
+
+  // Only 2 upload zones now — video + slides
+  const [uploadedFiles, setUploadedFiles] = useState({ video: null, slides: null });
+
+  // AI-Automated Outputs (Section 2 toggles)
+  const [aiOutputs, setAiOutputs] = useState({
+    transcript: true,
+    notes: true,
+    qa: true,
+  });
+  const toggleOutput = (key) => setAiOutputs(p => ({ ...p, [key]: !p[key] }));
+
+  // AI Enhancement Options (Section 3 checkboxes)
   const [aiOptions, setAiOptions] = useState({
     audio: true,
     walkthrough: true,
     assessment: false,
     subtitles: true,
   });
-  const [uploadedFiles, setUploadedFiles] = useState({ video: null, slides: null, notes: null });
-  const [saving, setSaving] = useState(false);
-
   const toggleAI = (key) => setAiOptions(p => ({ ...p, [key]: !p[key] }));
+
+  const [saving, setSaving] = useState(false);
 
   const handleSaveDraft = () => {
     setSaving(true);
     setTimeout(() => setSaving(false), 1200);
   };
 
-  // NAV FLOW: Upload → AI Content Studio (Page 16) to monitor generation
-  const handleUpload = () => {
-    navigate('/trainer/ai-studio');
-  };
+  // NAV FLOW: Upload & Process → AI Content Studio (Page 16)
+  const handleUpload = () => navigate('/trainer/ai-studio');
 
   // NAV FLOW: Cancel → Course Management (Page 14)
-  const handleCancel = () => {
-    navigate(`/trainer/courses/${courseId || 'course1'}`);
-  };
-
-  // NAV FLOW: Auto-generate from video → modal, then optionally AI Studio (Page 16)
-  const handleAutoGenerate = () => {
-    navigate('/trainer/ai-studio?tool=transcript');
-  };
+  const handleCancel = () => navigate(`/trainer/courses/${courseId || 'python-101'}`);
 
   return (
     <>
@@ -101,7 +155,8 @@ export default function TrainerUploadContent() {
         body { font-family: 'Lexend', sans-serif; }
       `}</style>
 
-      <div className="flex h-screen overflow-hidden bg-background-light text-[#0d141b]" style={{ fontFamily: "'Lexend', sans-serif" }}>
+      <div className="flex h-screen overflow-hidden bg-[#f6f7f8] text-[#0d141b]" style={{ fontFamily: "'Lexend', sans-serif" }}>
+
         {/* ── Sidebar ── */}
         <TrainerSidebar courseId={courseId} />
 
@@ -112,30 +167,16 @@ export default function TrainerUploadContent() {
           <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-primary/10 px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="bg-primary p-2 rounded-lg text-white">
-                <Icon name="upload_file" className="text-xl" />
+                <Icon name="auto_awesome" className="text-xl" />
               </div>
-              <h1 className="text-lg font-bold tracking-tight">
-                {isEdit ? 'Edit Content' : 'Upload Content'}
-              </h1>
+              <h1 className="text-lg font-bold tracking-tight">AI Learning Studio</h1>
             </div>
-
-            {/* Top nav links */}
             <nav className="hidden md:flex items-center gap-8">
-              <button
-                onClick={() => navigate('/dashboard/trainer')}
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >Dashboard</button>
-              <button
-                onClick={() => navigate(`/trainer/courses/${courseId || 'course1'}`)}
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >Courses</button>
+              <button onClick={() => navigate('/dashboard/trainer')} className="text-sm font-medium hover:text-primary transition-colors">Dashboard</button>
+              <button onClick={() => navigate(`/trainer/courses/${courseId || 'python-101'}`)} className="text-sm font-medium hover:text-primary transition-colors">Courses</button>
               <span className="text-sm font-medium text-primary">Content Studio</span>
-              <button
-                onClick={() => navigate(courseId ? `/trainer/courses/${courseId}/analytics` : '/trainer/analytics')}
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >Analytics</button>
+              <button onClick={() => navigate(courseId ? `/trainer/courses/${courseId}/analytics` : '/trainer/analytics')} className="text-sm font-medium hover:text-primary transition-colors">Analytics</button>
             </nav>
-
             <div className="flex items-center gap-4">
               <button className="p-2 rounded-full hover:bg-primary/10 transition-colors cursor-pointer">
                 <Icon name="notifications" className="text-gray-600" />
@@ -146,9 +187,9 @@ export default function TrainerUploadContent() {
 
           {/* ── Scrollable main ── */}
           <main className="flex-1 overflow-y-auto">
-            <div className="max-w-[900px] mx-auto w-full px-6 py-10">
+            <div className="max-w-[1000px] mx-auto w-full px-6 py-10">
 
-              {/* Progress Stepper */}
+              {/* ── Progress Stepper ── */}
               <div className="mb-10 flex items-center justify-between max-w-2xl mx-auto">
                 <div className="flex flex-col items-center gap-2">
                   <div className="size-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">1</div>
@@ -166,12 +207,15 @@ export default function TrainerUploadContent() {
                 </div>
               </div>
 
+              {/* ── Page heading ── */}
               <div className="mb-8">
-                <h2 className="text-3xl font-black tracking-tight mb-2">Content Upload &amp; AI Studio Config</h2>
+                <h2 className="text-3xl font-black tracking-tight mb-2">
+                  Content Upload &amp; AI Studio Config
+                </h2>
                 <p className="text-gray-500 text-lg">Enhance your learning materials with automated AI features.</p>
               </div>
 
-              {/* Section 1: Lesson Details */}
+              {/* ══ Section 1: Lesson Details ══ */}
               <section className="bg-white border border-primary/10 rounded-xl p-8 mb-8 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
                   <Icon name="description" className="text-primary" />
@@ -184,7 +228,7 @@ export default function TrainerUploadContent() {
                       type="text"
                       value={lessonTitle}
                       onChange={e => setLessonTitle(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50/50 p-4 text-base focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50/50 p-4 text-base outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
                       placeholder="e.g. Advanced Principles of Deep Learning"
                     />
                   </div>
@@ -193,7 +237,7 @@ export default function TrainerUploadContent() {
                     <textarea
                       value={description}
                       onChange={e => setDescription(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50/50 p-4 text-base focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50/50 p-4 text-base outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary resize-none"
                       placeholder="What will the students achieve after this lesson?"
                       rows={4}
                     />
@@ -201,64 +245,71 @@ export default function TrainerUploadContent() {
                 </div>
               </section>
 
-              {/* Section 2: Upload Materials */}
+              {/* ══ Section 2: Material Selection (AI-First) ══ */}
               <section className="bg-white border border-primary/10 rounded-xl p-8 mb-8 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <Icon name="upload_file" className="text-primary" />
-                    <h3 className="text-xl font-bold">Section 2: Upload Materials</h3>
+                    <h3 className="text-xl font-bold">Section 2: Material Selection</h3>
                   </div>
-                  {/* NAV FLOW: Auto-generate from video → AI Studio (Page 16) or processing modal */}
-                  <button
-                    onClick={handleAutoGenerate}
-                    className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full cursor-pointer hover:bg-primary/20 transition-all"
-                  >
-                    <Icon name="magic_button" className="text-sm" />
-                    <span className="text-sm font-bold">✨ Auto-generate from video</span>
-                  </button>
+                  {/* AI pipeline active badge */}
+                  <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-md text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">
+                    <Icon name="auto_awesome" className="text-xs" />
+                    AI pipeline active
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* ── 2 upload zones only: Video + Slides ── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <UploadZone
                     icon="video_library"
                     label="Class Recording"
-                    hint="MP4, MOV up to 2GB"
-                    onSelect={() => setUploadedFiles(p => ({ ...p, video: 'video.mp4' }))}
+                    hint="Primary Source (MP4, MOV)"
+                    required
+                    uploadedFile={uploadedFiles.video}
+                    onSelect={() => setUploadedFiles(p => ({ ...p, video: 'class-recording.mp4' }))}
+                    onRemove={() => setUploadedFiles(p => ({ ...p, video: null }))}
                   />
                   <UploadZone
                     icon="present_to_all"
                     label="Slides Deck"
-                    hint="PDF, PPTX up to 50MB"
+                    hint="Visual Reference (PDF, PPTX)"
+                    required
+                    uploadedFile={uploadedFiles.slides}
                     onSelect={() => setUploadedFiles(p => ({ ...p, slides: 'slides.pdf' }))}
-                  />
-                  <UploadZone
-                    icon="article"
-                    label="Lesson Notes"
-                    hint="PDF, DOCX, TXT"
-                    onSelect={() => setUploadedFiles(p => ({ ...p, notes: 'notes.pdf' }))}
+                    onRemove={() => setUploadedFiles(p => ({ ...p, slides: null }))}
                   />
                 </div>
 
-                {/* Uploaded file indicators */}
-                {Object.entries(uploadedFiles).some(([,v]) => v) && (
-                  <div className="mt-4 flex gap-3 flex-wrap">
-                    {Object.entries(uploadedFiles).map(([key, val]) => val && (
-                      <div key={key} className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-xs font-medium text-green-700">
-                        <Icon name="check_circle" className="text-green-500 text-sm" />
-                        {val}
-                        <button
-                          onClick={() => setUploadedFiles(p => ({ ...p, [key]: null }))}
-                          className="ml-1 text-green-400 hover:text-green-700"
-                        >
-                          <Icon name="close" className="text-sm" />
-                        </button>
-                      </div>
-                    ))}
+                {/* ── AI-Automated Outputs (Transcript, Notes, Q&A) ── */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">
+                    AI-Automated Outputs
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <AIOutputCard
+                      icon="segment"
+                      label="Transcript"
+                      checked={aiOutputs.transcript}
+                      onChange={() => toggleOutput('transcript')}
+                    />
+                    <AIOutputCard
+                      icon="article"
+                      label="Lesson Notes"
+                      checked={aiOutputs.notes}
+                      onChange={() => toggleOutput('notes')}
+                    />
+                    <AIOutputCard
+                      icon="forum"
+                      label="Q&A Topics"
+                      checked={aiOutputs.qa}
+                      onChange={() => toggleOutput('qa')}
+                    />
                   </div>
-                )}
+                </div>
               </section>
 
-              {/* Section 3: AI Enhancement Options */}
+              {/* ══ Section 3: AI Enhancement Options ══ */}
               <section className="bg-white border border-primary/10 rounded-xl p-8 mb-24 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
                   <Icon name="psychology_alt" className="text-primary" />
@@ -299,36 +350,29 @@ export default function TrainerUploadContent() {
             </div>
           </main>
 
-          {/* ── Sticky Bottom Action Bar ── */}
+          {/* ── Sticky Bottom Footer ── */}
           <footer className="shrink-0 bg-white/95 backdrop-blur border-t border-gray-200 px-6 py-4 z-50 shadow-2xl">
-            <div className="max-w-[900px] mx-auto flex items-center justify-between">
+            <div className="max-w-[1000px] mx-auto flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-500">
                 <Icon name="info" className="text-sm" />
                 <span className="text-sm font-medium">
-                  {saving ? 'Saving draft...' : 'Auto-saving as draft...'}
+                  Core media files required to proceed.
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                {/* NAV FLOW: Cancel → Course Management (Page 14) */}
-                <button
-                  onClick={handleCancel}
-                  className="px-6 py-2.5 rounded-lg border border-gray-300 text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                {/* NAV FLOW: Save Draft → stays on page 15 */}
+                {/* NAV FLOW: Save Draft → stays on Page 15 */}
                 <button
                   onClick={handleSaveDraft}
-                  className="px-6 py-2.5 rounded-lg border border-primary text-primary text-sm font-bold hover:bg-primary/5 transition-colors cursor-pointer"
+                  className="px-6 py-2.5 rounded-lg border border-gray-300 text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer"
                 >
-                  Save Draft
+                  {saving ? 'Saving...' : 'Save Draft'}
                 </button>
-                {/* NAV FLOW: Upload → AI Content Studio (Page 16) */}
+                {/* NAV FLOW: Upload & Process → AI Content Studio (Page 16) */}
                 <button
                   onClick={handleUpload}
                   className="flex items-center gap-2 px-8 py-2.5 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 cursor-pointer"
                 >
-                  <span>Upload &amp; Process</span>
+                  <span>Upload &amp; Process ✨</span>
                   <Icon name="rocket_launch" className="text-sm" />
                 </button>
               </div>

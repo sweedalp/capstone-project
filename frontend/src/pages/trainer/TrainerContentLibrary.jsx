@@ -57,6 +57,9 @@ const ASSETS = [
     title: "Advanced Quantum Physics",
     badgeIcon: "videocam",
     badgeText: "14:20",
+    type: "video",
+    collectionId: "python-materials",
+    hasQuiz: false,
     aiEnhanced: true,
     views: "1.2k views",
     course: "Science 101",
@@ -71,6 +74,9 @@ const ASSETS = [
     title: "SEO Mastery 2024",
     badgeIcon: "description",
     badgeText: "24 PAGES",
+    type: "document",
+    collectionId: "data-science-resources",
+    hasQuiz: false,
     aiEnhanced: false,
     views: "850 views",
     course: "Digital Mktg",
@@ -85,6 +91,9 @@ const ASSETS = [
     title: "Public Speaking Workshop",
     badgeIcon: "mic",
     badgeText: "45:00",
+    type: "audio",
+    collectionId: "python-materials",
+    hasQuiz: true,
     aiEnhanced: false,
     views: "2.1k views",
     course: "Soft Skills",
@@ -99,6 +108,9 @@ const ASSETS = [
     title: "Python for Beginners",
     badgeIcon: "videocam",
     badgeText: "32:15",
+    type: "video",
+    collectionId: "python-materials",
+    hasQuiz: true,
     aiEnhanced: false,
     views: "3.4k views",
     course: "CS Intro",
@@ -113,6 +125,9 @@ const ASSETS = [
     title: "UX Design Principles",
     badgeIcon: "description",
     badgeText: "12 PAGES",
+    type: "document",
+    collectionId: "data-science-resources",
+    hasQuiz: false,
     aiEnhanced: false,
     views: "920 views",
     course: "Design Lab",
@@ -127,7 +142,10 @@ const ASSETS = [
     title: "History of Renaissance Art",
     badgeIcon: "videocam",
     badgeText: "1:05:00",
-    aiEnhanced: false,
+    type: "video",
+    collectionId: "ai-generated",
+    hasQuiz: true,
+    aiEnhanced: true,
     views: "450 views",
     course: "Humanities",
     courseId: "data-science",
@@ -148,7 +166,7 @@ const INITIAL_COLLECTIONS = [
    ASSET DETAIL MODAL — stays on Page 18
    Click title/thumbnail → detailed view
 ───────────────────────────────────────────── */
-function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance, onViewInCourses }) {
+function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
   if (!asset) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -166,21 +184,10 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance, onView
               <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Views</p>
               <p className="text-lg font-black text-slate-900">{asset.views}</p>
             </div>
-            {/* Spec §6: Click "Used in X lessons" → View in courses → Page 14 */}
             <div className="bg-slate-50 rounded-lg p-3">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Used In</p>
-              <p
-                onClick={onViewInCourses}
-                className="text-lg font-black text-slate-900 cursor-pointer hover:text-[#137fec] transition-colors flex items-center gap-1"
-              >
+              <p className="text-lg font-black text-slate-900 cursor-pointer hover:text-[#137fec] transition-colors">
                 {asset.usedInLessons} lessons
-                <Icon name="open_in_new" className="text-sm text-[#137fec]" />
-              </p>
-              <p
-                onClick={onViewInCourses}
-                className="text-[10px] text-[#137fec] font-semibold cursor-pointer hover:underline mt-0.5"
-              >
-                View in courses →
               </p>
             </div>
           </div>
@@ -194,16 +201,6 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance, onView
               {asset.enhancement.text}
             </p>
           </div>
-          {/* Spec §3: View in AI Studio button for AI Enhanced content */}
-          {asset.aiEnhanced && (
-            <button
-              onClick={onAIEnhance}
-              className="w-full flex items-center justify-center gap-2 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-bold hover:bg-amber-100 transition-colors border border-amber-200"
-            >
-              <Icon name="auto_awesome" className="text-base" />
-              View in AI Studio
-            </button>
-          )}
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
           <button onClick={onReuse} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">
@@ -543,7 +540,29 @@ function UploadModal({ onClose, onGoToUploadPage }) {
 /* ─────────────────────────────────────────────
    FILTER DRAWER
 ───────────────────────────────────────────── */
-function FilterDrawer({ open, onClose }) {
+function FilterDrawer({ open, onClose, onApply }) {
+  const [assetType, setAssetType] = useState("All");
+  const [enhancements, setEnhancements] = useState([]);
+  const [courses, setCourses] = useState([]);
+
+  const toggleEnhancement = (opt) =>
+    setEnhancements(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
+  const toggleCourse = (opt) =>
+    setCourses(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
+
+  const handleApply = () => {
+    onApply({ assetType, enhancements, courses });
+    onClose();
+  };
+
+  const handleReset = () => {
+    setAssetType("All");
+    setEnhancements([]);
+    setCourses([]);
+    onApply({ assetType: "All", enhancements: [], courses: [] });
+    onClose();
+  };
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[90] flex">
@@ -554,27 +573,62 @@ function FilterDrawer({ open, onClose }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {[
-            { label: "Asset Type", type: "radio", options: ["All", "Videos", "Audio", "Documents"] },
-            { label: "Enhancement", type: "checkbox", options: ["AI Enhanced", "AI Quiz Ready", "AI Transcript"] },
-            { label: "Course", type: "checkbox", options: ["Science 101", "Digital Mktg", "Soft Skills", "CS Intro", "Design Lab", "Humanities"] },
-          ].map(({ label, type, options }) => (
-            <div key={label}>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">{label}</p>
-              <div className="space-y-2">
-                {options.map((opt, i) => (
-                  <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input type={type} name={label} defaultChecked={i === 0 && type === "radio"} className="accent-[#137fec]" />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
-                  </label>
-                ))}
-              </div>
+          {/* Asset Type — radio */}
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Asset Type</p>
+            <div className="space-y-2">
+              {["All", "Videos", "Audio", "Documents"].map(opt => (
+                <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="assetType"
+                    checked={assetType === opt}
+                    onChange={() => setAssetType(opt)}
+                    className="accent-[#137fec]"
+                  />
+                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
+                </label>
+              ))}
             </div>
-          ))}
+          </div>
+          {/* Enhancement — checkboxes */}
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Enhancement</p>
+            <div className="space-y-2">
+              {["AI Enhanced", "AI Quizzes Ready"].map(opt => (
+                <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={enhancements.includes(opt)}
+                    onChange={() => toggleEnhancement(opt)}
+                    className="accent-[#137fec]"
+                  />
+                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {/* Course — checkboxes */}
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Course</p>
+            <div className="space-y-2">
+              {["Science 101", "Digital Mktg", "Soft Skills", "CS Intro", "Design Lab", "Humanities"].map(opt => (
+                <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={courses.includes(opt)}
+                    onChange={() => toggleCourse(opt)}
+                    className="accent-[#137fec]"
+                  />
+                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="p-6 border-t border-slate-100 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Reset</button>
-          <button onClick={onClose} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">Apply Filters</button>
+          <button onClick={handleReset} className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Reset</button>
+          <button onClick={handleApply} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">Apply Filters</button>
         </div>
       </div>
     </div>
@@ -690,16 +744,9 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
           <button onClick={onEdit} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
             <Icon name="edit" className="text-base" />Edit
           </button>
-          {asset.aiEnhanced ? (
-            // Spec §3: AI Enhanced items show Regenerate → AI Studio (Page 16)
-            <button onClick={onAIEnhance} className="flex items-center justify-center gap-1 py-2 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors border border-amber-200">
-              <Icon name="autorenew" className="text-base text-amber-500" />
-            </button>
-          ) : (
-            <button onClick={onAIEnhance} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
-              <Icon name="auto_awesome" className="text-base text-amber-500" />
-            </button>
-          )}
+          <button onClick={onAIEnhance} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
+            <Icon name="auto_awesome" className="text-base text-amber-500" />
+          </button>
         </div>
       </div>
     </div>
@@ -761,16 +808,9 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
         <button onClick={onEdit} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
           <Icon name="edit" className="text-sm" />Edit
         </button>
-        {asset.aiEnhanced ? (
-          // Spec §3: AI Enhanced items show Regenerate → AI Studio (Page 16)
-          <button onClick={onAIEnhance} className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors border border-amber-200 flex items-center gap-1">
-            <Icon name="autorenew" className="text-sm text-amber-500" />
-          </button>
-        ) : (
-          <button onClick={onAIEnhance} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
-            <Icon name="auto_awesome" className="text-sm text-amber-500" />
-          </button>
-        )}
+        <button onClick={onAIEnhance} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">
+          <Icon name="auto_awesome" className="text-sm text-amber-500" />
+        </button>
         <div className="relative">
           <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600 transition-colors">
             <Icon name="more_vert" />
@@ -793,6 +833,7 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
    MAIN PAGE
 ───────────────────────────────────────────── */
 export default function TrainerContentLibrary() {
+  const { pos, isHovered, isClicked } = useCustomCursor();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -814,6 +855,7 @@ export default function TrainerContentLibrary() {
 
   const [showUpload, setShowUpload]               = useState(false);
   const [showFilters, setShowFilters]             = useState(false);
+  const [drawerFilters, setDrawerFilters]         = useState({ assetType: "All", enhancements: [], courses: [] });
   const [detailAsset, setDetailAsset]             = useState(null);
   const [reuseAsset, setReuseAsset]               = useState(null);
   const [deleteAsset, setDeleteAsset]             = useState(null);
@@ -867,12 +909,6 @@ export default function TrainerContentLibrary() {
   const handleAIEnhance = (asset) => navigate(`/trainer/ai-studio?asset=${asset.id}`);
   const handlePreview = (asset) => setDetailAsset(asset);
 
-  // Spec §6: "View in courses" → Course Management (Page 14)
-  const handleViewInCourses = (asset) => {
-    setDetailAsset(null);
-    navigate(`/trainer/courses/${asset.courseId}`);
-  };
-
   const toggleSelect = (id) => setSelectedIds(prev =>
     prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
   );
@@ -897,10 +933,34 @@ export default function TrainerContentLibrary() {
   const handleGoToUploadPage = () => navigate("/trainer/courses/standalone/upload");
 
   const filtered = assets.filter(a => {
+    // 1. Search
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.course.toLowerCase().includes(searchQuery.toLowerCase());
+    // 2. Recent URL param
     const matchesRecent = filterParam === "recent" ? a.uploadedAt === "today" : true;
-    return matchesSearch && matchesRecent;
+    // 3. Sidebar: Category
+    const categoryMap = { "All Assets": true, "Video Lessons": a.type === "video", "Audio Content": a.type === "audio", "Documents": a.type === "document" };
+    const matchesCategory = categoryMap[activeCategory] ?? true;
+    // 4. Sidebar: Enhancement toggle
+    let matchesEnhancement = true;
+    if (activeEnhancement === "AI Enhanced") matchesEnhancement = a.aiEnhanced === true;
+    if (activeEnhancement === "AI Quizzes Ready") matchesEnhancement = a.hasQuiz === true;
+    // 5. Sidebar: Collection
+    const matchesCollection = activeCollection ? a.collectionId === activeCollection : true;
+    // 6. Drawer: Asset Type radio
+    const drawerTypeMap = { "All": true, "Videos": a.type === "video", "Audio": a.type === "audio", "Documents": a.type === "document" };
+    const matchesDrawerType = drawerTypeMap[drawerFilters.assetType] ?? true;
+    // 7. Drawer: Enhancement multi-select
+    const matchesDrawerEnhancement = drawerFilters.enhancements.length === 0 || drawerFilters.enhancements.every(e => {
+      if (e === "AI Enhanced") return a.aiEnhanced === true;
+      if (e === "AI Quizzes Ready") return a.hasQuiz === true;
+      return true;
+    });
+    // 8. Drawer: Course multi-select
+    const matchesDrawerCourse = drawerFilters.courses.length === 0 || drawerFilters.courses.includes(a.course);
+
+    return matchesSearch && matchesRecent && matchesCategory && matchesEnhancement &&
+           matchesCollection && matchesDrawerType && matchesDrawerEnhancement && matchesDrawerCourse;
   });
 
   const navLinks = ["Dashboard", "Content Library", "Courses", "Analytics"];
@@ -911,8 +971,8 @@ export default function TrainerContentLibrary() {
     { icon: "description", label: "Documents" },
   ];
   const enhancements = [
-    { icon: "auto_awesome", label: "AI Enhanced", iconColor: "text-amber-500" },
-    { icon: "quiz", label: "AI Quizzes Ready", iconColor: "text-emerald-500" },
+    { icon: "auto_awesome", label: "AI Enhanced",      iconColor: "text-amber-500",   activeColor: "text-amber-700",   activeBg: "bg-amber-50" },
+    { icon: "quiz",         label: "AI Quizzes Ready", iconColor: "text-emerald-500", activeColor: "text-emerald-700", activeBg: "bg-emerald-50" },
   ];
 
   return (
@@ -934,7 +994,7 @@ export default function TrainerContentLibrary() {
           onGoToUploadPage={() => { setShowUpload(false); handleGoToUploadPage(); }}
         />
       )}
-      <FilterDrawer open={showFilters} onClose={() => setShowFilters(false)} />
+      <FilterDrawer open={showFilters} onClose={() => setShowFilters(false)} onApply={setDrawerFilters} />
       {detailAsset && (
         <AssetDetailModal
           asset={detailAsset}
@@ -942,7 +1002,6 @@ export default function TrainerContentLibrary() {
           onEdit={() => { setDetailAsset(null); handleEdit(detailAsset); }}
           onReuse={() => handleReuse(detailAsset)}
           onAIEnhance={() => { setDetailAsset(null); handleAIEnhance(detailAsset); }}
-          onViewInCourses={() => handleViewInCourses(detailAsset)}
         />
       )}
       {reuseAsset && (
@@ -1021,7 +1080,7 @@ export default function TrainerContentLibrary() {
                   )}
                 </div>
                 <button
-                  onClick={() => navigate("/trainer/courses/standalone/upload")}
+                  onClick={() => setShowUpload(true)}
                   className="bg-[#137fec] hover:bg-[#0f6fd4] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm flex-shrink-0"
                 >
                   <Icon name="upload" className="text-lg" />
@@ -1061,11 +1120,19 @@ export default function TrainerContentLibrary() {
                   <div>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Enhancements</h3>
                     <ul className="space-y-1">
-                      {enhancements.map(({ icon, label, iconColor }) => (
+                      {enhancements.map(({ icon, label, iconColor, activeColor, activeBg }) => (
                         <li key={label}>
                           <button
-                            onClick={() => setActiveEnhancement(activeEnhancement === label ? null : label)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeEnhancement === label ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
+                            onClick={() => {
+                              setActiveEnhancement(activeEnhancement === label ? null : label);
+                              setActiveCollection(null);
+                              setActiveCategory("All Assets");
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                              activeEnhancement === label
+                                ? `${activeBg} ${activeColor} font-semibold`
+                                : "text-slate-600 hover:bg-slate-100"
+                            }`}
                           >
                             <Icon name={icon} className={`text-[20px] flex-shrink-0 ${iconColor}`} />
                             {label}
@@ -1156,9 +1223,18 @@ export default function TrainerContentLibrary() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setShowFilters(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                      className={`flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-semibold transition-colors shadow-sm ${
+                        (drawerFilters.assetType !== "All" || drawerFilters.enhancements.length > 0 || drawerFilters.courses.length > 0)
+                          ? "border-[#137fec] text-[#137fec] bg-[#137fec]/5"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
                     >
                       <Icon name="filter_list" className="text-lg" />Filters
+                      {(drawerFilters.assetType !== "All" || drawerFilters.enhancements.length > 0 || drawerFilters.courses.length > 0) && (
+                        <span className="size-4 rounded-full bg-[#137fec] text-white text-[10px] font-bold flex items-center justify-center">
+                          {[drawerFilters.assetType !== "All" ? 1 : 0, ...drawerFilters.enhancements.map(() => 1), ...drawerFilters.courses.map(() => 1)].reduce((a, b) => a + b, 0)}
+                        </span>
+                      )}
                     </button>
                     <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
                       <button
