@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import VoiceAIDrawer from '../../components/VoiceAIDrawer';
 
 export default function Search() {
   const navigate = useNavigate();
   const location = useLocation();
   const notificationsRef = useRef(null);
+  const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   
   const userName = localStorage.getItem('userName') || 'User';
   const userEmail = localStorage.getItem('userEmail') || '';
@@ -512,6 +514,14 @@ export default function Search() {
                   placeholder="Ask anything... (e.g., What is a Python function?)"
                   className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {/* Voice AI Button before Search */}
+                <button
+                  onClick={() => setShowVoiceDrawer(true)}
+                  className="p-3 bg-white text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors flex items-center justify-center mr-2"
+                  title="Voice AI Assistant"
+                >
+                  <span className="material-symbols-outlined">mic</span>
+                </button>
                 <button
                   onClick={handleSearch}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
@@ -912,6 +922,15 @@ export default function Search() {
             </div>
           </div>
         </div>
+      )}
+      {/* VoiceAIDrawer component for Voice AI */}
+      {showVoiceDrawer && (
+        <VoiceAIDrawer
+          isOpen={showVoiceDrawer}
+          onClose={() => setShowVoiceDrawer(false)}
+          courseContext={{ courseId: null, lessonId: null }}
+          userProfile={{ name: userName, email: userEmail, role: userRole }}
+        />
       )}
     </div>
   );
