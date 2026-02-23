@@ -187,7 +187,6 @@ const SignUp = () => {
             <div>
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="fullName">Full Name</label>
               <div className="relative group">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">person</span>
                 <input
                   className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.fullName ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
                   id="fullName"
@@ -198,6 +197,7 @@ const SignUp = () => {
                   onChange={handleInputChange}
                   disabled={isLoading}
                 />
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">person</span>
               </div>
               {errors.fullName && <p className="mt-0.5 text-[10px] text-red-500 font-medium">{errors.fullName}</p>}
             </div>
@@ -206,7 +206,6 @@ const SignUp = () => {
             <div>
               <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="email">Email Address</label>
               <div className="relative group">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">mail</span>
                 <input
                   className={`w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.email ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
                   id="email"
@@ -217,6 +216,7 @@ const SignUp = () => {
                   onChange={handleInputChange}
                   disabled={isLoading}
                 />
+                <span className="absolute left-2 top-1 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">mail</span>
               </div>
               {errors.email && <p className="mt-0.5 text-[10px] text-red-500 font-medium">{errors.email}</p>}
             </div>
@@ -248,7 +248,6 @@ const SignUp = () => {
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="password">Password</label>
                 <div className="relative group">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
                   <input
                     className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.password ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
                     id="password"
@@ -259,8 +258,9 @@ const SignUp = () => {
                     onChange={handleInputChange}
                     disabled={isLoading}
                   />
-                  <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 outline-none"
+                    <button
+                      className="absolute text-slate-400 hover:text-slate-600 outline-none"
+                      style={{ right: '-4.2cm', top: '-2.0rem' }}
                     type="button"
                     onClick={togglePasswordVisibility}
                   >
@@ -268,12 +268,12 @@ const SignUp = () => {
                       {showPassword ? 'visibility_off' : 'visibility'}
                     </span>
                   </button>
+                  <span className="absolute left-2 top-1 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="confirm">Confirm</label>
                 <div className="relative group">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
                   <input
                     className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.confirmPassword ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
                     id="confirm"
@@ -284,13 +284,15 @@ const SignUp = () => {
                     onChange={handleInputChange}
                     disabled={isLoading}
                   />
-                  <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 outline-none"
+                  <span className="absolute left-2 top-1/3 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
+                 <button
+                      className="absolute text-slate-400 hover:text-slate-600 outline-none"
+                      style={{ right: '-4.2cm', top: '-2.0rem' }}
                     type="button"
-                    onClick={toggleConfirmPasswordVisibility}
+                    onClick={togglePasswordVisibility}
                   >
                     <span className="material-symbols-outlined text-[18px]">
-                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                      {showPassword ? 'visibility_off' : 'visibility'}
                     </span>
                   </button>
                 </div>
