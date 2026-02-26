@@ -116,48 +116,38 @@ const LessonContent = () => {
   const getVideoConfig = (url) => {
     if (!url) return null;
 
-    // Direct video file or uploaded to our server
     if (url.startsWith('/static/') || url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
       return { type: 'direct', src: url };
     }
-    // YouTube watch URL
     if (url.includes('youtube.com/watch?v=')) {
       const id = url.split('v=')[1]?.split('&')[0];
       return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
     }
-    // YouTube short URL
     if (url.includes('youtu.be/')) {
       const id = url.split('youtu.be/')[1]?.split('?')[0];
       return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
     }
-    // YouTube embed already
     if (url.includes('youtube.com/embed/')) {
       return { type: 'iframe', src: url };
     }
-    // Vimeo
     if (url.includes('vimeo.com/')) {
       const id = url.split('vimeo.com/')[1]?.split('?')[0];
       return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
     }
-    // Google Drive
     if (url.includes('drive.google.com')) {
       const match = url.match(/\/d\/([^/]+)/);
       if (match) return { type: 'iframe', src: `https://drive.google.com/file/d/${match[1]}/preview` };
     }
-    // Loom
     if (url.includes('loom.com/share/')) {
       const id = url.split('loom.com/share/')[1]?.split('?')[0];
       return { type: 'iframe', src: `https://www.loom.com/embed/${id}` };
     }
-    // Zoom, Google Meet, Teams — cannot embed, show external link
     if (url.includes('zoom.us') || url.includes('meet.google.com') || url.includes('teams.microsoft.com')) {
       return { type: 'external', src: url };
     }
-    // Fallback — try iframe
     return { type: 'iframe', src: url };
   };
 
-  // ── Fix: real quiz finder ─────────────────────────────────────────
   const handleStartQuiz = () => {
     const quizLesson = allLessons.find(l =>
       l.lesson_type === 'quiz' && l.moduleName === lesson?.moduleName
@@ -341,17 +331,12 @@ const LessonContent = () => {
                 <span className="text-blue-600 truncate max-w-[160px]">{lesson.title}</span>
               </div>
 
-              {/* ── VIDEO SECTION — handles all URL types ── */}
+              {/* ── VIDEO SECTION ── */}
               {videoConfig ? (
                 <div className="mb-8">
                   {videoConfig.type === 'direct' && (
                     <div className="rounded-xl overflow-hidden bg-black shadow-2xl">
-                      <video
-                        src={videoConfig.src}
-                        controls
-                        className="w-full"
-                        style={{ maxHeight: '500px' }}
-                      >
+                      <video src={videoConfig.src} controls className="w-full" style={{ maxHeight: '500px' }}>
                         Your browser does not support video playback.
                       </video>
                     </div>
@@ -493,7 +478,7 @@ const LessonContent = () => {
                 </div>
               )}
 
-              {/* ── QUIZ SECTION — real quiz finder ── */}
+              {/* ── QUIZ SECTION ── */}
               <div className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">

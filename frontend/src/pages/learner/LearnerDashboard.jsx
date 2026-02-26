@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
 import apiClient from '../../services/api';
+import VoiceAIDrawer from '../../components/VoiceAIDrawer';
 import '../../index.css';
 
 const LearnerDashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   const notificationsRef = useRef(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -454,6 +456,21 @@ const LearnerDashboard = () => {
           </p>
         </div>
       </aside>
+
+      {/* Voice AI Drawer - Header assistant */}
+      <VoiceAIDrawer
+        isOpen={showVoiceDrawer}
+        onClose={() => setShowVoiceDrawer(false)}
+        courseContext={{
+          courseId: null, // Set to current course ID when available
+          lessonId: null
+        }}
+        userProfile={{
+          name: userName,
+          email: userEmail,
+          role: userRole
+        }}
+      />
     </div>
   );
 };

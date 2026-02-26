@@ -175,6 +175,7 @@ const AILearningHub = () => {
           <div className="bg-blue-600 text-white p-1.5 rounded-lg"><span className="material-symbols-outlined text-2xl">auto_awesome</span></div>
           <h2 className="text-xl font-bold tracking-tight text-blue-600">AI LMS</h2>
         </div>
+        
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           <button onClick={() => navigate('/learner/dashboard')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
             <span className="material-symbols-outlined">dashboard</span><span>Dashboard</span>
@@ -605,6 +606,8 @@ const AILearningHub = () => {
                 </div>
               )}
             </div>
+
+            {/* Modal Footer */}
             <div className="p-4 bg-slate-800/50 flex items-center justify-between">
               <button onClick={() => setIsVideoPlaying(!isVideoPlaying)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                 <span className="material-symbols-outlined text-[20px]">{isVideoPlaying ? 'pause' : 'play_arrow'}</span>

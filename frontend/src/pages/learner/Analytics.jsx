@@ -28,6 +28,7 @@ export default function Analytics() {
     { id: 3, type: 'ai', icon: 'psychology', iconColor: 'text-blue-600', iconBg: 'bg-blue-100', title: 'AI Generated Summary Ready', message: 'Your study session recap is available', time: 'Yesterday', unread: false },
     { id: 4, type: 'course', icon: 'auto_stories', iconColor: 'text-purple-600', iconBg: 'bg-purple-100', title: 'New Lesson Available', message: 'Module 4: Deep Learning has been released', time: '2 days ago', unread: false },
   ];
+
   const unreadCount = notifications.filter(n => n.unread).length;
 
   // Badge rarity config — mock metadata until badge model has rarity field
@@ -282,8 +283,8 @@ export default function Analytics() {
         <main className="flex-1 overflow-y-auto bg-slate-50 px-10 py-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col gap-2 mb-8">
-              <h1 className="text-4xl font-black text-slate-900 leading-tight">Learning Progress & Analytics</h1>
-              <p className="text-slate-500 text-lg">Welcome back, {userName}. Your AI-powered growth insights are ready.</p>
+              <h1 className="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight">Learning Progress & Analytics</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-lg font-normal">Welcome back, {userName}. Your AI-powered growth insights are ready.</p>
             </div>
 
             {/* KPI Cards */}
@@ -608,6 +609,35 @@ export default function Analytics() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .animate-fade-in {
+          animation: fadeIn 0.2s ease-in;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(2px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 }

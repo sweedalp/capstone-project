@@ -12,8 +12,8 @@ export default function RevisionAssistant() {
   const userName = localStorage.getItem('userName') || 'User';
   const userEmail = localStorage.getItem('userEmail') || '';
   const userRole = localStorage.getItem('userRole') || 'learner';
-
-  // Context passed from Dashboard or AI Hub
+  
+  // Get data from navigation state (from AI Learning Hub or Dashboard)
   const passedData = location.state || {};
   const initialTopic = passedData.topic || null;
   const quizScore = passedData.quizScore || null;

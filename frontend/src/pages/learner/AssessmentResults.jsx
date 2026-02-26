@@ -150,6 +150,7 @@ const AssessmentResults = () => {
                 onChange={(e) => setSearchQuery(e.target.value)} />
             </form>
           </div>
+          
           <div className="flex items-center gap-4 ml-8">
             <button onClick={() => navigate('/learner/ai-hub', { state: { openChat: true } })} className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
               <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>

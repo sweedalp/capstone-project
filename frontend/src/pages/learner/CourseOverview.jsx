@@ -180,7 +180,7 @@ const CourseOverview = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Sidebar */}
+      {/* Sidebar Navigation */}
       <aside className="w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
         <div className="p-6 flex items-center gap-3">
           <div className="bg-blue-600 text-white p-1.5 rounded-lg"><span className="material-symbols-outlined text-2xl">auto_awesome</span></div>
@@ -193,8 +193,12 @@ const CourseOverview = () => {
           <button onClick={() => navigate('/learner/courses')} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-600 font-semibold w-full text-left">
             <span className="material-symbols-outlined">book_5</span><span>My Courses</span>
           </button>
-          <button onClick={() => navigate('/learner/ai-hub')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">psychology</span><span>AI Learning Hub</span>
+          <button 
+            onClick={() => navigate('/learner/ai-hub')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left"
+          >
+            <span className="material-symbols-outlined">psychology</span>
+            <span>AI Learning Hub</span>
           </button>
           <button onClick={() => navigate('/learner/analytics')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
             <span className="material-symbols-outlined">monitoring</span><span>Analytics</span>

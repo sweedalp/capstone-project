@@ -220,9 +220,6 @@ const Login = () => {
                 Email Address
               </label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
-                  mail
-                </span>
                 <input
                   className={`w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border ${
                     errors.email ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-blue-600/20 focus:border-blue-600'
@@ -236,6 +233,9 @@ const Login = () => {
                   onChange={handleInputChange}
                   disabled={isLoading}
                 />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
+                  mail
+                </span>
               </div>
               {errors.email && (
                 <p className="mt-1 text-sm text-red-500">{errors.email}</p>
@@ -257,9 +257,6 @@ const Login = () => {
                 </button>
               </div>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
-                  lock
-                </span>
                 <input
                   className={`w-full pl-10 pr-11 py-2.5 text-sm bg-slate-50 border ${
                     errors.password ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:ring-blue-600/20 focus:border-blue-600'
@@ -273,8 +270,11 @@ const Login = () => {
                   onChange={handleInputChange}
                   disabled={isLoading}
                 />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-[90%] text-slate-400 text-[16px]">
+                  lock
+                </span>
                 <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute top-1/2 -translate-y-[130%] text-slate-400 hover:text-slate-600" style={{ right: '-9.5cm' }}
                   type="button"
                   onClick={togglePasswordVisibility}
                 >
