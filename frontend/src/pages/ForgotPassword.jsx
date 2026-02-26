@@ -30,7 +30,7 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      await apiClient.post(`/api/auth/forgot-password?email=${encodeURIComponent(email)}`);
+      await apiClient.post(`/api/v1/auth/forgot-password?email=${encodeURIComponent(email)}`);
       setEmailSent(true);
     } catch {
       // Still show success to prevent user enumeration

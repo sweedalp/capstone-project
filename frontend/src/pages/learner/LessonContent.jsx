@@ -1,407 +1,46 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import apiClient from '../../services/api';
 import '../../index.css';
-
-// Course-specific data
-const courseData = {
-  '1': {
-    title: 'Introduction to Python Programming',
-    shortTitle: 'Intro to Programming',
-    allLessons: [
-      // Module 1: Getting Started
-      { id: 1, title: 'Introduction to Code', status: 'completed', icon: 'check_circle', module: 'Module 1: Getting Started' },
-      { id: 2, title: 'Variables Explained', status: 'completed', icon: 'check_circle', module: 'Module 1: Getting Started' },
-      { id: 3, title: 'Data Types & Storage', status: 'completed', icon: 'check_circle', module: 'Module 1: Getting Started' },
-      
-      // Module 2: Control Flow
-      { id: 4, title: 'If-Else Statements', status: 'completed', icon: 'check_circle', module: 'Module 2: Control Flow' },
-      { id: 5, title: 'Loops & Iteration', status: 'completed', icon: 'check_circle', module: 'Module 2: Control Flow' },
-      { id: 6, title: 'While Loops', status: 'completed', icon: 'check_circle', module: 'Module 2: Control Flow' },
-      
-      // Module 3: Functions
-      { id: 7, title: 'Defining Functions', status: 'completed', icon: 'check_circle', module: 'Module 3: Functions' },
-      { id: 8, title: 'Parameters & Arguments', status: 'completed', icon: 'check_circle', module: 'Module 3: Functions' },
-      { id: 9, title: 'Return Values', status: 'completed', icon: 'check_circle', module: 'Module 3: Functions' },
-      
-      // Module 4: Data Structures
-      { id: 10, title: 'Lists & Arrays', status: 'completed', icon: 'check_circle', module: 'Module 4: Data Structures' },
-      { id: 11, title: 'Dictionaries & Maps', status: 'completed', icon: 'check_circle', module: 'Module 4: Data Structures' },
-      { id: 12, title: 'Tuples & Sets', status: 'current', icon: 'play_circle', module: 'Module 4: Data Structures' },
-      { id: 13, title: 'List Comprehensions', status: 'unlocked', icon: 'circle', module: 'Module 4: Data Structures' },
-      
-      // Module 5: Advanced Topics
-      { id: 14, title: 'Object-Oriented Programming', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-      { id: 15, title: 'Error Handling', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-    ]
-  },
-  '2': {
-    title: 'Advanced Neural Networks',
-    shortTitle: 'Neural Networks',
-    allLessons: [
-      // Module 1: Foundations
-      { id: 1, title: 'Neural Network Basics', status: 'completed', icon: 'check_circle', module: 'Module 1: Foundations' },
-      { id: 2, title: 'Activation Functions', status: 'completed', icon: 'check_circle', module: 'Module 1: Foundations' },
-      { id: 3, title: 'Forward Propagation', status: 'completed', icon: 'check_circle', module: 'Module 1: Foundations' },
-      
-      // Module 2: Deep Learning
-      { id: 4, title: 'Backpropagation Algorithm', status: 'completed', icon: 'check_circle', module: 'Module 2: Deep Learning' },
-      { id: 5, title: 'Gradient Descent', status: 'completed', icon: 'check_circle', module: 'Module 2: Deep Learning' },
-      { id: 6, title: 'Loss Functions', status: 'completed', icon: 'check_circle', module: 'Module 2: Deep Learning' },
-      
-      // Module 3: Architectures
-      { id: 7, title: 'Convolutional Networks', status: 'completed', icon: 'check_circle', module: 'Module 3: Architectures' },
-      { id: 8, title: 'Recurrent Networks', status: 'completed', icon: 'check_circle', module: 'Module 3: Architectures' },
-      { id: 9, title: 'Transformer Models', status: 'completed', icon: 'check_circle', module: 'Module 3: Architectures' },
-      
-      // Module 4: Optimization
-      { id: 10, title: 'Adam Optimizer', status: 'completed', icon: 'check_circle', module: 'Module 4: Optimization' },
-      { id: 11, title: 'Learning Rate Scheduling', status: 'completed', icon: 'check_circle', module: 'Module 4: Optimization' },
-      { id: 12, title: 'Regularization Techniques', status: 'current', icon: 'play_circle', module: 'Module 4: Optimization' },
-      { id: 13, title: 'Batch Normalization', status: 'unlocked', icon: 'circle', module: 'Module 4: Optimization' },
-      
-      // Module 5: Advanced Topics
-      { id: 14, title: 'Transfer Learning', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-      { id: 15, title: 'Model Deployment', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-    ]
-  },
-  '3': {
-    title: 'UI/UX Design Principles',
-    shortTitle: 'UI/UX Design',
-    allLessons: [
-      // Module 1: Design Fundamentals
-      { id: 1, title: 'Introduction to UI/UX', status: 'completed', icon: 'check_circle', module: 'Module 1: Design Fundamentals' },
-      { id: 2, title: 'Color Theory', status: 'completed', icon: 'check_circle', module: 'Module 1: Design Fundamentals' },
-      { id: 3, title: 'Typography Basics', status: 'completed', icon: 'check_circle', module: 'Module 1: Design Fundamentals' },
-      
-      // Module 2: Layouts
-      { id: 4, title: 'Grid Systems', status: 'completed', icon: 'check_circle', module: 'Module 2: Layouts' },
-      { id: 5, title: 'Visual Hierarchy', status: 'completed', icon: 'check_circle', module: 'Module 2: Layouts' },
-      { id: 6, title: 'Spacing & Alignment', status: 'completed', icon: 'check_circle', module: 'Module 2: Layouts' },
-      
-      // Module 3: User Experience
-      { id: 7, title: 'User Research Methods', status: 'completed', icon: 'check_circle', module: 'Module 3: User Experience' },
-      { id: 8, title: 'User Personas', status: 'completed', icon: 'check_circle', module: 'Module 3: User Experience' },
-      { id: 9, title: 'Journey Mapping', status: 'completed', icon: 'check_circle', module: 'Module 3: User Experience' },
-      
-      // Module 4: Interaction Design
-      { id: 10, title: 'Microinteractions', status: 'completed', icon: 'check_circle', module: 'Module 4: Interaction Design' },
-      { id: 11, title: 'Animation Principles', status: 'completed', icon: 'check_circle', module: 'Module 4: Interaction Design' },
-      { id: 12, title: 'Prototyping Tools', status: 'current', icon: 'play_circle', module: 'Module 4: Interaction Design' },
-      { id: 13, title: 'Usability Testing', status: 'unlocked', icon: 'circle', module: 'Module 4: Interaction Design' },
-      
-      // Module 5: Advanced Topics
-      { id: 14, title: 'Accessibility Standards', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-      { id: 15, title: 'Design Systems', status: 'locked', icon: 'lock', module: 'Module 5: Advanced Topics' },
-    ]
-  }
-};
 
 const LessonContent = () => {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
-  
-  // Get current course data
-  const currentCourse = courseData[courseId] || courseData['1'];
-  
-  const userName = localStorage.getItem('userName') || 'User';
-  const userEmail = localStorage.getItem('userEmail') || '';
-  const userRole = localStorage.getItem('userRole') || 'Learner';
-  
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [transcriptExpanded, setTranscriptExpanded] = useState(true);
-  const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
-  const [knowledgeLevel, setKnowledgeLevel] = useState('beginner');
+
+  const [lesson, setLesson] = useState(null);
+  const [course, setCourse] = useState(null);
+  const [allLessons, setAllLessons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [marking, setMarking] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-  
-  // Header state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
-  const notificationsRef = useRef(null);
-  
-  // Notification data
-  const notifications = [
-    {
-      id: 1,
-      title: 'New Lesson Available',
-      message: 'Check out the new lesson on Advanced Functions in your Python course.',
-      time: '5 minutes ago',
-      icon: 'school',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
-      unread: true
-    },
-    {
-      id: 2,
-      title: 'Assignment Due Soon',
-      message: 'Your "Variables & Data Types" assignment is due in 2 days.',
-      time: '1 hour ago',
-      icon: 'assignment',
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
-      unread: true
-    },
-    {
-      id: 3,
-      title: 'Achievement Unlocked',
-      message: 'You earned the "Quick Learner" badge for completing 5 lessons this week!',
-      time: '3 hours ago',
-      icon: 'workspace_premium',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
-      unread: false
-    },
-    {
-      id: 4,
-      title: 'Course Update',
-      message: 'New AI-generated content added to "Introduction to Python Programming".',
-      time: '1 day ago',
-      icon: 'update',
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600',
-      unread: false
-    }
-  ];
-  
-  const unreadCount = notifications.filter(n => n.unread).length;
-  
-  // Close notifications dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-    };
-
-    if (showNotifications) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showNotifications]);
-  
-  // AI Enhancement Panel States
+  const [knowledgeLevel, setKnowledgeLevel] = useState('beginner');
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showWalkthroughOverlay, setShowWalkthroughOverlay] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English (US)');
-  const [audioProgress, setAudioProgress] = useState(45);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationsRef = useRef(null);
 
-  // Get lessons for current course
-  const allLessons = currentCourse.allLessons;
+  const userName = localStorage.getItem('userName') || 'User';
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const userRole = localStorage.getItem('userRole') || 'Learner';
 
-  // Get current lesson index
-  const currentLessonId = parseInt(lessonId) || 2;
-  const currentLessonIndex = allLessons.findIndex(l => l.id === currentLessonId);
-  
-  // Handle invalid lesson IDs - default to first lesson
-  const currentLesson = currentLessonIndex >= 0 ? allLessons[currentLessonIndex] : allLessons[0];
-  
-  // Determine previous and next lessons
-  const previousLesson = currentLessonIndex > 0 ? allLessons[currentLessonIndex - 1] : null;
-  const nextLesson = currentLessonIndex >= 0 && currentLessonIndex < allLessons.length - 1 
-    ? allLessons[currentLessonIndex + 1] 
-    : null;
-  
-  // Get all unique modules for sidebar organization
-  const allModules = [...new Set(allLessons.map(l => l.module))];
-  
-  // Group lessons by module for sidebar display
-  const lessonsByModule = allModules.map(moduleName => ({
-    moduleName,
-    lessons: allLessons.filter(l => l.module === moduleName)
-  }));
-
-  // Get lesson description based on course and lesson
-  const getLessonDescription = (courseId, lessonId) => {
-    const descriptions = {
-      '1': {
-        1: "Welcome to programming! In this lesson, we'll explore what code is and how computers understand instructions.",
-        2: "In this lesson, we break down how computers store data using variables. You'll learn about declaration, assignment, and naming conventions.",
-        3: "Discover the different types of data computers can work with - numbers, text, booleans, and more. Learn how to choose the right type for your needs.",
-        4: "Learn how to make decisions in your code using conditional statements. Master if-else logic to create dynamic programs.",
-        5: "Understand how to repeat actions efficiently using loops. Explore for loops, while loops, and iteration patterns.",
-        6: "Dive into while loops and learn when to use them vs for loops. Master loop control with break and continue statements.",
-        7: "Learn how to organize your code into reusable functions. Understand function declaration, calling, and scope.",
-        8: "Master the art of passing data to functions through parameters and arguments. Learn about default values and variable arguments.",
-        9: "Understand how functions can send data back using return statements. Learn best practices for return values.",
-        10: "Explore lists and arrays - the fundamental data structures for storing collections. Learn indexing, slicing, and common operations.",
-        11: "Master dictionaries and maps for storing key-value pairs. Learn when to use dictionaries vs lists.",
-        12: "Understand tuples and sets - immutable sequences and unique collections. Learn their use cases and operations.",
-        13: "Discover the power of list comprehensions for creating lists concisely. Master this Pythonic approach to data transformation.",
-        14: "Introduction to Object-Oriented Programming. Learn about classes, objects, methods, and the OOP paradigm.",
-        15: "Master error handling with try-except blocks. Learn how to handle exceptions gracefully and write robust code."
-      },
-      '2': {
-        1: "Start your deep learning journey with neural network fundamentals. Understand perceptrons, layers, and how neural networks learn from data.",
-        2: "Explore activation functions like ReLU, Sigmoid, and Tanh. Learn how they introduce non-linearity and enable complex pattern recognition.",
-        3: "Master forward propagation - the process of passing data through a neural network. Understand how inputs transform into predictions.",
-        4: "Dive deep into backpropagation, the algorithm that enables neural networks to learn. Master gradient flow and error propagation.",
-        5: "Learn gradient descent optimization for training neural networks. Understand learning rates, momentum, and convergence strategies.",
-        6: "Explore loss functions that measure model performance. Learn about Mean Squared Error, Cross-Entropy, and their applications.",
-        7: "Master Convolutional Neural Networks (CNNs) for image processing. Understand convolution layers, pooling, and feature extraction.",
-        8: "Learn Recurrent Neural Networks (RNNs) for sequential data. Master LSTMs and handling time-series and text data.",
-        9: "Discover Transformer architectures that power modern AI. Learn attention mechanisms and self-attention for NLP tasks.",
-        10: "Master the Adam optimizer that combines momentum and adaptive learning rates for efficient neural network training.",
-        11: "Learn learning rate scheduling strategies to improve model convergence and prevent overshooting optimal solutions.",
-        12: "Understand regularization techniques like dropout and L2 to prevent overfitting and improve model generalization.",
-        13: "Explore batch normalization to stabilize training and accelerate convergence by normalizing layer inputs.",
-        14: "Master transfer learning to leverage pre-trained models and achieve better performance with less data.",
-        15: "Learn how to deploy neural networks in production environments using TensorFlow Serving and cloud platforms."
-      },
-      '3': {
-        1: "Welcome to UI/UX design! Learn the fundamentals of user interface and user experience design principles.",
-        2: "Master color theory for digital design. Understand color psychology, harmony, contrast, and accessible color palettes.",
-        3: "Learn typography fundamentals including font selection, hierarchy, spacing, and readability for digital interfaces.",
-        4: "Explore grid systems that provide structure and consistency to your designs. Master layout principles and alignment.",
-        5: "Understand visual hierarchy to guide user attention. Learn how to use size, color, and position to create clear information architecture.",
-        6: "Master spacing and alignment principles. Learn how whitespace, padding, and margins create visual balance and usability.",
-        7: "Learn user research methods to understand your audience. Master interviews, surveys, and observational research techniques.",
-        8: "Create user personas that represent your target audience. Learn how to synthesize research into actionable design insights.",
-        9: "Master journey mapping to visualize the user experience. Identify pain points and opportunities for improvement.",
-        10: "Explore microinteractions that provide feedback and delight users. Learn how subtle animations enhance user experience.",
-        11: "Master animation principles for UI design. Understand timing, easing, and how motion communicates meaning.",
-        12: "Learn prototyping tools like Figma, Sketch, and Adobe XD. Master creating interactive prototypes for user testing.",
-        13: "Understand usability testing methods to validate your designs. Learn how to conduct tests and iterate based on feedback.",
-        14: "Master accessibility standards (WCAG) to create inclusive designs. Learn about screen readers, keyboard navigation, and contrast ratios.",
-        15: "Learn to build and maintain design systems. Master component libraries, design tokens, and documentation for team consistency."
-      }
-    };
-    
-    return descriptions[courseId]?.[lessonId] || "This lesson content is currently being prepared.";
-  };
-
-const aiEnhancements = [
-    { icon: 'mic', title: 'Audio Summary', subtitle: 'Listen to 2-min recap', color: 'indigo' },
-    { icon: 'movie', title: 'Video Explainer', subtitle: 'Simplified visual recap', color: 'amber' },
-    { icon: 'explore', title: 'Walkthrough', subtitle: 'Step-by-step guide', color: 'emerald' },
+  const notifications = [
+    { id: 1, title: 'New Lesson Available', message: 'Check out the new lesson added to your course.', time: '5 minutes ago', icon: 'school', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', unread: true },
+    { id: 2, title: 'Assignment Due Soon', message: 'Your assignment is due in 2 days.', time: '1 hour ago', icon: 'assignment', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', unread: true },
+    { id: 3, title: 'Achievement Unlocked', message: 'You earned the "Quick Learner" badge!', time: '3 hours ago', icon: 'workspace_premium', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', unread: false },
+    { id: 4, title: 'Course Update', message: 'New AI-generated content added.', time: '1 day ago', icon: 'update', iconBg: 'bg-green-100', iconColor: 'text-green-600', unread: false },
   ];
-
-  // Dynamic related concepts based on current lesson
-  const getRelatedConcepts = (lessonId) => {
-    const conceptsMap = {
-      1: [ // Introduction to Code
-        { id: 2, title: 'Variables Explained', description: 'Learn to store and use data', isPrerequisite: false },
-        { id: 3, title: 'Data Types & Storage', description: 'Understanding different data types', isPrerequisite: false },
-        { id: 4, title: 'If-Else Statements', description: 'Make decisions in your code', isPrerequisite: false },
-      ],
-      2: [ // Variables Explained
-        { id: 1, title: 'Introduction to Code', description: 'Programming fundamentals', isPrerequisite: true },
-        { id: 3, title: 'Data Types & Storage', description: 'Types of data variables can hold', isPrerequisite: false },
-        { id: 8, title: 'Parameters & Arguments', description: 'Passing variables to functions', isPrerequisite: false },
-      ],
-      3: [ // Data Types & Storage
-        { id: 2, title: 'Variables Explained', description: 'How to store data', isPrerequisite: true },
-        { id: 10, title: 'Lists & Arrays', description: 'Store multiple values', isPrerequisite: false },
-        { id: 11, title: 'Dictionaries & Maps', description: 'Key-value data storage', isPrerequisite: false },
-      ],
-      4: [ // If-Else Statements
-        { id: 2, title: 'Variables Explained', description: 'Working with variables', isPrerequisite: true },
-        { id: 3, title: 'Data Types & Storage', description: 'Boolean data types', isPrerequisite: true },
-        { id: 5, title: 'Loops & Iteration', description: 'Combine conditions with loops', isPrerequisite: false },
-      ],
-      5: [ // Loops & Iteration
-        { id: 4, title: 'If-Else Statements', description: 'Conditional logic', isPrerequisite: true },
-        { id: 6, title: 'While Loops', description: 'Alternative loop types', isPrerequisite: false },
-        { id: 10, title: 'Lists & Arrays', description: 'Iterate through collections', isPrerequisite: false },
-      ],
-      6: [ // While Loops
-        { id: 5, title: 'Loops & Iteration', description: 'For loop basics', isPrerequisite: true },
-        { id: 4, title: 'If-Else Statements', description: 'Loop control conditions', isPrerequisite: true },
-        { id: 10, title: 'Lists & Arrays', description: 'Loop through data', isPrerequisite: false },
-      ],
-      7: [ // Defining Functions
-        { id: 2, title: 'Variables Explained', description: 'Function variables & scope', isPrerequisite: true },
-        { id: 8, title: 'Parameters & Arguments', description: 'Pass data to functions', isPrerequisite: false },
-        { id: 9, title: 'Return Values', description: 'Get results from functions', isPrerequisite: false },
-      ],
-      8: [ // Parameters & Arguments
-        { id: 7, title: 'Defining Functions', description: 'Function basics', isPrerequisite: true },
-        { id: 2, title: 'Variables Explained', description: 'Understanding variables', isPrerequisite: true },
-        { id: 9, title: 'Return Values', description: 'Return data from functions', isPrerequisite: false },
-      ],
-      9: [ // Return Values
-        { id: 7, title: 'Defining Functions', description: 'Function fundamentals', isPrerequisite: true },
-        { id: 8, title: 'Parameters & Arguments', description: 'Function inputs', isPrerequisite: true },
-        { id: 14, title: 'Object-Oriented Programming', description: 'Methods and return values', isPrerequisite: false },
-      ],
-      10: [ // Lists & Arrays
-        { id: 3, title: 'Data Types & Storage', description: 'Data type basics', isPrerequisite: true },
-        { id: 5, title: 'Loops & Iteration', description: 'Iterate through lists', isPrerequisite: false },
-        { id: 11, title: 'Dictionaries & Maps', description: 'Alternative data structures', isPrerequisite: false },
-        { id: 13, title: 'List Comprehensions', description: 'Advanced list creation', isPrerequisite: false },
-      ],
-      11: [ // Dictionaries & Maps
-        { id: 10, title: 'Lists & Arrays', description: 'Understanding collections', isPrerequisite: true },
-        { id: 3, title: 'Data Types & Storage', description: 'Data structure basics', isPrerequisite: true },
-        { id: 12, title: 'Tuples & Sets', description: 'Other data structures', isPrerequisite: false },
-      ],
-      12: [ // Tuples & Sets
-        { id: 10, title: 'Lists & Arrays', description: 'List fundamentals', isPrerequisite: true },
-        { id: 11, title: 'Dictionaries & Maps', description: 'Dictionary basics', isPrerequisite: true },
-        { id: 3, title: 'Data Types & Storage', description: 'Immutable vs mutable types', isPrerequisite: true },
-        { id: 13, title: 'List Comprehensions', description: 'Creating collections', isPrerequisite: false },
-      ],
-      13: [ // List Comprehensions
-        { id: 10, title: 'Lists & Arrays', description: 'List basics required', isPrerequisite: true },
-        { id: 5, title: 'Loops & Iteration', description: 'Understanding iteration', isPrerequisite: true },
-        { id: 7, title: 'Defining Functions', description: 'Functions in comprehensions', isPrerequisite: false },
-      ],
-      14: [ // Object-Oriented Programming
-        { id: 7, title: 'Defining Functions', description: 'Functions become methods', isPrerequisite: true },
-        { id: 2, title: 'Variables Explained', description: 'Instance variables', isPrerequisite: true },
-        { id: 15, title: 'Error Handling', description: 'Handle errors in classes', isPrerequisite: false },
-      ],
-      15: [ // Error Handling
-        { id: 7, title: 'Defining Functions', description: 'Try-except in functions', isPrerequisite: true },
-        { id: 4, title: 'If-Else Statements', description: 'Conditional error handling', isPrerequisite: true },
-        { id: 14, title: 'Object-Oriented Programming', description: 'Exception classes', isPrerequisite: false },
-      ],
-    };
-    
-    return conceptsMap[lessonId] || [
-      { id: 2, title: 'Variables Explained', description: 'Core programming concept', isPrerequisite: false },
-      { id: 7, title: 'Defining Functions', description: 'Organize your code', isPrerequisite: false },
-      { id: 10, title: 'Lists & Arrays', description: 'Work with collections', isPrerequisite: false },
-    ];
-  };
-
-  const relatedConcepts = getRelatedConcepts(currentLessonId);
-
-  const transcriptLines = [
-    { time: '00:15', text: '"Imagine a variable as a labeled box. You can put things into the box, take them out, or replace them. In programming, we call this storing and retrieving data."', highlighted: false },
-    { time: '00:45', text: '"When you define a variable, like \'let age = 25\', the computer reserves a small space in its memory for that specific value."', highlighted: true },
-    { time: '01:12', text: '"The name of the variable is called an identifier. It\'s important to use names that make sense, such as \'userName\' instead of just \'x\'."', highlighted: false },
-    { time: '01:45', text: '"There are different ways to declare variables depending on the language—some use \'let\', some use \'var\', and some use \'const\'."', highlighted: false },
-  ];
-
-  const walkthroughSteps = [
-    { 
-      title: 'Understanding Variables', 
-      description: 'Variables are containers that store data values. Think of them as labeled boxes where you can put information.',
-      icon: 'inventory_2'
-    },
-    { 
-      title: 'Declaring a Variable', 
-      description: 'Use keywords like "let", "var", or "const" to create a new variable. Example: let myName = "John";',
-      icon: 'code'
-    },
-    { 
-      title: 'Variable Naming Rules', 
-      description: 'Names should be descriptive, start with a letter, and use camelCase. Avoid using reserved keywords.',
-      icon: 'badge'
-    },
-    { 
-      title: 'Try It Yourself!', 
-      description: 'Now create your own variable to store your favorite number. Click the code editor to practice.',
-      icon: 'edit_note'
-    },
-  ];
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   const languageOptions = [
     { code: 'en-US', name: 'English (US)', flag: '🇺🇸' },
@@ -412,782 +51,590 @@ const aiEnhancements = [
     { code: 'ja-JP', name: '日本語 (Japan)', flag: '🇯🇵' },
   ];
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      console.log('Message sent:', chatMessage);
-      setChatMessage('');
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      apiClient.get(`/api/v1/content/lessons/${lessonId}`),
+      apiClient.get(`/api/v1/courses/${courseId}`),
+      apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
+    ]).then(([lessonRes, courseRes, modulesRes]) => {
+      setLesson(lessonRes.data);
+      setCourse(courseRes.data);
+      const flat = (modulesRes.data || []).flatMap(m =>
+        (m.lessons || []).map(l => ({ ...l, moduleName: m.title }))
+      );
+      setAllLessons(flat);
+      const current = flat.find(l => l.id === parseInt(lessonId));
+      setIsCompleted(current?.is_completed || false);
+      setLoading(false);
+    }).catch(() => { setError('Failed to load lesson'); setLoading(false); });
+  }, [courseId, lessonId]);
+
+  const currentIdx = allLessons.findIndex(l => l.id === parseInt(lessonId));
+  const previousLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
+  const nextLesson = currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null;
+
+  const lessonsByModule = allLessons.reduce((acc, l) => {
+    if (!acc[l.moduleName]) acc[l.moduleName] = [];
+    acc[l.moduleName].push(l);
+    return acc;
+  }, {});
+
+  const relatedConcepts = [
+    ...allLessons.slice(Math.max(0, currentIdx - 1), currentIdx).map(l => ({ ...l, isPrerequisite: true })),
+    ...allLessons.slice(currentIdx + 1, currentIdx + 3).map(l => ({ ...l, isPrerequisite: false })),
+  ].filter(l => l.id !== parseInt(lessonId));
+
+  const handleMarkComplete = async () => {
+    setMarking(true);
+    try {
+      const enrollRes = await apiClient.get('/api/v1/courses/my/enrolled');
+      const enr = enrollRes.data.find(e => e.id === parseInt(courseId));
+      if (!enr) throw new Error('Not enrolled');
+      await apiClient.post('/api/v1/progress/', {
+        enrollment_id: enr.id,
+        lesson_id: parseInt(lessonId),
+        is_completed: true,
+      });
+      setIsCompleted(true);
+      setAllLessons(prev => prev.map(l => l.id === parseInt(lessonId) ? { ...l, is_completed: true } : l));
+      if (nextLesson) setTimeout(() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`), 500);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not mark complete');
+    } finally {
+      setMarking(false);
     }
   };
 
-  const handleAIEnhancement = (toolTitle) => {
-    switch(toolTitle) {
-      case 'Audio Summary':
-        setShowAudioPlayer(true);
-        break;
-      case 'Video Explainer':
-        setShowVideoModal(true);
-        break;
-      case 'Walkthrough':
-        setShowWalkthroughOverlay(true);
-        setWalkthroughStep(0);
-        break;
-      default:
-        break;
+  // ── Content helpers ───────────────────────────────────────────────
+  const getVideoUrl = () => lesson?.contents?.find(c => c.content_type === 'video_url')?.content || null;
+  const getTextBody = () => lesson?.contents?.find(c => c.content_type === 'text_body')?.content || null;
+  const getFileUrl = () => lesson?.contents?.find(c => c.content_type === 'file_url')?.content || null;
+  const getLessonIcon = (type) => type === 'video' ? 'movie' : type === 'quiz' ? 'quiz' : 'article';
+
+  // ── Universal video config — handles all URL types ────────────────
+  const getVideoConfig = (url) => {
+    if (!url) return null;
+
+    // Direct video file or uploaded to our server
+    if (url.startsWith('/static/') || url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
+      return { type: 'direct', src: url };
+    }
+    // YouTube watch URL
+    if (url.includes('youtube.com/watch?v=')) {
+      const id = url.split('v=')[1]?.split('&')[0];
+      return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    // YouTube short URL
+    if (url.includes('youtu.be/')) {
+      const id = url.split('youtu.be/')[1]?.split('?')[0];
+      return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    // YouTube embed already
+    if (url.includes('youtube.com/embed/')) {
+      return { type: 'iframe', src: url };
+    }
+    // Vimeo
+    if (url.includes('vimeo.com/')) {
+      const id = url.split('vimeo.com/')[1]?.split('?')[0];
+      return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
+    }
+    // Google Drive
+    if (url.includes('drive.google.com')) {
+      const match = url.match(/\/d\/([^/]+)/);
+      if (match) return { type: 'iframe', src: `https://drive.google.com/file/d/${match[1]}/preview` };
+    }
+    // Loom
+    if (url.includes('loom.com/share/')) {
+      const id = url.split('loom.com/share/')[1]?.split('?')[0];
+      return { type: 'iframe', src: `https://www.loom.com/embed/${id}` };
+    }
+    // Zoom, Google Meet, Teams — cannot embed, show external link
+    if (url.includes('zoom.us') || url.includes('meet.google.com') || url.includes('teams.microsoft.com')) {
+      return { type: 'external', src: url };
+    }
+    // Fallback — try iframe
+    return { type: 'iframe', src: url };
+  };
+
+  // ── Fix: real quiz finder ─────────────────────────────────────────
+  const handleStartQuiz = () => {
+    const quizLesson = allLessons.find(l =>
+      l.lesson_type === 'quiz' && l.moduleName === lesson?.moduleName
+    );
+    if (quizLesson) {
+      navigate(`/learner/courses/${courseId}/assessments/${quizLesson.id}`);
+    } else {
+      const anyQuiz = allLessons.find(l => l.lesson_type === 'quiz');
+      if (anyQuiz) navigate(`/learner/courses/${courseId}/assessments/${anyQuiz.id}`);
     }
   };
 
-  const handleLanguageChange = (language) => {
-    setSelectedLanguage(language);
-    setShowLanguageModal(false);
-    // In real app, this would trigger content reload with new language
-    console.log('Language changed to:', language);
-  };
+  const aiEnhancements = [
+    { icon: 'mic', title: 'Audio Summary', subtitle: 'Listen to 2-min recap', color: 'indigo' },
+    { icon: 'movie', title: 'Video Explainer', subtitle: 'Simplified visual recap', color: 'amber' },
+    { icon: 'explore', title: 'Walkthrough', subtitle: 'Step-by-step guide', color: 'emerald' },
+  ];
 
-  const handleKnowledgeLevelChange = (level) => {
-    setKnowledgeLevel(level);
-    // In real app, this would refresh content with appropriate difficulty
-    console.log('Knowledge level changed to:', level);
-  };
-  
-  // Header handlers
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
-      // Navigate to search results page
-      navigate(`/learner/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-  
-  const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch(e);
-    }
-  };
-  
-  const handleAskAI = () => {
-    console.log('Opening Ask AI');
-    // Navigate to AI Hub or open AI chat
-    navigate('/learner/ai-hub');
-  };
-  
-  const handleNotificationsToggle = () => {
-    setShowNotifications(!showNotifications);
-  };
+  const walkthroughSteps = [
+    { title: 'Understanding the Concept', description: `You're about to study: "${lesson?.title || ''}". Read through the key ideas before watching.`, icon: 'lightbulb' },
+    { title: 'Watch & Take Notes', description: 'Write down key points as you go. This reinforces memory retention significantly.', icon: 'edit_note' },
+    { title: 'Check Your Understanding', description: 'Try explaining the concept in your own words. If you can teach it, you truly understand it.', icon: 'psychology' },
+    { title: 'Practice It!', description: 'Apply what you learned by completing the quiz or advancing to the next lesson.', icon: 'task_alt' },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target))
+        setShowNotifications(false);
+    };
+    if (showNotifications) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-500 font-medium">Loading lesson...</p>
+      </div>
+    </div>
+  );
+
+  if (error || !lesson) return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="text-center">
+        <span className="material-symbols-outlined text-5xl text-rose-500 mb-4 block">error</span>
+        <p className="text-slate-700 font-bold mb-4">{error || 'Lesson not found'}</p>
+        <button onClick={() => navigate(`/learner/courses/${courseId}`)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold">Back to Course</button>
+      </div>
+    </div>
+  );
+
+  const videoConfig = getVideoConfig(getVideoUrl());
+  const textBody = getTextBody();
+  const fileUrl = getFileUrl();
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+    <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
       <div className="flex h-screen flex-col overflow-hidden">
-        {/* Top Navigation Bar */}
+
+        {/* ── Header ── */}
         <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 shrink-0 z-20">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-             <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <span className="material-symbols-outlined text-2xl">auto_awesome</span>
-          </div>
+              <div className="bg-blue-600 text-white p-1.5 rounded-lg"><span className="material-symbols-outlined text-2xl">auto_awesome</span></div>
               <h2 className="text-lg font-bold tracking-tight">AI Learning LMS</h2>
             </div>
             <nav className="hidden md:flex items-center gap-6">
-              <button 
-                onClick={() => navigate('/learner/dashboard')}
-                className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
-              >
-                Dashboard
-              </button>
-              <button 
-                onClick={() => navigate('/learner/courses')}
-                className="text-sm font-medium text-primary cursor-pointer"
-              >
-                My Courses
-              </button>
-              <button 
-                onClick={() => navigate('/learner/ai-hub')}
-                className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
-              >
-                AI Hub
-              </button>
-              <button 
-                onClick={() => navigate('/learner/analytics')}
-                className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
-              >
-                Analytics
-              </button>
+              <button onClick={() => navigate('/learner/dashboard')} className="text-sm font-medium hover:text-blue-600 transition-colors">Dashboard</button>
+              <button onClick={() => navigate('/learner/courses')} className="text-sm font-medium text-blue-600">My Courses</button>
+              <button onClick={() => navigate('/learner/ai-hub')} className="text-sm font-medium hover:text-blue-600 transition-colors">AI Hub</button>
+              <button onClick={() => navigate('/learner/analytics')} className="text-sm font-medium hover:text-blue-600 transition-colors">Analytics</button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center flex-1 max-w-xl">
-              <form onSubmit={handleSearch} className="relative w-full group">
-                <button
-                  type="submit"
-                  className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-600 hover:text-blue-600 cursor-pointer z-10"
-                >
-                  search
-                </button>
-                <input
-                  className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-blue-600/20 text-sm placeholder:text-slate-400"
-                  placeholder="Search courses, concepts, or files..."
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                />
-              </form>
-            </div>
-            
-            <div className="flex items-center gap-4 ml-8">
-              <button 
-                onClick={handleAskAI}
-                className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-                <span>Ask AI</span>
+            <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/learner/search?q=${encodeURIComponent(searchQuery)}`); }} className="relative group">
+              <button type="submit" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">search</button>
+              <input className="w-64 pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm" placeholder="Search..." type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            </form>
+            <button onClick={() => navigate('/learner/ai-hub')} className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
+              <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>
+            </button>
+            <div className="relative" ref={notificationsRef}>
+              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+                <span className="material-symbols-outlined">notifications</span>
+                {unreadCount > 0 && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
               </button>
-              
-              <div className="relative" ref={notificationsRef}>
-                <button 
-                  onClick={handleNotificationsToggle}
-                  className="relative p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined">notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
-                  )}
-                </button>
-
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200 max-h-[500px] flex flex-col">
-                    {/* Header */}
-                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Notifications</h3>
-                        {unreadCount > 0 && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{unreadCount} unread</p>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => setShowNotifications(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                      >
-                        <span className="material-symbols-outlined text-lg">close</span>
-                      </button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-[9999] max-h-[500px] flex flex-col">
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold">Notifications</h3>
+                      {unreadCount > 0 && <p className="text-xs text-slate-500">{unreadCount} unread</p>}
                     </div>
-
-                    {/* Notifications List */}
-                    <div className="overflow-y-auto flex-1">
-                      {notifications.map((notification) => (
-                        <div 
-                          key={notification.id}
-                          className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors ${
-                            notification.unread ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                          }`}
-                        >
-                          <div className="flex gap-3">
-                            <div className={`flex-shrink-0 w-10 h-10 ${notification.iconBg} dark:${notification.iconBg.replace('100', '900/30')} rounded-full flex items-center justify-center`}>
-                              <span className={`material-symbols-outlined text-lg ${notification.iconColor}`}>
-                                {notification.icon}
-                              </span>
+                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600"><span className="material-symbols-outlined text-lg">close</span></button>
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                    {notifications.map((n) => (
+                      <div key={n.id} className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 ${n.unread ? 'bg-blue-50/50' : ''}`}>
+                        <div className="flex gap-3">
+                          <div className={`flex-shrink-0 w-10 h-10 ${n.iconBg} rounded-full flex items-center justify-center`}>
+                            <span className={`material-symbols-outlined text-lg ${n.iconColor}`}>{n.icon}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <p className="text-sm font-semibold line-clamp-1">{n.title}</p>
+                              {n.unread && <span className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></span>}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
-                                  {notification.title}
-                                </p>
-                                {notification.unread && (
-                                  <span className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-1.5"></span>
-                                )}
-                              </div>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-1">
-                                {notification.message}
-                              </p>
-                              <p className="text-xs text-slate-400 dark:text-slate-500">
-                                {notification.time}
-                              </p>
-                            </div>
+                            <p className="text-xs text-slate-600 line-clamp-2 mb-1">{n.message}</p>
+                            <p className="text-xs text-slate-400">{n.time}</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-                      <button 
-                        onClick={() => {
-                          setShowNotifications(false);
-                          // Navigate to notifications page if you have one
-                        }}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:hover:text-blue-500 w-full text-center"
-                      >
-                        View All Notifications
-                      </button>
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-              
-              <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-              
-              <div className="flex items-center gap-3 pl-2">
-                <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold">{userName}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Pro {userRole}</p>
+                  <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
+                    <button onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-blue-600 w-full text-center">View All Notifications</button>
+                  </div>
                 </div>
-                <ProfileDropdown
-                  userName={userName}
-                  userEmail={userEmail}
-                  profileImage="https://lh3.googleusercontent.com/aida-public/AB6AXuDN3sIvMh27FT-1-5l63OFnJ96JCK02FnDfa-Jh7VCVLJtChF_DbUbjPXcSJaFL0xsMOdZ_3WrctqFTyQ76LwNYfnyTRGJSgp7x8gfEpZOUSmcrcomqGrkI1HzLgZ5wwtFpSPV3juSlq0S4dMI3hWsqpx9YrQl6r0VTM3rC4a9sICjU7H0jDrmFU5vn4_N7KYqAoCjCli95Dxc_2wpaC-KfhtkpGZwjOM8rriR-jihG9Fcgde5s5BVY-bI6q47y5U5MtXghVwNGiYM"
-                />
+              )}
+            </div>
+            <div className="h-8 w-px bg-slate-200 mx-1"></div>
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold">{userName}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Pro {userRole}</p>
               </div>
+              <ProfileDropdown userName={userName} userEmail={userEmail} />
             </div>
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar: Course Tree */}
+
+          {/* ── Left Sidebar ── */}
           <aside className={`${sidebarCollapsed ? 'w-0' : 'w-72'} border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 transition-all duration-300 overflow-hidden`}>
-            {/* Course Progress */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">{currentCourse.shortTitle}</h3>
-                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">65%</span>
+            <div className="p-4 border-b border-slate-100">
+              <h3 className="font-semibold text-sm truncate mb-2">{course?.title || 'Course'}</h3>
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 transition-all"
+                  style={{ width: `${Math.round((allLessons.filter(l => l.is_completed).length / Math.max(allLessons.length, 1)) * 100)}%` }}></div>
               </div>
-              <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-primary w-[65%] transition-all duration-500"></div>
-              </div>
+              <p className="text-[10px] mt-1 text-slate-400">{allLessons.filter(l => l.is_completed).length}/{allLessons.length} lessons complete</p>
             </div>
-            
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-              {lessonsByModule.map((module, moduleIndex) => (
-                <div key={module.moduleName}>
-                  <div className={`px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider ${moduleIndex > 0 ? 'mt-4 border-t border-slate-100 dark:border-slate-800 pt-4' : ''}`}>
-                    {module.moduleName}
-                  </div>
-                  
-                  {module.lessons.map((lesson) => (
-                    <button 
-                      key={lesson.id}
-                      onClick={() => {
-                        if (lesson.status === 'locked') {
-                          alert('Complete previous lessons to unlock this content!');
-                        } else {
-                          navigate(`/learner/courses/${courseId}/lessons/${lesson.id}`);
-                        }
-                      }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer w-full text-left ${
-                        lesson.id === currentLessonId
-                          ? 'bg-primary/10 text-primary border border-primary/20'
-                          : lesson.status === 'locked'
-                          ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 opacity-60'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className={`material-symbols-outlined text-xl ${
-                        lesson.status === 'completed' ? 'text-green-500 font-bold' : 
-                        lesson.id === currentLessonId ? 'text-primary' : ''
-                      }`}>
-                        {lesson.icon}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {Object.entries(lessonsByModule).map(([moduleName, lessons], mIdx) => (
+                <div key={moduleName}>
+                  <div className={`px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider ${mIdx > 0 ? 'mt-4 border-t border-slate-100 pt-4' : ''}`}>{moduleName}</div>
+                  {lessons.map(l => (
+                    <button key={l.id} onClick={() => navigate(`/learner/courses/${courseId}/lessons/${l.id}`)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-left ${l.id === parseInt(lessonId) ? 'bg-blue-600/10 text-blue-600 border border-blue-600/20' : 'text-slate-600 hover:bg-slate-50'}`}>
+                      <span className={`material-symbols-outlined text-xl ${l.is_completed ? 'text-green-500' : l.id === parseInt(lessonId) ? 'text-blue-600' : 'text-slate-400'}`}>
+                        {l.is_completed ? 'check_circle' : getLessonIcon(l.lesson_type)}
                       </span>
-                      <span className={`text-sm ${lesson.id === currentLessonId ? 'font-bold' : 'font-medium'}`}>
-                        {lesson.title}
-                      </span>
+                      <span className={`text-sm truncate ${l.id === parseInt(lessonId) ? 'font-bold' : 'font-medium'}`}>{l.title}</span>
                     </button>
                   ))}
                 </div>
               ))}
             </div>
-            
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-              <button 
-                onClick={() => setSidebarCollapsed(true)}
-                className="flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-              >
-                <span className="material-symbols-outlined text-lg">first_page</span>
-                Collapse Menu
+            <div className="p-4 border-t border-slate-100">
+              <button onClick={() => setSidebarCollapsed(true)} className="flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg bg-slate-100 text-slate-600 text-sm font-medium hover:bg-slate-200">
+                <span className="material-symbols-outlined text-lg">first_page</span>Collapse
               </button>
             </div>
           </aside>
 
-          {/* Main Content: Video & Transcript */}
-          <main className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-background-dark">
+          {/* ── Main Content ── */}
+          <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-950">
             <div className="max-w-5xl mx-auto p-6 md:p-8">
-              {/* Breadcrumbs */}
-              <div className="flex items-center gap-2 text-xs text-slate-400 mb-6 font-medium">
-                <button 
-                  onClick={() => navigate('/learner/dashboard')}
-                  className="hover:text-primary cursor-pointer transition-colors"
-                >
-                  Home
-                </button>
+
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-2 text-xs text-slate-400 mb-6 font-medium flex-wrap">
+                <button onClick={() => navigate('/learner/dashboard')} className="hover:text-blue-600">Home</button>
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
-                <button 
-                  onClick={() => navigate('/learner/courses')}
-                  className="hover:text-primary cursor-pointer transition-colors"
-                >
-                  Courses
-                </button>
+                <button onClick={() => navigate('/learner/courses')} className="hover:text-blue-600">Courses</button>
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
-                <button 
-                  onClick={() => navigate(`/learner/courses/${courseId}`)}
-                  className="hover:text-primary cursor-pointer transition-colors"
-                >
-                  {currentCourse.shortTitle}
-                </button>
+                <button onClick={() => navigate(`/learner/courses/${courseId}`)} className="hover:text-blue-600 truncate max-w-[120px]">{course?.title}</button>
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
-                <span className="text-primary">{currentLesson.title}</span>
+                <span className="text-blue-600 truncate max-w-[160px]">{lesson.title}</span>
               </div>
 
-              {/* Video Section */}
-              <div className="relative group rounded-xl overflow-hidden bg-black aspect-video mb-8 shadow-2xl shadow-primary/5">
-                <img 
-                  className="w-full h-full object-cover opacity-60" 
-                  alt="Abstract coding screen background" 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-PCcw5qCgzh9KiGApEO48B2H0KjEdbhC_oZPkPvvoQ6O7MvtyGtX75lG2PskSC9jiFF2bm57CMc_l587SS4ZIhU6DZrscPz4C6FgBRTZK1VgNsuZyS6oIO5AV0xjYJSw5agqHnGosDYntufZUEkg2UylYd09RIkrfu312UimZIV9ID1aAjNN0hUDuQIZipoghMmYzg0sJdO1IxnrR3nxsC-8onVwS2z031D00JHh0jPDUOaCFvyBIpM-nhTHqcQyzYXwOgzqGPh8" 
-                />
-                
-                {/* Overlay Controls */}
-                <div 
-                  className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all cursor-pointer"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                >
-                  <div className="bg-primary text-white w-20 h-20 rounded-full flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-5xl translate-x-1">play_arrow</span>
-                  </div>
-                </div>
-
-                {/* Video UI */}
-                <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                  <div className="flex flex-col gap-2">
-                    <div className="h-1.5 w-full bg-white/20 rounded-full cursor-pointer relative group/progress">
-                      <div className="absolute h-full w-[45%] bg-primary rounded-full transition-all"></div>
-                      <div className="absolute h-4 w-4 bg-white rounded-full -top-1.5 left-[45%] shadow-lg shadow-black/50 opacity-0 group-hover/progress:opacity-100 transition-opacity"></div>
+              {/* ── VIDEO SECTION — handles all URL types ── */}
+              {videoConfig ? (
+                <div className="mb-8">
+                  {videoConfig.type === 'direct' && (
+                    <div className="rounded-xl overflow-hidden bg-black shadow-2xl">
+                      <video
+                        src={videoConfig.src}
+                        controls
+                        className="w-full"
+                        style={{ maxHeight: '500px' }}
+                      >
+                        Your browser does not support video playback.
+                      </video>
                     </div>
-                    <div className="flex items-center justify-between text-white text-xs font-medium">
-                      <div className="flex items-center gap-4">
-                        <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">
-                          {isPlaying ? 'pause_circle' : 'play_circle'}
-                        </span>
-                        <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">volume_up</span>
-                        <span>04:12 / 09:45</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">closed_caption</span>
-                        <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
-                        <span className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">fullscreen</span>
-                      </div>
+                  )}
+                  {videoConfig.type === 'iframe' && (
+                    <div className="rounded-xl overflow-hidden bg-black shadow-2xl"
+                      style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                      <iframe
+                        src={videoConfig.src}
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title="Lesson Video"
+                      />
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lesson Header & Transcript */}
-              <div className="flex flex-col gap-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">{currentLesson.title}</h1>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
-                      {getLessonDescription(courseId, currentLessonId)}
-                    </p>
-                  </div>
-                  <button className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0">
-                    <span className="material-symbols-outlined text-lg">bookmark</span>
-                    Save
-                  </button>
-                </div>
-
-                {/* Transcript Section */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
-                  <button 
-                    onClick={() => setTranscriptExpanded(!transcriptExpanded)}
-                    className="w-full px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-primary">description</span>
-                      <span className="font-bold">Clean Lesson Transcript</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400 font-medium">Auto-follow enabled</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          checked={autoFollowEnabled}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            setAutoFollowEnabled(!autoFollowEnabled);
-                          }}
-                          className="sr-only peer" 
-                          type="checkbox"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                  </button>
-                  
-                  {transcriptExpanded && (
-                    <div className="p-6 max-h-[300px] overflow-y-auto custom-scrollbar text-slate-600 dark:text-slate-400 text-base leading-loose space-y-4">
-                      {transcriptLines.map((line, idx) => (
-                        <p 
-                          key={idx}
-                          className={`${line.highlighted ? 'bg-primary/5 dark:bg-primary/10 rounded p-2 border-l-4 border-primary' : ''}`}
-                        >
-                          <span className="text-primary font-bold mr-2">{line.time}</span> 
-                          {line.text}
-                        </p>
-                      ))}
+                  )}
+                  {videoConfig.type === 'external' && (
+                    <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-12 text-center shadow-2xl">
+                      <span className="material-symbols-outlined text-white/50 text-7xl mb-4 block">videocam</span>
+                      <p className="text-white font-semibold text-lg mb-2">Meeting Recording</p>
+                      <p className="text-white/50 text-sm mb-6">This recording is hosted externally and cannot be embedded</p>
+                      <a href={videoConfig.src} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                        <span className="material-symbols-outlined">open_in_new</span>
+                        Watch Recording
+                      </a>
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Related Concepts Section */}
-              <div className="mt-10 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">link</span>
-                    <h3 className="font-bold text-sm tracking-wide uppercase">Related Concepts</h3>
+              ) : (
+                <div className="rounded-xl overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 aspect-video mb-8 shadow-2xl flex items-center justify-center relative">
+                  <div className="text-center text-white/50">
+                    <span className="material-symbols-outlined text-7xl mb-3 block">{getLessonIcon(lesson.lesson_type)}</span>
+                    <p className="font-medium capitalize">{lesson.lesson_type} lesson</p>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Explore connected topics to deepen your understanding
+                  <button onClick={() => setShowLanguageModal(true)}
+                    className="absolute bottom-4 right-4 flex items-center gap-2 bg-black/40 hover:bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors backdrop-blur-sm">
+                    <span className="material-symbols-outlined text-sm">translate</span>
+                    {selectedLanguage}
+                  </button>
+                </div>
+              )}
+
+              {/* ── PDF SECTION ── */}
+              {fileUrl && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                  <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
+                      <span className="font-bold">PDF Document</span>
+                    </div>
+                    <a href={fileUrl} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-1 text-blue-600 text-sm font-semibold hover:underline">
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      Open in new tab
+                    </a>
+                  </div>
+                  <iframe
+                    src={fileUrl.includes('drive.google.com') ?
+                      fileUrl.replace('/view', '/preview') :
+                      `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`
+                    }
+                    className="w-full"
+                    style={{ height: '600px' }}
+                    title="PDF Document"
+                  />
+                </div>
+              )}
+
+              {/* Lesson Header */}
+              <div className="flex items-start justify-between mb-6 gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {isCompleted ? '✓ Completed' : lesson.lesson_type}
+                    </span>
+                    {lesson.duration_minutes > 0 && <span className="text-xs text-slate-400">{lesson.duration_minutes} min</span>}
+                    {allLessons.length > 0 && <span className="text-xs text-slate-400">Lesson {currentIdx + 1} of {allLessons.length}</span>}
+                  </div>
+                  <h1 className="text-3xl font-bold mb-2">{lesson.title}</h1>
+                  <p className="text-slate-500 text-sm leading-relaxed">
+                    {lesson.description || `In this lesson, you'll explore ${lesson.title}. Follow along carefully and use the AI tools on the right to enhance your understanding.`}
                   </p>
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {relatedConcepts.map((concept) => (
-                    <button
-                      key={concept.id}
-                      onClick={() => navigate(`/learner/courses/${courseId}/lessons/${concept.id}`)}
-                      className="flex items-start gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left group"
-                    >
-                      <div className={`w-10 h-10 rounded-lg ${concept.isPrerequisite ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-primary/10 text-primary'} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                        <span className="material-symbols-outlined">
-                          {concept.isPrerequisite ? 'priority_high' : 'school'}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">
-                            {concept.title}
-                          </h4>
-                          {concept.isPrerequisite && (
-                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                              Prerequisite
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isCompleted && (
+                    <button onClick={handleMarkComplete} disabled={marking}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-60">
+                      {marking ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[18px]">check_circle</span>}
+                      Mark Complete
+                    </button>
+                  )}
+                  <button onClick={() => setShowLanguageModal(true)} className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200">
+                    <span className="material-symbols-outlined text-lg">translate</span>Language
+                  </button>
+                  <button className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200">
+                    <span className="material-symbols-outlined text-lg">bookmark</span>Save
+                  </button>
+                </div>
+              </div>
+
+              {/* ── TEXT CONTENT ── */}
+              {textBody && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                  <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center gap-3">
+                    <span className="material-symbols-outlined text-blue-600">description</span>
+                    <span className="font-bold">Lesson Content</span>
+                  </div>
+                  <div className="p-6 prose max-w-none text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: textBody }} />
+                </div>
+              )}
+
+              {/* Related Concepts */}
+              {relatedConcepts.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-blue-600">hub</span>Related Concepts
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {relatedConcepts.map((concept) => (
+                      <div key={concept.id}
+                        onClick={() => navigate(`/learner/courses/${courseId}/lessons/${concept.id}`)}
+                        className="p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-600 hover:shadow-md cursor-pointer transition-all group">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${concept.isPrerequisite ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                            <span className={`material-symbols-outlined text-lg ${concept.isPrerequisite ? 'text-amber-600' : 'text-blue-600'}`}>
+                              {getLessonIcon(concept.lesson_type)}
                             </span>
-                          )}
+                          </div>
+                          {concept.isPrerequisite && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold uppercase">Prerequisite</span>}
+                          {concept.is_completed && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Done</span>}
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                          {concept.description}
-                        </p>
+                        <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">{concept.title}</p>
+                        <p className="text-xs text-slate-400 mt-1 capitalize">{concept.lesson_type}{concept.duration_minutes ? ` • ${concept.duration_minutes}m` : ''}</p>
                       </div>
-                      <span className="material-symbols-outlined text-slate-400 group-hover:text-primary group-hover:translate-x-1 transition-all">
-                        arrow_forward
-                      </span>
-                    </button>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Quiz Section */}
-              <div className="mt-8 bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/20 dark:to-purple-500/20 rounded-xl p-6 border border-primary/20">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="material-symbols-outlined text-primary">quiz</span>
-                      <h3 className="font-bold">Test Your Knowledge</h3>
+              {/* ── QUIZ SECTION — real quiz finder ── */}
+              <div className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-2xl">quiz</span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                      Ready to check your understanding? Take a quick 5-minute quiz on variables.
-                    </p>
-                    <button 
-                      onClick={() => navigate(`/learner/courses/${courseId}/assessments/ch2-quiz`)}
-                      className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
-                    >
-                      <span className="material-symbols-outlined">play_arrow</span>
-                      Start Quiz
-                    </button>
+                    <div>
+                      <h3 className="text-lg font-bold">Test Your Knowledge</h3>
+                      <p className="text-blue-100 text-sm">Take a short quiz to reinforce what you've learned</p>
+                    </div>
                   </div>
-                  <div className="hidden md:block text-6xl opacity-20">
-                    📝
-                  </div>
+                  <button onClick={handleStartQuiz}
+                    className="flex items-center gap-2 bg-white text-blue-600 px-5 py-2.5 rounded-lg font-bold hover:bg-blue-50 transition-colors text-sm">
+                    <span className="material-symbols-outlined text-[18px]">play_arrow</span>Start Quiz
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Footer Navigation */}
-            <div className="max-w-5xl mx-auto px-6 py-10 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-8">
-              {previousLesson ? (
-                <button 
-                  onClick={() => navigate(`/learner/courses/${courseId}/lessons/${previousLesson.id}`)}
-                  className="flex items-center gap-3 group px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                >
-                  <span className="material-symbols-outlined text-slate-400 group-hover:-translate-x-1 transition-transform">arrow_back</span>
-                  <div className="text-left">
-                    <p className="text-[10px] uppercase font-bold text-slate-400">Previous</p>
-                    <p className="text-sm font-semibold">{previousLesson.title}</p>
-                  </div>
-                </button>
-              ) : (
-                <div></div>
-              )}
-              
-              {nextLesson ? (
-                <button 
-                  onClick={() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`)}
-                  className="flex items-center gap-3 group px-4 py-2 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
-                >
-                  <div className="text-right">
-                    <p className="text-[10px] uppercase font-bold text-white/70">Next Lesson</p>
-                    <p className="text-sm font-semibold">{nextLesson.title}</p>
-                  </div>
-                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
-              ) : (
-                <button 
-                  onClick={() => navigate(`/learner/courses/${courseId}`)}
-                  className="flex items-center gap-3 group px-4 py-2 rounded-lg bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:brightness-110 transition-all"
-                >
-                  <span className="material-symbols-outlined">check_circle</span>
-                  <span className="font-semibold">Complete Course</span>
-                </button>
-              )}
+              {/* Footer Nav */}
+              <div className="flex items-center justify-between border-t border-slate-100 mt-8 pt-8">
+                {previousLesson ? (
+                  <button onClick={() => navigate(`/learner/courses/${courseId}/lessons/${previousLesson.id}`)} className="flex items-center gap-3 group px-4 py-2 rounded-lg hover:bg-slate-50">
+                    <span className="material-symbols-outlined text-slate-400 group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                    <div className="text-left">
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Previous</p>
+                      <p className="text-sm font-semibold truncate max-w-[200px]">{previousLesson.title}</p>
+                    </div>
+                  </button>
+                ) : <div></div>}
+                {nextLesson ? (
+                  <button onClick={() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`)} className="flex items-center gap-3 group px-4 py-2 rounded-lg bg-blue-600 text-white shadow-lg hover:bg-blue-700">
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-white/70">Next Lesson</p>
+                      <p className="text-sm font-semibold truncate max-w-[200px]">{nextLesson.title}</p>
+                    </div>
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                  </button>
+                ) : (
+                  <button onClick={() => navigate(`/learner/courses/${courseId}`)} className="flex items-center gap-3 px-4 py-2 rounded-lg bg-emerald-500 text-white shadow-lg hover:bg-emerald-600">
+                    <span className="material-symbols-outlined">check_circle</span>
+                    <span className="font-semibold">Finish Course</span>
+                  </button>
+                )}
+              </div>
             </div>
           </main>
 
-          {/* Right Sidebar: AI Learning Enhancements */}
+          {/* ── Right Sidebar: AI ── */}
           <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col shrink-0 overflow-hidden">
-            <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-primary">auto_awesome</span>
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600">auto_awesome</span>
                 <h3 className="font-bold text-sm tracking-wide uppercase">AI Enhancements</h3>
               </div>
-
-              {/* AI Tool Grid */}
               <div className="grid grid-cols-1 gap-3">
                 {aiEnhancements.map((tool, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => handleAIEnhancement(tool.title)}
-                    className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:border-primary transition-all text-left group cursor-pointer"
-                  >
-                    <div className={`w-10 h-10 rounded-lg bg-${tool.color}-100 dark:bg-${tool.color}-900/30 text-${tool.color}-600 dark:text-${tool.color}-400 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                  <button key={idx}
+                    onClick={() => {
+                      if (tool.title === 'Audio Summary') setShowAudioPlayer(true);
+                      else if (tool.title === 'Video Explainer') setShowVideoModal(true);
+                      else if (tool.title === 'Walkthrough') { setShowWalkthroughOverlay(true); setWalkthroughStep(0); }
+                    }}
+                    className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 hover:border-blue-600 transition-all text-left group">
+                    <div className={`w-10 h-10 rounded-lg bg-${tool.color}-100 text-${tool.color}-600 flex items-center justify-center group-hover:scale-110 transition-transform`}>
                       <span className="material-symbols-outlined">{tool.icon}</span>
                     </div>
                     <div>
                       <p className="text-xs font-bold">{tool.title}</p>
                       <p className="text-[10px] text-slate-500">{tool.subtitle}</p>
                     </div>
+                    <span className="material-symbols-outlined text-slate-300 ml-auto text-sm">chevron_right</span>
                   </button>
                 ))}
               </div>
-
-              {/* Selectors */}
-              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Knowledge Level</label>
-                  <div className="flex p-1 bg-slate-200 dark:bg-slate-800 rounded-lg">
-                    <button 
-                      onClick={() => handleKnowledgeLevelChange('beginner')}
-                      className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${
-                        knowledgeLevel === 'beginner' 
-                          ? 'bg-white dark:bg-slate-700 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Beginner
-                    </button>
-                    <button 
-                      onClick={() => handleKnowledgeLevelChange('advanced')}
-                      className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${
-                        knowledgeLevel === 'advanced' 
-                          ? 'bg-white dark:bg-slate-700 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Advanced
-                    </button>
-                  </div>
+              <div className="bg-blue-600/5 border border-blue-600/10 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-blue-600 uppercase">AI Processing Units</span>
+                  <span className="text-xs font-bold text-blue-600">47 / 100</span>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Language</label>
-                  <button 
-                    onClick={() => setShowLanguageModal(true)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-base">language</span>
-                      <span>{selectedLanguage}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-base text-slate-400">expand_more</span>
-                  </button>
+                <div className="h-1.5 w-full bg-blue-600/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full w-[47%]"></div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">53 units remaining this month</p>
+              </div>
+              <div className="pt-4 border-t border-slate-200 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Knowledge Level</label>
+                <div className="flex p-1 bg-slate-200 rounded-lg">
+                  {['beginner', 'advanced'].map(level => (
+                    <button key={level} onClick={() => setKnowledgeLevel(level)}
+                      className={`flex-1 text-xs font-bold py-1.5 rounded-md capitalize transition-all ${knowledgeLevel === level ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                      {level}
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              {/* AI Q&A Chat */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col">
+              <div className="pt-4 border-t border-slate-200 flex flex-col">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-3 flex items-center justify-between">
-                  AI Q&A Assistant
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  AI Q&A Assistant <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 </label>
-                <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-3 mb-3 border border-primary/10">
-                  <p className="text-[11px] text-primary/80 leading-relaxed italic">
-                    "Hi there! I can help you understand variables better. Feel free to ask anything about this lesson."
-                  </p>
+                <div className="bg-blue-600/5 rounded-xl p-3 mb-3 border border-blue-600/10">
+                  <p className="text-[11px] text-blue-600/80 italic">Ask me anything about "{lesson.title}"</p>
                 </div>
                 <div className="relative mb-3">
-                  <input 
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-4 pr-10 text-xs focus:ring-2 focus:ring-primary focus:border-transparent transition-all" 
-                    placeholder="Ask a question..." 
-                    type="text"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 min-w-[2rem] min-h-[2rem] flex items-center justify-center shrink-0 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-xl leading-none">send</span>
+                  <input value={chatMessage} onChange={e => setChatMessage(e.target.value)}
+                    onKeyPress={e => e.key === 'Enter' && setChatMessage('')}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-4 pr-10 text-xs focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    placeholder="Ask a question..." />
+                  <button onClick={() => setChatMessage('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-600/10 rounded-lg">
+                    <span className="material-symbols-outlined text-xl">send</span>
                   </button>
                 </div>
-                <button 
-                  onClick={() => navigate('/learner/search')}
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-base">search</span>
-                  Open Full Search & Q&A
+                <button onClick={() => navigate('/learner/search')} className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-slate-100 text-xs font-semibold hover:bg-slate-200">
+                  <span className="material-symbols-outlined text-base">search</span>Open Full Search & Q&A
                 </button>
               </div>
             </div>
-
-            {/* AI Quick Stat */}
-            <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-white border-t border-slate-200">
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-2">
-                <span>AI PROCESSING UNITS</span>
-                <span>420 / 1000</span>
+                <span>LESSON PROGRESS</span><span>{isCompleted ? '100%' : 'In Progress'}</span>
               </div>
-              <div className="h-1 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full w-[42%] bg-primary rounded-full transition-all duration-500"></div>
+              <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-emerald-500 w-full' : 'bg-blue-600 w-[45%]'}`}></div>
               </div>
             </div>
           </aside>
         </div>
 
-        {/* Collapsed Sidebar Button */}
+        {/* Expand sidebar */}
         {sidebarCollapsed && (
-          <button 
-            onClick={() => setSidebarCollapsed(false)}
-            className="fixed left-0 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-r-lg shadow-lg hover:px-3 transition-all z-30"
-          >
+          <button onClick={() => setSidebarCollapsed(false)} className="fixed left-0 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2 rounded-r-lg shadow-lg z-30">
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
         )}
 
-        {/* Floating Audio Player */}
-        {showAudioPlayer && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-2xl z-40 animate-slide-up">
-            <div className="max-w-5xl mx-auto px-6 py-4">
-              <div className="flex items-center gap-4">
-                <button className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center hover:brightness-110 transition-all">
-                  <span className="material-symbols-outlined text-3xl">play_arrow</span>
-                </button>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-sm mb-1">Audio Summary: Variables Explained</h4>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500">01:23</span>
-                    <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full relative cursor-pointer group">
-                      <div className="absolute h-full bg-primary rounded-full transition-all" style={{ width: `${audioProgress}%` }}></div>
-                      <div 
-                        className="absolute h-4 w-4 bg-white border-2 border-primary rounded-full top-1/2 -translate-y-1/2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ left: `${audioProgress}%`, transform: 'translate(-50%, -50%)' }}
-                      ></div>
-                    </div>
-                    <span className="text-xs text-slate-500">02:45</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 text-slate-500 hover:text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-                    <span className="material-symbols-outlined">volume_up</span>
-                  </button>
-                  <button 
-                    onClick={() => console.log('Downloading transcript...')}
-                    className="p-2 text-slate-500 hover:text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                    title="Download Transcript"
-                  >
-                    <span className="material-symbols-outlined">download</span>
-                  </button>
-                  <button 
-                    onClick={() => navigate('/learner/ai-hub')}
-                    className="p-2 text-slate-500 hover:text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                    title="Open in AI Hub"
-                  >
-                    <span className="material-symbols-outlined">open_in_new</span>
-                  </button>
-                  <button 
-                    onClick={() => setShowAudioPlayer(false)}
-                    className="p-2 text-slate-500 hover:text-red-500 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Video Explainer Modal */}
-        {showVideoModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden">
-              <div className="relative aspect-video bg-black">
-                <img 
-                  className="w-full h-full object-cover opacity-60" 
-                  alt="Video thumbnail" 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-PCcw5qCgzh9KiGApEO48B2H0KjEdbhC_oZPkPvvoQ6O7MvtyGtX75lG2PskSC9jiFF2bm57CMc_l587SS4ZIhU6DZrscPz4C6FgBRTZK1VgNsuZyS6oIO5AV0xjYJSw5agqHnGosDYntufZUEkg2UylYd09RIkrfu312UimZIV9ID1aAjNN0hUDuQIZipoghMmYzg0sJdO1IxnrR3nxsC-8onVwS2z031D00JHh0jPDUOaCFvyBIpM-nhTHqcQyzYXwOgzqGPh8" 
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center shadow-xl hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-5xl translate-x-1">play_arrow</span>
-                  </button>
-                </div>
-                <button 
-                  onClick={() => setShowVideoModal(false)}
-                  className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold mb-2">Simplified Video: Variables in 3 Minutes</h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  Watch this alternative explanation with visual demonstrations and real-world examples.
-                </p>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => {
-                      setShowVideoModal(false);
-                      navigate('/learner/ai-hub');
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:brightness-110 transition-all"
-                  >
-                    <span className="material-symbols-outlined">open_in_new</span>
-                    Open in AI Hub
-                  </button>
-                  <button 
-                    onClick={() => setShowVideoModal(false)}
-                    className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Interactive Walkthrough Overlay */}
+        {/* ── Walkthrough Overlay ── */}
         {showWalkthroughOverlay && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl p-8">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                     <span className="material-symbols-outlined text-2xl">{walkthroughSteps[walkthroughStep].icon}</span>
                   </div>
                   <div>
@@ -1195,61 +642,29 @@ const aiEnhancements = [
                     <p className="text-xs text-slate-500">Step {walkthroughStep + 1} of {walkthroughSteps.length}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowWalkthroughOverlay(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                >
+                <button onClick={() => setShowWalkthroughOverlay(false)} className="text-slate-400 hover:text-slate-600">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-
-              <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-8 text-lg">
-                {walkthroughSteps[walkthroughStep].description}
-              </p>
-
-              {/* Progress Dots */}
+              <p className="text-slate-700 leading-relaxed mb-8 text-lg">{walkthroughSteps[walkthroughStep].description}</p>
               <div className="flex items-center justify-center gap-2 mb-6">
                 {walkthroughSteps.map((_, idx) => (
-                  <div 
-                    key={idx}
-                    className={`h-2 rounded-full transition-all ${
-                      idx === walkthroughStep 
-                        ? 'w-8 bg-primary' 
-                        : idx < walkthroughStep
-                        ? 'w-2 bg-emerald-500'
-                        : 'w-2 bg-slate-300 dark:bg-slate-700'
-                    }`}
-                  ></div>
+                  <div key={idx} className={`h-2 rounded-full transition-all ${idx === walkthroughStep ? 'w-8 bg-blue-600' : idx < walkthroughStep ? 'w-2 bg-emerald-500' : 'w-2 bg-slate-300'}`}></div>
                 ))}
               </div>
-
               <div className="flex items-center justify-between gap-4">
-                <button 
-                  onClick={() => setWalkthroughStep(Math.max(0, walkthroughStep - 1))}
-                  disabled={walkthroughStep === 0}
-                  className="flex items-center gap-2 px-6 py-3 rounded-lg border border-slate-300 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined">arrow_back</span>
-                  Previous
+                <button onClick={() => setWalkthroughStep(s => Math.max(0, s - 1))} disabled={walkthroughStep === 0}
+                  className="flex items-center gap-2 px-6 py-3 rounded-lg border border-slate-300 font-semibold hover:bg-slate-50 disabled:opacity-50">
+                  <span className="material-symbols-outlined">arrow_back</span>Previous
                 </button>
                 {walkthroughStep < walkthroughSteps.length - 1 ? (
-                  <button 
-                    onClick={() => setWalkthroughStep(walkthroughStep + 1)}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:brightness-110 transition-all shadow-lg shadow-primary/20"
-                  >
-                    Next
-                    <span className="material-symbols-outlined">arrow_forward</span>
+                  <button onClick={() => setWalkthroughStep(s => s + 1)} className="flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+                    Next<span className="material-symbols-outlined">arrow_forward</span>
                   </button>
                 ) : (
-                  <button 
-                    onClick={() => {
-                      setShowWalkthroughOverlay(false);
-                      setWalkthroughStep(0);
-                    }}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-white font-semibold hover:brightness-110 transition-all shadow-lg shadow-emerald-500/20"
-                  >
-                    <span className="material-symbols-outlined">check_circle</span>
-                    Complete
+                  <button onClick={() => { setShowWalkthroughOverlay(false); setWalkthroughStep(0); }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600">
+                    <span className="material-symbols-outlined">check_circle</span>Complete
                   </button>
                 )}
               </div>
@@ -1257,50 +672,107 @@ const aiEnhancements = [
           </div>
         )}
 
-        {/* Language Selection Modal */}
-        {showLanguageModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">Select Language</h3>
-                  <button 
-                    onClick={() => setShowLanguageModal(false)}
-                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
+        {/* ── Video Explainer Modal ── */}
+        {showVideoModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowVideoModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-amber-600">movie</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">AI Video Explainer</h3>
+                    <p className="text-sm text-slate-500">{lesson.title} — Simplified Visual Breakdown</p>
+                  </div>
                 </div>
-                <p className="text-sm text-slate-500 mt-2">Choose your preferred learning language</p>
+                <button onClick={() => setShowVideoModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
               </div>
-              <div className="p-4 max-h-96 overflow-y-auto custom-scrollbar">
-                {languageOptions.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.name)}
-                    className={`w-full flex items-center justify-between p-4 rounded-lg mb-2 transition-all ${
-                      selectedLanguage === lang.name
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'border-2 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{lang.flag}</span>
-                      <span className="font-medium">{lang.name}</span>
-                    </div>
-                    {selectedLanguage === lang.name && (
-                      <span className="material-symbols-outlined text-primary">check_circle</span>
-                    )}
-                  </button>
-                ))}
+              <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                <div className="text-center text-white/60">
+                  <span className="material-symbols-outlined text-8xl mb-4 block">play_circle</span>
+                  <p className="font-medium text-lg">AI Video Explainer</p>
+                  <p className="text-sm mt-1">Coming soon — AI team integration pending</p>
+                </div>
+              </div>
+              <div className="p-6 flex justify-end">
+                <button onClick={() => { setShowVideoModal(false); navigate('/learner/ai-hub'); }}
+                  className="flex items-center gap-2 text-sm text-blue-600 font-semibold hover:underline">
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>Open in AI Hub
+                </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* ── Language Modal ── */}
+        {showLanguageModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowLanguageModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold">Select Language</h3>
+                  <p className="text-sm text-slate-500">Choose your preferred language for AI content</p>
+                </div>
+                <button onClick={() => setShowLanguageModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div className="space-y-2 mb-6">
+                {languageOptions.map((lang) => (
+                  <button key={lang.code} onClick={() => { setSelectedLanguage(lang.name); setShowLanguageModal(false); }}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${selectedLanguage === lang.name ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                    <span className="text-2xl">{lang.flag}</span>
+                    <p className="font-semibold text-slate-900 flex-1">{lang.name}</p>
+                    {selectedLanguage === lang.name && <span className="material-symbols-outlined text-blue-600">check_circle</span>}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">info</span>
+                Multi-language AI content generation coming soon
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Audio Player ── */}
+        {showAudioPlayer && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-2xl z-40">
+            <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-600">mic</span>
+              </div>
+              <button className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 flex-shrink-0">
+                <span className="material-symbols-outlined text-3xl">play_arrow</span>
+              </button>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-sm mb-1 truncate">Audio Summary: {lesson.title}</h4>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 flex-shrink-0">0:00</span>
+                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden cursor-pointer"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                      setAudioProgress(pct);
+                    }}>
+                    <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${audioProgress}%` }}></div>
+                  </div>
+                  <span className="text-xs text-slate-500 flex-shrink-0">2:00</span>
+                </div>
+              </div>
+              <button onClick={() => setShowAudioPlayer(false)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-slate-100 rounded-lg flex-shrink-0">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 };
 
 export default LessonContent;
-

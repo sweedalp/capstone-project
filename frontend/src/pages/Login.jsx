@@ -57,7 +57,7 @@ const Login = () => {
 
   try {
     const response = await apiClient.post(
-      "/api/auth/login",
+      "/api/v1/auth/login",
       new URLSearchParams({
         username: formData.email,
         password: formData.password,
@@ -79,7 +79,7 @@ const Login = () => {
 
     let user;
     try {
-      const userResponse = await apiClient.get("/api/auth/me");
+      const userResponse = await apiClient.get("/api/v1/auth/me");
       user = userResponse.data;
     } catch {
       setErrors({ submit: "Login succeeded but failed to load profile. Try again." });

@@ -1,51 +1,99 @@
+"""
+LearnAI Pro - AI-Powered Knowledge Intelligence Platform
+FastAPI Main Application Entry Point
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import uvicorn
 import os
 
-#  MUST be first — before any app imports
-# Goes one level up from backend/ to find .env in project root
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+from app.core.config import settings
+from app.core.database import engine, Base
+from app.api.api import api_router
 
-from app.core.database import Base, engine
-from app.models import user
-from app.api import auth
+# ── Import all models so Base.metadata sees them ────────────────────
+import app.models  # noqa: F401
 
-# Create tables automatically
+# ── Create tables ───────────────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
 
+# ── Create FastAPI application ──────────────────────────────────────
 app = FastAPI(
-    title="LMS & Knowledge Intelligence Platform API",
-    description="AI-powered Learning Management System with Knowledge Intelligence",
-    version="1.0.0"
+    title="LearnAI Pro API",
+    description="AI-Powered Knowledge Intelligence Platform for Learning",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# ── Serve uploaded videos ───────────────────────────────────────────
+os.makedirs("static/videos", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")},
+        content={
+            "message": "Internal server error",
+            "detail": str(exc) if settings.DEBUG else "An error occurred"
+        }
+    )
+
+# ── Configure CORS ──────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        settings.FRONTEND_URL,
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ── Include API routes ──────────────────────────────────────────────
+app.include_router(api_router, prefix="/api/v1")
+
+
 @app.get("/")
 async def root():
     return {
-        "message": "Welcome to LMS & Knowledge Intelligence Platform API",
+        "message": "LearnAI Pro API",
         "version": "1.0.0",
+        "status": "running",
         "docs": "/docs"
     }
 
+
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "environment": settings.ENVIRONMENT
+    }
 
-# Include authentication router
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "message": "Internal server error",
+            "detail": str(exc) if settings.DEBUG else "An error occurred"
+        }
+    )
+
 
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("BACKEND_PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.DEBUG
+    )

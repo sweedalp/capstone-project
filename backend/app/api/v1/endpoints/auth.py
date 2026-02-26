@@ -5,6 +5,7 @@ from itsdangerous import URLSafeTimedSerializer
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from fastapi.security import OAuth2PasswordBearer
 
 from app.core.database import get_db
 from app.models.user import User
@@ -101,7 +102,8 @@ def login(
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(
-        User.username == form_data.username
+        (User.username == form_data.username) |
+        (User.email == form_data.username)
     ).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):

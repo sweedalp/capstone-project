@@ -6,9 +6,10 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "LMS & Knowledge Intelligence Platform"
     APP_ENV: str = "development"
+    ENVIRONMENT: str = "development"
     DEBUG: bool = True
     SECRET_KEY: str = "your-secret-key-change-in-production"
-    
+    FRONTEND_URL: str = "http://localhost:3000"
     # Database
     DATABASE_URL: str =  "postgresql://username:password@localhost:5432/sample_db"
     REDIS_URL: str = "redis://localhost:6379"
