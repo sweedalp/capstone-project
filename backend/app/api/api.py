@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     ai_hub,
     assessments,
     revision,
+    trainer,
 )
 
 api_router = APIRouter()
@@ -32,7 +33,7 @@ api_router.include_router(search.router,      prefix="/search",      tags=["Sear
 api_router.include_router(analytics.router,   prefix="/analytics",   tags=["Analytics"])
 api_router.include_router(learning.router,    prefix="/learning",    tags=["Learning Progress"])
 api_router.include_router(revision.router,    prefix="/revision",    tags=["Revision Assistant"])
-
+api_router.include_router(trainer.router, prefix="/trainer", tags=["Trainer"])
 
 # ── AI Features ────────────────────────────────────────────────────
 api_router.include_router(ai_hub.router,      prefix="/ai-hub",      tags=["AI Learning Hub"])

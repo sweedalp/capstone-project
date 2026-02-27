@@ -32,7 +32,9 @@ app = FastAPI(
 # ── Serve uploaded videos ───────────────────────────────────────────
 os.makedirs("static/videos", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
+os.makedirs("static/uploads/videos", exist_ok=True)
+os.makedirs("static/uploads/pdfs", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     return JSONResponse(

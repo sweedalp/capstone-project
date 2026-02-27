@@ -3,169 +3,35 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import TrainerSidebar from "./TrainerSidebar";
 import TrainerProfileDropdown from "./TrainerProfileDropdown";
 
-/* ─────────────────────────────────────────────
-   CUSTOM CURSOR HOOK
-───────────────────────────────────────────── */
-function useCustomCursor() {
-  const [pos, setPos] = useState({ x: -200, y: -200 });
-  const [isHovered, setIsHovered] = useState(false);
-  const [isClicked, setIsClicked] = useState(false);
-  useEffect(() => {
-    const move = (e) => setPos({ x: e.clientX, y: e.clientY });
-    const over = (e) => setIsHovered(!!e.target.closest("button,a,input,select,[role='button']"));
-    const down = () => setIsClicked(true);
-    const up = () => setIsClicked(false);
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseover", over);
-    window.addEventListener("mousedown", down);
-    window.addEventListener("mouseup", up);
-    return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseover", over);
-      window.removeEventListener("mousedown", down);
-      window.removeEventListener("mouseup", up);
-    };
-  }, []);
-  return { pos, isHovered, isClicked };
-}
-
-/* ─────────────────────────────────────────────
-   ICON
-───────────────────────────────────────────── */
 const Icon = ({ name, className = "" }) => (
-  <span
-    className={`material-symbols-outlined select-none leading-none ${className}`}
-    style={{ fontFamily: "'Material Symbols Outlined'", fontVariationSettings: "'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24" }}
-  >
+  <span className={`material-symbols-outlined select-none leading-none ${className}`}
+    style={{ fontFamily: "'Material Symbols Outlined'", fontVariationSettings: "'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24" }}>
     {name}
   </span>
 );
 
-/* ─────────────────────────────────────────────
-   DATA
-───────────────────────────────────────────── */
 const COURSES = [
-  { id: "python-101", title: "Python 101" },
-  { id: "data-science", title: "Data Science Fundamentals" },
+  { id: "python-101",    title: "Python 101" },
+  { id: "data-science",  title: "Data Science Fundamentals" },
   { id: "digital-mktg", title: "Digital Marketing" },
-  { id: "soft-skills", title: "Soft Skills" },
+  { id: "soft-skills",  title: "Soft Skills" },
 ];
 
 const ASSETS = [
-  {
-    id: 1,
-    title: "Advanced Quantum Physics",
-    badgeIcon: "videocam",
-    badgeText: "14:20",
-    type: "video",
-    collectionId: "python-materials",
-    hasQuiz: false,
-    aiEnhanced: true,
-    views: "1.2k views",
-    course: "Science 101",
-    courseId: "science-101",
-    usedInLessons: 3,
-    uploadedAt: "today",
-    enhancement: { icon: "mic", text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10", tc: "text-[#137fec]", ic: "text-[#137fec]" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuATbpDj90u0HKuGhFyX8mR8zmiQoBu_BmiYCv_oSQ5wv7_p-Jog12A5LDh6HtcVld536dP_b0eBYzSxWwRqsH1DmwZQ39PNiNPcokAHIDGtFQsy5jk2ODCU1lDXqadvsbT-OD3hUoPWVVw0J4rfpbEtM1MmLrTrvYgpgei18AgZlWQN7oBKh8GffrWLOLSnnIDC-57ZqY4-ufuxGsB5nXGh03qHAWDROUTrrN0lyEF_TgdXHqbseIsk_fDhBfp7PVK3fbCt5Fu4Wck",
-  },
-  {
-    id: 2,
-    title: "SEO Mastery 2024",
-    badgeIcon: "description",
-    badgeText: "24 PAGES",
-    type: "document",
-    collectionId: "data-science-resources",
-    hasQuiz: false,
-    aiEnhanced: false,
-    views: "850 views",
-    course: "Digital Mktg",
-    courseId: "digital-mktg",
-    usedInLessons: 1,
-    uploadedAt: "today",
-    enhancement: { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10", tc: "text-amber-600", ic: "text-amber-500" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuBYk50c_qUYXe4wEZqWUZTzBj_GUoe1TiMsbJ9KEmCfgj1za66rgxBNx_eAzHiX1kLqhGh89yYFrKF7xTDGd4312WI0aIL3_x8WsKXuOxXrQqS4aIM9jtd-63rBPMsGWY8vRsy8y6RH4dRmfhaswqWm6_EotjYk0ZWFkuwsEWRLTY42GLuD-f-od5LPyGQt_9Ftx1kVqvSEWl0-6KZ148fu7ElD4flrT5Y1xR0ai6iro8JSBFJns52s264liiO5Qo3y27fYz8lMwy0",
-  },
-  {
-    id: 3,
-    title: "Public Speaking Workshop",
-    badgeIcon: "mic",
-    badgeText: "45:00",
-    type: "audio",
-    collectionId: "python-materials",
-    hasQuiz: true,
-    aiEnhanced: false,
-    views: "2.1k views",
-    course: "Soft Skills",
-    courseId: "soft-skills",
-    usedInLessons: 2,
-    uploadedAt: "yesterday",
-    enhancement: { icon: "quiz", text: "✨ AI Quiz ready", bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuDVFRj82yoxsx-H-OGZWRh_N7TKpJPZ1khMRHzrYpushZZXDJjRes1oQ0exbsySAXfQWXVqwWOiaonu6uIFweOlW2u_-LQDfKLbKDXkshx1C0q7A14o5hiYM6fSdb6r07FDKMOmXcgPS50Nwzmx4mqXFn2kBdnGxNNrLseYlHpY2uq-0j7yKYR_HM6VI8ntwvQRrFtmnXrfwouHcuUGNkwftCF9a1e0C3_LnqpCERh6_2VoIdjR58Bnaiq1pAxpL9NiWWSQ62tLVC0",
-  },
-  {
-    id: 4,
-    title: "Python for Beginners",
-    badgeIcon: "videocam",
-    badgeText: "32:15",
-    type: "video",
-    collectionId: "python-materials",
-    hasQuiz: true,
-    aiEnhanced: false,
-    views: "3.4k views",
-    course: "CS Intro",
-    courseId: "python-101",
-    usedInLessons: 5,
-    uploadedAt: "today",
-    enhancement: { icon: "mic", text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10", tc: "text-[#137fec]", ic: "text-[#137fec]" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuDw9fFwuw73f-0j1xDMPxkMfUEZntenqgon2gO7gbueXjWoo4euTVg44ZsxzGPM45DediUi-iQMG26H9kPSyGQem6a9etHleq6uFr4npaUe9tkNQHhiJFEtWDgftDzmdq_KqJddx9X-IEDHe62ErlBo7NLo3_1CH1K6uVyXpTNPNMhjeAESkhp4edZ8lmkieg7zZwe69WkQOHvm37EbUHQT-HasgE7Vcuhsd3pq1maU8IaD9mmsf9ghZorWy5ECJtDp131t-JxuX1o",
-  },
-  {
-    id: 5,
-    title: "UX Design Principles",
-    badgeIcon: "description",
-    badgeText: "12 PAGES",
-    type: "document",
-    collectionId: "data-science-resources",
-    hasQuiz: false,
-    aiEnhanced: false,
-    views: "920 views",
-    course: "Design Lab",
-    courseId: "data-science",
-    usedInLessons: 2,
-    uploadedAt: "yesterday",
-    enhancement: { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10", tc: "text-amber-600", ic: "text-amber-500" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuCOrV1_eO6N_asLJDALhB9mcEP9DoBiEUfRaP6iQ6o3MgzBYLvogjLrKu4RpSrSNzsMG6WH14R1t4kJ2eZ8emIFVFimbwmcinQof2WfjrsTSqtzBbDmae81po-lC1TdEzg7CvRBc_Gzyrf2OlqlFWf9UL4YXPV8zGLJOj78Rrh4SShwMlJkK6WKVpz41Aq1AX5GyyeLvmIQJicE9nqpaKiFqAZ9T59xkwGmsEGfOFPzzxTFanV_xX93rZt2syGa0i5Eg8Edmc4ZnAA",
-  },
-  {
-    id: 6,
-    title: "History of Renaissance Art",
-    badgeIcon: "videocam",
-    badgeText: "1:05:00",
-    type: "video",
-    collectionId: "ai-generated",
-    hasQuiz: true,
-    aiEnhanced: true,
-    views: "450 views",
-    course: "Humanities",
-    courseId: "data-science",
-    usedInLessons: 1,
-    uploadedAt: "yesterday",
-    enhancement: { icon: "quiz", text: "✨ AI Quiz ready", bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" },
-    thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuCcvMwpaC2YLCdCzbj5CPWvU3MKTzLCR4lf3c2sQSN8eoZE6NywRYkOMy-aPgtoahO2lezSIOwtyclN6omjwypZLekwMWlYkJ7k-i55_zCsyJTOEAjKKvsokw1fljoSQIkgNL8zYfKU2y2BB2S9uV-B62FZfOonyZ6fTlERK0qIT-BpzccUXvGTm2NWYoMEFlBwVNPK1HBMHlXRGpv_bIB-T08qHnXIKlt6T3CWd7gzujMKGNqr85s4vVgSttkl0aoVfP4TC0ksOig",
-  },
+  { id: 1, title: "Advanced Quantum Physics", badgeIcon: "videocam", badgeText: "14:20", type: "video", collectionId: "python-materials", hasQuiz: false, aiEnhanced: true, views: "1.2k views", course: "Science 101", courseId: "science-101", usedInLessons: 3, uploadedAt: "today", enhancement: { icon: "mic", text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10", tc: "text-[#137fec]", ic: "text-[#137fec]" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuATbpDj90u0HKuGhFyX8mR8zmiQoBu_BmiYCv_oSQ5wv7_p-Jog12A5LDh6HtcVld536dP_b0eBYzSxWwRqsH1DmwZQ39PNiNPcokAHIDGtFQsy5jk2ODCU1lDXqadvsbT-OD3hUoPWVVw0J4rfpbEtM1MmLrTrvYgpgei18AgZlWQN7oBKh8GffrWLOLSnnIDC-57ZqY4-ufuxGsB5nXGh03qHAWDROUTrrN0lyEF_TgdXHqbseIsk_fDhBfp7PVK3fbCt5Fu4Wck" },
+  { id: 2, title: "SEO Mastery 2024", badgeIcon: "description", badgeText: "24 PAGES", type: "document", collectionId: "data-science-resources", hasQuiz: false, aiEnhanced: false, views: "850 views", course: "Digital Mktg", courseId: "digital-mktg", usedInLessons: 1, uploadedAt: "today", enhancement: { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10", tc: "text-amber-600", ic: "text-amber-500" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuBYk50c_qUYXe4wEZqWUZTzBj_GUoe1TiMsbJ9KEmCfgj1za66rgxBNx_eAzHiX1kLqhGh89yYFrKF7xTDGd4312WI0aIL3_x8WsKXuOxXrQqS4aIM9jtd-63rBPMsGWY8vRsy8y6RH4dRmfhaswqWm6_EotjYk0ZWFkuwsEWRLTY42GLuD-f-od5LPyGQt_9Ftx1kVqvSEWl0-6KZ148fu7ElD4flrT5Y1xR0ai6iro8JSBFJns52s264liiO5Qo3y27fYz8lMwy0" },
+  { id: 3, title: "Public Speaking Workshop", badgeIcon: "mic", badgeText: "45:00", type: "audio", collectionId: "python-materials", hasQuiz: true, aiEnhanced: false, views: "2.1k views", course: "Soft Skills", courseId: "soft-skills", usedInLessons: 2, uploadedAt: "yesterday", enhancement: { icon: "quiz", text: "✨ AI Quiz ready", bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuDVFRj82yoxsx-H-OGZWRh_N7TKpJPZ1khMRHzrYpushZZXDJjRes1oQ0exbsySAXfQWXVqwWOiaonu6uIFweOlW2u_-LQDfKLbKDXkshx1C0q7A14o5hiYM6fSdb6r07FDKMOmXcgPS50Nwzmx4mqXFn2kBdnGxNNrLseYlHpY2uq-0j7yKYR_HM6VI8ntwvQRrFtmnXrfwouHcuUGNkwftCF9a1e0C3_LnqpCERh6_2VoIdjR58Bnaiq1pAxpL9NiWWSQ62tLVC0" },
+  { id: 4, title: "Python for Beginners", badgeIcon: "videocam", badgeText: "32:15", type: "video", collectionId: "python-materials", hasQuiz: true, aiEnhanced: false, views: "3.4k views", course: "CS Intro", courseId: "python-101", usedInLessons: 5, uploadedAt: "today", enhancement: { icon: "mic", text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10", tc: "text-[#137fec]", ic: "text-[#137fec]" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuDw9fFwuw73f-0j1xDMPxkMfUEZntenqgon2gO7gbueXjWoo4euTVg44ZsxzGPM45DediUi-iQMG26H9kPSyGQem6a9etHleq6uFr4npaUe9tkNQHhiJFEtWDgftDzmdq_KqJddx9X-IEDHe62ErlBo7NLo3_1CH1K6uVyXpTNPNMhjeAESkhp4edZ8lmkieg7zZwe69WkQOHvm37EbUHQT-HasgE7Vcuhsd3pq1maU8IaD9mmsf9ghZorWy5ECJtDp131t-JxuX1o" },
+  { id: 5, title: "UX Design Principles", badgeIcon: "description", badgeText: "12 PAGES", type: "document", collectionId: "data-science-resources", hasQuiz: false, aiEnhanced: false, views: "920 views", course: "Design Lab", courseId: "data-science", usedInLessons: 2, uploadedAt: "yesterday", enhancement: { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10", tc: "text-amber-600", ic: "text-amber-500" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuCOrV1_eO6N_asLJDALhB9mcEP9DoBiEUfRaP6iQ6o3MgzBYLvogjLrKu4RpSrSNzsMG6WH14R1t4kJ2eZ8emIFVFimbwmcinQof2WfjrsTSqtzBbDmae81po-lC1TdEzg7CvRBc_Gzyrf2OlqlFWf9UL4YXPV8zGLJOj78Rrh4SShwMlJkK6WKVpz41Aq1AX5GyyeLvmIQJicE9nqpaKiFqAZ9T59xkwGmsEGfOFPzzxTFanV_xX93rZt2syGa0i5Eg8Edmc4ZnAA" },
+  { id: 6, title: "History of Renaissance Art", badgeIcon: "videocam", badgeText: "1:05:00", type: "video", collectionId: "ai-generated", hasQuiz: true, aiEnhanced: true, views: "450 views", course: "Humanities", courseId: "data-science", usedInLessons: 1, uploadedAt: "yesterday", enhancement: { icon: "quiz", text: "✨ AI Quiz ready", bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" }, thumb: "https://lh3.googleusercontent.com/aida-public/AB6AXuCcvMwpaC2YLCdCzbj5CPWvU3MKTzLCR4lf3c2sQSN8eoZE6NywRYkOMy-aPgtoahO2lezSIOwtyclN6omjwypZLekwMWlYkJ7k-i55_zCsyJTOEAjKKvsokw1fljoSQIkgNL8zYfKU2y2BB2S9uV-B62FZfOonyZ6fTlERK0qIT-BpzccUXvGTm2NWYoMEFlBwVNPK1HBMHlXRGpv_bIB-T08qHnXIKlt6T3CWd7gzujMKGNqr85s4vVgSttkl0aoVfP4TC0ksOig" },
 ];
 
 const INITIAL_COLLECTIONS = [
-  { id: "python-materials", label: "Python Course Materials" },
+  { id: "python-materials",       label: "Python Course Materials" },
   { id: "data-science-resources", label: "Data Science Resources" },
-  { id: "ai-generated", label: "AI Generated Content" },
+  { id: "ai-generated",           label: "AI Generated Content" },
 ];
 
-/* ─────────────────────────────────────────────
-   ASSET DETAIL MODAL — stays on Page 18
-   Click title/thumbnail → detailed view
-───────────────────────────────────────────── */
 function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
   if (!asset) return null;
   return (
@@ -173,9 +39,7 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <h3 className="font-bold text-slate-900 truncate pr-4">{asset.title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
-            <Icon name="close" />
-          </button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><Icon name="close" /></button>
         </div>
         <div className="p-5 space-y-4">
           <img src={asset.thumb} alt={asset.title} className="w-full rounded-xl object-cover" style={{ aspectRatio: "16/9" }} />
@@ -186,9 +50,7 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
             </div>
             <div className="bg-slate-50 rounded-lg p-3">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Used In</p>
-              <p className="text-lg font-black text-slate-900 cursor-pointer hover:text-[#137fec] transition-colors">
-                {asset.usedInLessons} lessons
-              </p>
+              <p className="text-lg font-black text-slate-900">{asset.usedInLessons} lessons</p>
             </div>
           </div>
           <div className="bg-slate-50 rounded-lg p-3">
@@ -203,12 +65,8 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
           </div>
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onReuse} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">
-            Reuse
-          </button>
-          <button onClick={onEdit} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">
-            Edit
-          </button>
+          <button onClick={onReuse} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">Reuse</button>
+          <button onClick={onEdit} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">Edit</button>
           <button onClick={onAIEnhance} className="flex-1 py-2.5 bg-amber-50 text-amber-700 rounded-lg text-sm font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1">
             <Icon name="auto_awesome" className="text-base" /> AI Enhance
           </button>
@@ -218,22 +76,14 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   REUSE MODAL — course/lesson selector
-   After selection → Course Management (Page 14)
-───────────────────────────────────────────── */
 function ReuseModal({ asset, onClose, onConfirm }) {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [successMsg, setSuccessMsg] = useState(false);
-
   const handleConfirm = () => {
     if (!selectedCourse) return;
     setSuccessMsg(true);
-    setTimeout(() => {
-      onConfirm(selectedCourse);
-    }, 900);
+    setTimeout(() => onConfirm(selectedCourse), 900);
   };
-
   if (!asset) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -257,14 +107,8 @@ function ReuseModal({ asset, onClose, onConfirm }) {
               <div className="space-y-2">
                 {COURSES.map(c => (
                   <label key={c.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50 transition-colors">
-                    <input
-                      type="radio"
-                      name="course-select"
-                      value={c.id}
-                      checked={selectedCourse === c.id}
-                      onChange={() => setSelectedCourse(c.id)}
-                      className="accent-[#137fec]"
-                    />
+                    <input type="radio" name="course-select" value={c.id} checked={selectedCourse === c.id}
+                      onChange={() => setSelectedCourse(c.id)} className="accent-[#137fec]" />
                     <span className="text-sm font-medium text-slate-700">{c.title}</span>
                   </label>
                 ))}
@@ -272,11 +116,8 @@ function ReuseModal({ asset, onClose, onConfirm }) {
             </div>
             <div className="flex gap-3 p-5 border-t border-slate-100">
               <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
-              <button
-                onClick={handleConfirm}
-                disabled={!selectedCourse}
-                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleConfirm} disabled={!selectedCourse}
+                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 Add to Course
               </button>
             </div>
@@ -287,9 +128,6 @@ function ReuseModal({ asset, onClose, onConfirm }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   DELETE CONFIRM MODAL — stays on Page 18
-───────────────────────────────────────────── */
 function DeleteModal({ asset, onClose, onConfirm }) {
   if (!asset) return null;
   return (
@@ -317,10 +155,6 @@ function DeleteModal({ asset, onClose, onConfirm }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   BULK ADD TO COURSE MODAL
-   After selection → Course Management (Page 14)
-───────────────────────────────────────────── */
 function BulkAddModal({ count, onClose, onConfirm }) {
   const [selectedCourse, setSelectedCourse] = useState("");
   return (
@@ -333,25 +167,16 @@ function BulkAddModal({ count, onClose, onConfirm }) {
         <div className="p-5 space-y-3">
           {COURSES.map(c => (
             <label key={c.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50 transition-colors">
-              <input
-                type="radio"
-                name="bulk-course"
-                value={c.id}
-                checked={selectedCourse === c.id}
-                onChange={() => setSelectedCourse(c.id)}
-                className="accent-[#137fec]"
-              />
+              <input type="radio" name="bulk-course" value={c.id} checked={selectedCourse === c.id}
+                onChange={() => setSelectedCourse(c.id)} className="accent-[#137fec]" />
               <span className="text-sm font-medium text-slate-700">{c.title}</span>
             </label>
           ))}
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
           <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
-          <button
-            onClick={() => { if (selectedCourse) onConfirm(selectedCourse); }}
-            disabled={!selectedCourse}
-            className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <button onClick={() => { if (selectedCourse) onConfirm(selectedCourse); }} disabled={!selectedCourse}
+            className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Add to Course
           </button>
         </div>
@@ -360,9 +185,6 @@ function BulkAddModal({ count, onClose, onConfirm }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   BULK DELETE CONFIRM MODAL — stays on Page 18
-───────────────────────────────────────────── */
 function BulkDeleteModal({ count, onClose, onConfirm }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -372,9 +194,7 @@ function BulkDeleteModal({ count, onClose, onConfirm }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
         </div>
         <div className="p-5">
-          <p className="text-sm text-slate-600">
-            Are you sure you want to permanently delete <strong>{count} selected item{count !== 1 ? "s" : ""}</strong>? This will remove them from all courses they're used in.
-          </p>
+          <p className="text-sm text-slate-600">Are you sure you want to permanently delete <strong>{count} selected item{count !== 1 ? "s" : ""}</strong>? This will remove them from all courses.</p>
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
           <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
@@ -385,9 +205,6 @@ function BulkDeleteModal({ count, onClose, onConfirm }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   NEW COLLECTION MODAL — stays on Page 18
-───────────────────────────────────────────── */
 function NewCollectionModal({ onClose, onConfirm }) {
   const [name, setName] = useState("");
   return (
@@ -399,42 +216,26 @@ function NewCollectionModal({ onClose, onConfirm }) {
         </div>
         <div className="p-5">
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Name</label>
-          <input
-            autoFocus
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && name.trim()) { onConfirm(name.trim()); onClose(); }}}
+          <input autoFocus value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && name.trim()) { onConfirm(name.trim()); onClose(); } }}
             className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#137fec]/30"
-            placeholder="e.g. Python Course Materials"
-          />
+            placeholder="e.g. Python Course Materials" />
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
           <button onClick={onClose} className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
-          <button
-            onClick={() => { if (name.trim()) { onConfirm(name.trim()); onClose(); }}}
-            className="flex-1 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors"
-          >Create</button>
+          <button onClick={() => { if (name.trim()) { onConfirm(name.trim()); onClose(); } }}
+            className="flex-1 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">Create</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   SEND TO STUDENT MODAL — pre-opened via ?action=send
-   Stays on Page 18 with success
-───────────────────────────────────────────── */
 function SendToStudentModal({ studentId, onClose }) {
   const [selectedAssets, setSelectedAssets] = useState([]);
   const [sent, setSent] = useState(false);
-
   const toggleAsset = (id) => setSelectedAssets(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-
-  const handleSend = () => {
-    setSent(true);
-    setTimeout(onClose, 1500);
-  };
-
+  const handleSend = () => { setSent(true); setTimeout(onClose, 1500); };
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
@@ -458,12 +259,7 @@ function SendToStudentModal({ studentId, onClose }) {
               <p className="text-sm text-slate-600 mb-3">Select content to send:</p>
               {ASSETS.map(a => (
                 <label key={a.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={selectedAssets.includes(a.id)}
-                    onChange={() => toggleAsset(a.id)}
-                    className="accent-[#137fec]"
-                  />
+                  <input type="checkbox" checked={selectedAssets.includes(a.id)} onChange={() => toggleAsset(a.id)} className="accent-[#137fec]" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{a.title}</p>
                     <p className="text-xs text-slate-500">{a.course}</p>
@@ -473,11 +269,8 @@ function SendToStudentModal({ studentId, onClose }) {
             </div>
             <div className="flex gap-3 p-5 border-t border-slate-100">
               <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
-              <button
-                onClick={handleSend}
-                disabled={selectedAssets.length === 0}
-                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleSend} disabled={selectedAssets.length === 0}
+                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 Send {selectedAssets.length > 0 ? `(${selectedAssets.length})` : ""}
               </button>
             </div>
@@ -488,9 +281,6 @@ function SendToStudentModal({ studentId, onClose }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   UPLOAD MODAL
-───────────────────────────────────────────── */
 function UploadModal({ onClose, onGoToUploadPage }) {
   const [dragging, setDragging] = useState(false);
   return (
@@ -501,19 +291,15 @@ function UploadModal({ onClose, onGoToUploadPage }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
         </div>
         <div className="p-6 space-y-4">
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          <div onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); }}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragging ? "border-[#137fec] bg-blue-50" : "border-slate-200 hover:border-[#137fec]/50"}`}
-          >
+            onDrop={e => { e.preventDefault(); setDragging(false); }}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragging ? "border-[#137fec] bg-blue-50" : "border-slate-200 hover:border-[#137fec]/50"}`}>
             <Icon name="cloud_upload" className="text-5xl text-slate-300 mb-3 block" />
             <p className="text-sm font-semibold text-slate-700">Drag & drop your files here</p>
             <p className="text-xs text-slate-400 mt-1">Supports MP4, MP3, PDF, DOCX up to 500MB</p>
-            <button
-              onClick={onGoToUploadPage}
-              className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors"
-            >
+            <button onClick={onGoToUploadPage}
+              className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">
               Browse Files
             </button>
           </div>
@@ -524,7 +310,7 @@ function UploadModal({ onClose, onGoToUploadPage }) {
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Course</label>
             <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#137fec]/30">
-              <option>Science 101</option><option>Digital Mktg</option><option>Soft Skills</option><option>CS Intro</option>
+              {COURSES.map(c => <option key={c.id}>{c.title}</option>)}
             </select>
           </div>
         </div>
@@ -537,32 +323,14 @@ function UploadModal({ onClose, onGoToUploadPage }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   FILTER DRAWER
-───────────────────────────────────────────── */
 function FilterDrawer({ open, onClose, onApply }) {
   const [assetType, setAssetType] = useState("All");
   const [enhancements, setEnhancements] = useState([]);
   const [courses, setCourses] = useState([]);
-
-  const toggleEnhancement = (opt) =>
-    setEnhancements(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
-  const toggleCourse = (opt) =>
-    setCourses(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
-
-  const handleApply = () => {
-    onApply({ assetType, enhancements, courses });
-    onClose();
-  };
-
-  const handleReset = () => {
-    setAssetType("All");
-    setEnhancements([]);
-    setCourses([]);
-    onApply({ assetType: "All", enhancements: [], courses: [] });
-    onClose();
-  };
-
+  const toggleEnhancement = opt => setEnhancements(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
+  const toggleCourse = opt => setCourses(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
+  const handleApply = () => { onApply({ assetType, enhancements, courses }); onClose(); };
+  const handleReset = () => { setAssetType("All"); setEnhancements([]); setCourses([]); onApply({ assetType: "All", enhancements: [], courses: [] }); onClose(); };
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[90] flex">
@@ -573,53 +341,34 @@ function FilterDrawer({ open, onClose, onApply }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Asset Type — radio */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Asset Type</p>
             <div className="space-y-2">
               {["All", "Videos", "Audio", "Documents"].map(opt => (
                 <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="assetType"
-                    checked={assetType === opt}
-                    onChange={() => setAssetType(opt)}
-                    className="accent-[#137fec]"
-                  />
+                  <input type="radio" name="assetType" checked={assetType === opt} onChange={() => setAssetType(opt)} className="accent-[#137fec]" />
                   <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
                 </label>
               ))}
             </div>
           </div>
-          {/* Enhancement — checkboxes */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Enhancement</p>
             <div className="space-y-2">
               {["AI Enhanced", "AI Quizzes Ready"].map(opt => (
                 <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={enhancements.includes(opt)}
-                    onChange={() => toggleEnhancement(opt)}
-                    className="accent-[#137fec]"
-                  />
+                  <input type="checkbox" checked={enhancements.includes(opt)} onChange={() => toggleEnhancement(opt)} className="accent-[#137fec]" />
                   <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
                 </label>
               ))}
             </div>
           </div>
-          {/* Course — checkboxes */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Course</p>
             <div className="space-y-2">
               {["Science 101", "Digital Mktg", "Soft Skills", "CS Intro", "Design Lab", "Humanities"].map(opt => (
                 <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={courses.includes(opt)}
-                    onChange={() => toggleCourse(opt)}
-                    className="accent-[#137fec]"
-                  />
+                  <input type="checkbox" checked={courses.includes(opt)} onChange={() => toggleCourse(opt)} className="accent-[#137fec]" />
                   <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{opt}</span>
                 </label>
               ))}
@@ -635,14 +384,11 @@ function FilterDrawer({ open, onClose, onApply }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   CARD DROPDOWN
-───────────────────────────────────────────── */
 function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open, onClose]);
@@ -650,11 +396,11 @@ function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete }) {
   return (
     <div ref={ref} className="absolute right-0 top-7 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-44 py-1 overflow-hidden">
       {[
-        { icon: "edit", label: "Edit", fn: onEdit },
-        { icon: "refresh", label: "Reuse in Course", fn: onReuse },
-        { icon: "auto_awesome", label: "AI Enhance", fn: onAIEnhance },
-        { icon: "download", label: "Download", fn: onClose },
-        { icon: "delete", label: "Delete", fn: onDelete, danger: true },
+        { icon: "edit",         label: "Edit",           fn: onEdit },
+        { icon: "refresh",      label: "Reuse in Course",fn: onReuse },
+        { icon: "auto_awesome", label: "AI Enhance",     fn: onAIEnhance },
+        { icon: "download",     label: "Download",       fn: onClose },
+        { icon: "delete",       label: "Delete",         fn: onDelete, danger: true },
       ].map(({ icon, label, fn, danger }) => (
         <button key={label} onClick={() => { fn?.(); onClose(); }}
           className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium transition-colors hover:bg-slate-50 ${danger ? "text-rose-600" : "text-slate-700"}`}>
@@ -666,29 +412,17 @@ function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   GRID CARD
-───────────────────────────────────────────── */
 function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDelete, onAIEnhance }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { enhancement: e } = asset;
   return (
     <div className={`group bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col ${selected ? "border-[#137fec] ring-2 ring-[#137fec]/20" : "border-slate-200"}`}>
       <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-        <div className="absolute top-3 left-3 z-10" onClick={e => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onSelect}
-            className="accent-[#137fec] w-4 h-4"
-          />
+        <div className="absolute top-3 left-3 z-10" onClick={ev => ev.stopPropagation()}>
+          <input type="checkbox" checked={selected} onChange={onSelect} className="accent-[#137fec] w-4 h-4" />
         </div>
-        <img
-          src={asset.thumb}
-          alt={asset.title}
-          onClick={onPreview}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
-        />
+        <img src={asset.thumb} alt={asset.title} onClick={onPreview}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" />
         <div className="absolute top-3 right-3">
           <div className="bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
             <Icon name={asset.badgeIcon} className="text-xs" />{asset.badgeText}
@@ -704,24 +438,15 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
       </div>
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2 gap-2">
-          <h3
-            onClick={onPreview}
-            className="text-base font-bold text-slate-900 line-clamp-1 group-hover:text-[#137fec] transition-colors flex-1 cursor-pointer"
-          >
+          <h3 onClick={onPreview}
+            className="text-base font-bold text-slate-900 line-clamp-1 group-hover:text-[#137fec] transition-colors flex-1 cursor-pointer">
             {asset.title}
           </h3>
           <div className="relative flex-shrink-0">
             <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600 transition-colors">
               <Icon name="more_vert" />
             </button>
-            <CardMenu
-              open={menuOpen}
-              onClose={() => setMenuOpen(false)}
-              onEdit={onEdit}
-              onReuse={onReuse}
-              onAIEnhance={onAIEnhance}
-              onDelete={onDelete}
-            />
+            <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)} onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-4">
@@ -753,21 +478,12 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
   );
 }
 
-/* ─────────────────────────────────────────────
-   LIST ROW
-───────────────────────────────────────────── */
 function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDelete, onAIEnhance }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { enhancement: e } = asset;
   return (
     <div className={`group bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-4 p-4 ${selected ? "border-[#137fec] ring-2 ring-[#137fec]/20" : "border-slate-200"}`}>
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={onSelect}
-        className="accent-[#137fec] w-4 h-4 flex-shrink-0"
-        onClick={e => e.stopPropagation()}
-      />
+      <input type="checkbox" checked={selected} onChange={onSelect} className="accent-[#137fec] w-4 h-4 flex-shrink-0" onClick={ev => ev.stopPropagation()} />
       <div className="relative rounded-lg overflow-hidden flex-shrink-0 w-36 h-[80px] cursor-pointer" onClick={onPreview}>
         <img src={asset.thumb} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-1.5 right-1.5 bg-black/60 text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase flex items-center gap-0.5">
@@ -782,12 +498,7 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3
-          onClick={onPreview}
-          className="text-sm font-bold text-slate-900 group-hover:text-[#137fec] transition-colors truncate cursor-pointer"
-        >
-          {asset.title}
-        </h3>
+        <h3 onClick={onPreview} className="text-sm font-bold text-slate-900 group-hover:text-[#137fec] transition-colors truncate cursor-pointer">{asset.title}</h3>
         <div className="flex gap-2 mt-1.5 flex-wrap">
           <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
             <Icon name="visibility" className="text-xs" />{asset.views}
@@ -815,40 +526,26 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
           <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600 transition-colors">
             <Icon name="more_vert" />
           </button>
-          <CardMenu
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            onEdit={onEdit}
-            onReuse={onReuse}
-            onAIEnhance={onAIEnhance}
-            onDelete={onDelete}
-          />
+          <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)} onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete} />
         </div>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   MAIN PAGE
-───────────────────────────────────────────── */
 export default function TrainerContentLibrary() {
-  const { pos, isHovered, isClicked } = useCustomCursor();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  const actionParam  = searchParams.get("action");
+  const actionParam = searchParams.get("action");
   const studentParam = searchParams.get("student");
-  const filterParam  = searchParams.get("filter");
+  const filterParam = searchParams.get("filter");
 
-  const [activeNav, setActiveNav] = useState("Content Library");
   const [activeCategory, setActiveCategory] = useState("All Assets");
   const [activeEnhancement, setActiveEnhancement] = useState(null);
   const [activeCollection, setActiveCollection] = useState(null);
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
   const [assets, setAssets] = useState(ASSETS);
   const [collections, setCollections] = useState(INITIAL_COLLECTIONS);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -866,38 +563,18 @@ export default function TrainerContentLibrary() {
 
   useEffect(() => {
     if (actionParam === "send") setShowSendToStudent(true);
-    if (filterParam === "recent") {
-      setSearchQuery("");
-      setActiveCategory("All Assets");
-    }
-  }, [actionParam, filterParam]);
+  }, [actionParam]);
 
-  const handleNavClick = (link) => {
-    setActiveNav(link);
-    switch (link) {
-      case "Dashboard": navigate("/dashboard/trainer"); break;
-      case "Content Library": break;
-      case "Courses": navigate("/dashboard/trainer"); break;
-      case "Analytics": navigate("/trainer/analytics"); break;
-      default: break;
-    }
-  };
-
-  const handleEdit = (asset) => navigate(`/trainer/courses/${asset.courseId}/upload?lesson=${asset.id}`);
-
-  const handleReuse = (asset) => {
-    setReuseAsset(asset);
-    setDetailAsset(null);
-  };
+  // ✅ Fixed: all navigation now uses /trainer/dashboard
+  const handleEdit    = (asset) => navigate(`/trainer/courses/${asset.courseId}/upload?lesson=${asset.id}`);
+  const handleReuse   = (asset) => { setReuseAsset(asset); setDetailAsset(null); };
+  const handleDelete  = (asset) => { setDeleteAsset(asset); setDetailAsset(null); };
+  const handlePreview = (asset) => setDetailAsset(asset);
+  const handleAIEnhance = (asset) => navigate(`/trainer/ai-studio?asset=${asset.id}`);
 
   const handleReuseConfirm = (courseId) => {
     setReuseAsset(null);
     navigate(`/trainer/courses/${courseId}`);
-  };
-
-  const handleDelete = (asset) => {
-    setDeleteAsset(asset);
-    setDetailAsset(null);
   };
 
   const handleDeleteConfirm = () => {
@@ -906,12 +583,7 @@ export default function TrainerContentLibrary() {
     setDeleteAsset(null);
   };
 
-  const handleAIEnhance = (asset) => navigate(`/trainer/ai-studio?asset=${asset.id}`);
-  const handlePreview = (asset) => setDetailAsset(asset);
-
-  const toggleSelect = (id) => setSelectedIds(prev =>
-    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-  );
+  const toggleSelect  = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const clearSelection = () => setSelectedIds([]);
 
   const handleBulkAddConfirm = (courseId) => {
@@ -926,49 +598,36 @@ export default function TrainerContentLibrary() {
     setShowBulkDelete(false);
   };
 
-  const handleNewCollection = (name) => {
-    setCollections(prev => [...prev, { id: Date.now().toString(), label: name }]);
-  };
+  const handleNewCollection = (name) => setCollections(prev => [...prev, { id: Date.now().toString(), label: name }]);
 
-  const handleGoToUploadPage = () => navigate("/trainer/courses/standalone/upload");
+  // ✅ Fixed: was /trainer/courses/standalone/upload (broken) → /trainer/dashboard
+  const handleGoToUploadPage = () => navigate("/trainer/dashboard");
 
   const filtered = assets.filter(a => {
-    // 1. Search
-    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.course.toLowerCase().includes(searchQuery.toLowerCase());
-    // 2. Recent URL param
-    const matchesRecent = filterParam === "recent" ? a.uploadedAt === "today" : true;
-    // 3. Sidebar: Category
-    const categoryMap = { "All Assets": true, "Video Lessons": a.type === "video", "Audio Content": a.type === "audio", "Documents": a.type === "document" };
+    const matchesSearch   = a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.course.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRecent   = filterParam === "recent" ? a.uploadedAt === "today" : true;
+    const categoryMap     = { "All Assets": true, "Video Lessons": a.type === "video", "Audio Content": a.type === "audio", "Documents": a.type === "document" };
     const matchesCategory = categoryMap[activeCategory] ?? true;
-    // 4. Sidebar: Enhancement toggle
     let matchesEnhancement = true;
-    if (activeEnhancement === "AI Enhanced") matchesEnhancement = a.aiEnhanced === true;
+    if (activeEnhancement === "AI Enhanced")      matchesEnhancement = a.aiEnhanced === true;
     if (activeEnhancement === "AI Quizzes Ready") matchesEnhancement = a.hasQuiz === true;
-    // 5. Sidebar: Collection
-    const matchesCollection = activeCollection ? a.collectionId === activeCollection : true;
-    // 6. Drawer: Asset Type radio
-    const drawerTypeMap = { "All": true, "Videos": a.type === "video", "Audio": a.type === "audio", "Documents": a.type === "document" };
-    const matchesDrawerType = drawerTypeMap[drawerFilters.assetType] ?? true;
-    // 7. Drawer: Enhancement multi-select
-    const matchesDrawerEnhancement = drawerFilters.enhancements.length === 0 || drawerFilters.enhancements.every(e => {
-      if (e === "AI Enhanced") return a.aiEnhanced === true;
+    const matchesCollection    = activeCollection ? a.collectionId === activeCollection : true;
+    const drawerTypeMap        = { "All": true, "Videos": a.type === "video", "Audio": a.type === "audio", "Documents": a.type === "document" };
+    const matchesDrawerType    = drawerTypeMap[drawerFilters.assetType] ?? true;
+    const matchesDrawerEnh     = drawerFilters.enhancements.length === 0 || drawerFilters.enhancements.every(e => {
+      if (e === "AI Enhanced")      return a.aiEnhanced === true;
       if (e === "AI Quizzes Ready") return a.hasQuiz === true;
       return true;
     });
-    // 8. Drawer: Course multi-select
-    const matchesDrawerCourse = drawerFilters.courses.length === 0 || drawerFilters.courses.includes(a.course);
-
-    return matchesSearch && matchesRecent && matchesCategory && matchesEnhancement &&
-           matchesCollection && matchesDrawerType && matchesDrawerEnhancement && matchesDrawerCourse;
+    const matchesDrawerCourse  = drawerFilters.courses.length === 0 || drawerFilters.courses.includes(a.course);
+    return matchesSearch && matchesRecent && matchesCategory && matchesEnhancement && matchesCollection && matchesDrawerType && matchesDrawerEnh && matchesDrawerCourse;
   });
 
-  const navLinks = ["Dashboard", "Content Library", "Courses", "Analytics"];
   const categories = [
-    { icon: "grid_view", label: "All Assets" },
-    { icon: "videocam", label: "Video Lessons" },
-    { icon: "mic", label: "Audio Content" },
-    { icon: "description", label: "Documents" },
+    { icon: "grid_view",    label: "All Assets" },
+    { icon: "videocam",     label: "Video Lessons" },
+    { icon: "mic",          label: "Audio Content" },
+    { icon: "description",  label: "Documents" },
   ];
   const enhancements = [
     { icon: "auto_awesome", label: "AI Enhanced",      iconColor: "text-amber-500",   activeColor: "text-amber-700",   activeBg: "bg-amber-50" },
@@ -987,102 +646,47 @@ export default function TrainerContentLibrary() {
         .scrollbar-thin::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px;}
       `}</style>
 
-      {/* Modals */}
-      {showUpload && (
-        <UploadModal
-          onClose={() => setShowUpload(false)}
-          onGoToUploadPage={() => { setShowUpload(false); handleGoToUploadPage(); }}
-        />
-      )}
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onGoToUploadPage={() => { setShowUpload(false); handleGoToUploadPage(); }} />}
       <FilterDrawer open={showFilters} onClose={() => setShowFilters(false)} onApply={setDrawerFilters} />
-      {detailAsset && (
-        <AssetDetailModal
-          asset={detailAsset}
-          onClose={() => setDetailAsset(null)}
-          onEdit={() => { setDetailAsset(null); handleEdit(detailAsset); }}
-          onReuse={() => handleReuse(detailAsset)}
-          onAIEnhance={() => { setDetailAsset(null); handleAIEnhance(detailAsset); }}
-        />
-      )}
-      {reuseAsset && (
-        <ReuseModal
-          asset={reuseAsset}
-          onClose={() => setReuseAsset(null)}
-          onConfirm={handleReuseConfirm}
-        />
-      )}
-      {deleteAsset && (
-        <DeleteModal
-          asset={deleteAsset}
-          onClose={() => setDeleteAsset(null)}
-          onConfirm={handleDeleteConfirm}
-        />
-      )}
-      {showBulkAdd && (
-        <BulkAddModal
-          count={selectedIds.length}
-          onClose={() => setShowBulkAdd(false)}
-          onConfirm={handleBulkAddConfirm}
-        />
-      )}
-      {showBulkDelete && (
-        <BulkDeleteModal
-          count={selectedIds.length}
-          onClose={() => setShowBulkDelete(false)}
-          onConfirm={handleBulkDeleteConfirm}
-        />
-      )}
-      {showNewCollection && (
-        <NewCollectionModal
-          onClose={() => setShowNewCollection(false)}
-          onConfirm={handleNewCollection}
-        />
-      )}
-      {showSendToStudent && (
-        <SendToStudentModal
-          studentId={studentParam}
-          onClose={() => setShowSendToStudent(false)}
-        />
-      )}
+      {detailAsset && <AssetDetailModal asset={detailAsset} onClose={() => setDetailAsset(null)} onEdit={() => { setDetailAsset(null); handleEdit(detailAsset); }} onReuse={() => handleReuse(detailAsset)} onAIEnhance={() => { setDetailAsset(null); handleAIEnhance(detailAsset); }} />}
+      {reuseAsset && <ReuseModal asset={reuseAsset} onClose={() => setReuseAsset(null)} onConfirm={handleReuseConfirm} />}
+      {deleteAsset && <DeleteModal asset={deleteAsset} onClose={() => setDeleteAsset(null)} onConfirm={handleDeleteConfirm} />}
+      {showBulkAdd && <BulkAddModal count={selectedIds.length} onClose={() => setShowBulkAdd(false)} onConfirm={handleBulkAddConfirm} />}
+      {showBulkDelete && <BulkDeleteModal count={selectedIds.length} onClose={() => setShowBulkDelete(false)} onConfirm={handleBulkDeleteConfirm} />}
+      {showNewCollection && <NewCollectionModal onClose={() => setShowNewCollection(false)} onConfirm={handleNewCollection} />}
+      {showSendToStudent && <SendToStudentModal studentId={studentParam} onClose={() => setShowSendToStudent(false)} />}
 
       <div className="flex h-screen overflow-hidden" style={{ fontFamily: "'Lexend',sans-serif", backgroundColor: "#f6f7f8" }}>
         <TrainerSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
 
-          {/* TOP NAV */}
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-3 shrink-0">
             <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-6">
-              <div className="flex items-center gap-8 flex-shrink-0">
-                <div
-                  className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => navigate("/dashboard/trainer")}
-                >
-                  <div className="bg-[#137fec] p-1.5 rounded-lg text-white flex items-center justify-center">
-                    <Icon name="school" className="text-xl" />
-                  </div>
-                  <span className="text-slate-900 text-xl font-bold tracking-tight">LMS Trainer</span>
-                </div>
-
-              </div>
+              <div
+  className="flex items-center gap-3 cursor-pointer"
+  onClick={() => navigate("/trainer/dashboard")}
+>
+  <div className="bg-[#137fec] p-1.5 rounded-lg text-white flex items-center justify-center">
+    <Icon name="school" className="text-xl" />
+  </div>
+  <span className="text-slate-900 text-xl font-bold tracking-tight">
+    LMS Trainer
+  </span>
+</div>
               <div className="flex flex-1 items-center justify-end gap-4">
                 <div className="relative w-full max-w-md hidden md:block">
                   <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
-                  <input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                  <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                     className="w-full bg-slate-100 rounded-lg pl-10 pr-10 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-[#137fec]/30 placeholder:text-slate-500"
-                    placeholder="Search your assets..."
-                  />
+                    placeholder="Search your assets..." />
                   {searchQuery && (
                     <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                       <Icon name="close" className="text-base" />
                     </button>
                   )}
                 </div>
-                <button
-                  onClick={() => setShowUpload(true)}
-                  className="bg-[#137fec] hover:bg-[#0f6fd4] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm flex-shrink-0"
-                >
+                <button onClick={() => setShowUpload(true)}
+                  className="bg-[#137fec] hover:bg-[#0f6fd4] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm flex-shrink-0">
                   <Icon name="upload" className="text-lg" />
                   <span className="hidden sm:inline">Upload New Asset</span>
                 </button>
@@ -1091,102 +695,67 @@ export default function TrainerContentLibrary() {
             </div>
           </header>
 
-          {/* MAIN */}
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-[1400px] mx-auto p-6 flex gap-8">
-
-              {/* SIDEBAR */}
               <aside className="w-64 flex-shrink-0 hidden xl:block">
                 <div className="flex flex-col gap-8 sticky top-24">
-                  {/* Categories */}
                   <div>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Asset Categories</h3>
                     <ul className="space-y-1">
                       {categories.map(({ icon, label }) => (
                         <li key={label}>
-                          <button
-                            onClick={() => { setActiveCategory(label); setActiveCollection(null); }}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeCategory === label && !activeCollection ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
-                          >
-                            <Icon name={icon} className="text-[20px] flex-shrink-0" />
-                            {label}
+                          <button onClick={() => { setActiveCategory(label); setActiveCollection(null); }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeCategory === label && !activeCollection ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}>
+                            <Icon name={icon} className="text-[20px] flex-shrink-0" />{label}
                           </button>
                         </li>
                       ))}
                     </ul>
                   </div>
-
-                  {/* Enhancements */}
                   <div>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Enhancements</h3>
                     <ul className="space-y-1">
                       {enhancements.map(({ icon, label, iconColor, activeColor, activeBg }) => (
                         <li key={label}>
-                          <button
-                            onClick={() => {
-                              setActiveEnhancement(activeEnhancement === label ? null : label);
-                              setActiveCollection(null);
-                              setActiveCategory("All Assets");
-                            }}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-                              activeEnhancement === label
-                                ? `${activeBg} ${activeColor} font-semibold`
-                                : "text-slate-600 hover:bg-slate-100"
-                            }`}
-                          >
-                            <Icon name={icon} className={`text-[20px] flex-shrink-0 ${iconColor}`} />
-                            {label}
+                          <button onClick={() => { setActiveEnhancement(activeEnhancement === label ? null : label); setActiveCollection(null); setActiveCategory("All Assets"); }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeEnhancement === label ? `${activeBg} ${activeColor} font-semibold` : "text-slate-600 hover:bg-slate-100"}`}>
+                            <Icon name={icon} className={`text-[20px] flex-shrink-0 ${iconColor}`} />{label}
                           </button>
                         </li>
                       ))}
                     </ul>
                     {activeEnhancement === "AI Enhanced" && (
-                      <button
-                        onClick={() => navigate("/trainer/ai-studio")}
-                        className="mt-3 w-full flex items-center gap-2 px-3 py-2 bg-[#137fec]/10 text-[#137fec] rounded-lg text-xs font-bold hover:bg-[#137fec]/20 transition-colors"
-                      >
-                        <Icon name="auto_awesome" className="text-base" />
-                        View in AI Studio →
+                      <button onClick={() => navigate("/trainer/ai-studio")}
+                        className="mt-3 w-full flex items-center gap-2 px-3 py-2 bg-[#137fec]/10 text-[#137fec] rounded-lg text-xs font-bold hover:bg-[#137fec]/20 transition-colors">
+                        <Icon name="auto_awesome" className="text-base" />View in AI Studio →
                       </button>
                     )}
                   </div>
-
-                  {/* Collections */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Collections</h3>
-                      <button
-                        onClick={() => setShowNewCollection(true)}
-                        className="text-[#137fec] hover:text-[#0f6fd4] transition-colors"
-                      >
+                      <button onClick={() => setShowNewCollection(true)} className="text-[#137fec] hover:text-[#0f6fd4] transition-colors">
                         <Icon name="add" className="text-base" />
                       </button>
                     </div>
                     <ul className="space-y-1">
                       {collections.map(c => (
                         <li key={c.id}>
-                          <button
-                            onClick={() => { setActiveCollection(c.id); setActiveCategory("All Assets"); }}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeCollection === c.id ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
-                          >
+                          <button onClick={() => { setActiveCollection(c.id); setActiveCategory("All Assets"); }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${activeCollection === c.id ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}>
                             <Icon name="folder" className="text-[20px] flex-shrink-0" />
                             <span className="truncate">{c.label}</span>
                           </button>
                         </li>
                       ))}
                       <li>
-                        <button
-                          onClick={() => setShowNewCollection(true)}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors text-left"
-                        >
-                          <Icon name="add" className="text-[20px] flex-shrink-0" />
-                          New Collection
+                        <button onClick={() => setShowNewCollection(true)}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors text-left">
+                          <Icon name="add" className="text-[20px] flex-shrink-0" />New Collection
                         </button>
                       </li>
                     </ul>
                   </div>
-
-                  {/* Storage */}
                   <div className="p-4 rounded-xl bg-[#137fec]/5 border border-[#137fec]/10">
                     <p className="text-xs font-bold text-[#137fec] uppercase mb-2">Storage Usage</p>
                     <div className="w-full bg-slate-200 h-2 rounded-full mb-2 overflow-hidden">
@@ -1197,18 +766,12 @@ export default function TrainerContentLibrary() {
                 </div>
               </aside>
 
-              {/* CONTENT */}
               <div className="flex-1 min-w-0">
-                {/* Page Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                   <div>
                     <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
-                      <button
-                        onClick={() => navigate("/dashboard/trainer")}
-                        className="hover:text-[#137fec] transition-colors"
-                      >
-                        Dashboard
-                      </button>
+                      {/* ✅ Fixed: was /dashboard/trainer */}
+                      <button onClick={() => navigate("/trainer/dashboard")} className="hover:text-[#137fec] transition-colors">Dashboard</button>
                       <Icon name="chevron_right" className="text-xs" />
                       <span className="text-slate-900 font-medium">Content Library</span>
                     </div>
@@ -1221,39 +784,25 @@ export default function TrainerContentLibrary() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowFilters(true)}
+                    <button onClick={() => setShowFilters(true)}
                       className={`flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-semibold transition-colors shadow-sm ${
                         (drawerFilters.assetType !== "All" || drawerFilters.enhancements.length > 0 || drawerFilters.courses.length > 0)
-                          ? "border-[#137fec] text-[#137fec] bg-[#137fec]/5"
-                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
+                          ? "border-[#137fec] text-[#137fec] bg-[#137fec]/5" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
                       <Icon name="filter_list" className="text-lg" />Filters
-                      {(drawerFilters.assetType !== "All" || drawerFilters.enhancements.length > 0 || drawerFilters.courses.length > 0) && (
-                        <span className="size-4 rounded-full bg-[#137fec] text-white text-[10px] font-bold flex items-center justify-center">
-                          {[drawerFilters.assetType !== "All" ? 1 : 0, ...drawerFilters.enhancements.map(() => 1), ...drawerFilters.courses.map(() => 1)].reduce((a, b) => a + b, 0)}
-                        </span>
-                      )}
                     </button>
                     <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
-                      <button
-                        onClick={() => setViewMode("grid")}
-                        className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-slate-100 text-[#137fec]" : "text-slate-400 hover:text-slate-600"}`}
-                      >
+                      <button onClick={() => setViewMode("grid")}
+                        className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-slate-100 text-[#137fec]" : "text-slate-400 hover:text-slate-600"}`}>
                         <Icon name="grid_view" className="block" />
                       </button>
-                      <button
-                        onClick={() => setViewMode("list")}
-                        className={`p-1.5 rounded transition-colors ${viewMode === "list" ? "bg-slate-100 text-[#137fec]" : "text-slate-400 hover:text-slate-600"}`}
-                      >
+                      <button onClick={() => setViewMode("list")}
+                        className={`p-1.5 rounded transition-colors ${viewMode === "list" ? "bg-slate-100 text-[#137fec]" : "text-slate-400 hover:text-slate-600"}`}>
                         <Icon name="format_list_bulleted" className="block" />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Bulk Actions Bar */}
                 {selectedIds.length > 0 && (
                   <div className="mb-6 flex items-center gap-3 p-3 bg-[#137fec]/5 border border-[#137fec]/20 rounded-xl">
                     <span className="text-sm font-bold text-[#137fec]">{selectedIds.length} selected</span>
@@ -1261,40 +810,29 @@ export default function TrainerContentLibrary() {
                       <button className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
                         <Icon name="download" className="text-sm" />Download
                       </button>
-                      <button
-                        onClick={() => setShowBulkAdd(true)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4] transition-colors"
-                      >
+                      <button onClick={() => setShowBulkAdd(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4] transition-colors">
                         <Icon name="add" className="text-sm" />Add to Course
                       </button>
-                      <button
-                        onClick={() => setShowBulkDelete(true)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold hover:bg-rose-600 transition-colors"
-                      >
+                      <button onClick={() => setShowBulkDelete(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold hover:bg-rose-600 transition-colors">
                         <Icon name="delete" className="text-sm" />Delete
                       </button>
-                      <button
-                        onClick={clearSelection}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
-                      >
+                      <button onClick={clearSelection}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
                         <Icon name="close" className="text-sm" />Clear
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Mobile Search */}
                 <div className="relative md:hidden mb-6">
                   <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                  <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#137fec]/30 placeholder:text-slate-400"
-                    placeholder="Search your assets..."
-                  />
+                    placeholder="Search your assets..." />
                 </div>
 
-                {/* Empty state */}
                 {filtered.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-24 text-center">
                     <Icon name="search_off" className="text-6xl text-slate-200 mb-4" />
@@ -1306,88 +844,57 @@ export default function TrainerContentLibrary() {
                   </div>
                 )}
 
-                {/* Grid */}
                 {filtered.length > 0 && viewMode === "grid" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {filtered.map(a => (
-                      <AssetCard
-                        key={a.id}
-                        asset={a}
-                        selected={selectedIds.includes(a.id)}
-                        onSelect={() => toggleSelect(a.id)}
-                        onPreview={() => handlePreview(a)}
-                        onReuse={() => handleReuse(a)}
-                        onEdit={() => handleEdit(a)}
-                        onDelete={() => handleDelete(a)}
-                        onAIEnhance={() => handleAIEnhance(a)}
-                      />
+                      <AssetCard key={a.id} asset={a} selected={selectedIds.includes(a.id)}
+                        onSelect={() => toggleSelect(a.id)} onPreview={() => handlePreview(a)}
+                        onReuse={() => handleReuse(a)} onEdit={() => handleEdit(a)}
+                        onDelete={() => handleDelete(a)} onAIEnhance={() => handleAIEnhance(a)} />
                     ))}
                   </div>
                 )}
 
-                {/* List */}
                 {filtered.length > 0 && viewMode === "list" && (
                   <div className="flex flex-col gap-4">
                     {filtered.map(a => (
-                      <AssetRow
-                        key={a.id}
-                        asset={a}
-                        selected={selectedIds.includes(a.id)}
-                        onSelect={() => toggleSelect(a.id)}
-                        onPreview={() => handlePreview(a)}
-                        onReuse={() => handleReuse(a)}
-                        onEdit={() => handleEdit(a)}
-                        onDelete={() => handleDelete(a)}
-                        onAIEnhance={() => handleAIEnhance(a)}
-                      />
+                      <AssetRow key={a.id} asset={a} selected={selectedIds.includes(a.id)}
+                        onSelect={() => toggleSelect(a.id)} onPreview={() => handlePreview(a)}
+                        onReuse={() => handleReuse(a)} onEdit={() => handleEdit(a)}
+                        onDelete={() => handleDelete(a)} onAIEnhance={() => handleAIEnhance(a)} />
                     ))}
                   </div>
                 )}
 
-                {/* Pagination */}
                 {filtered.length > 0 && (
                   <div className="mt-12 flex items-center justify-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40"
-                    >
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40">
                       <Icon name="chevron_left" />
                     </button>
                     {[1, 2, 3].map(p => (
-                      <button
-                        key={p}
-                        onClick={() => setCurrentPage(p)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === p ? "bg-[#137fec] text-white" : "text-slate-600 hover:bg-slate-100"}`}
-                      >
+                      <button key={p} onClick={() => setCurrentPage(p)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === p ? "bg-[#137fec] text-white" : "text-slate-600 hover:bg-slate-100"}`}>
                         {p}
                       </button>
                     ))}
                     <span className="text-slate-400 text-sm">...</span>
-                    <button
-                      onClick={() => setCurrentPage(12)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === 12 ? "bg-[#137fec] text-white" : "text-slate-600 hover:bg-slate-100"}`}
-                    >
+                    <button onClick={() => setCurrentPage(12)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === 12 ? "bg-[#137fec] text-white" : "text-slate-600 hover:bg-slate-100"}`}>
                       12
                     </button>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(12, p + 1))}
-                      disabled={currentPage === 12}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40"
-                    >
+                    <button onClick={() => setCurrentPage(p => Math.min(12, p + 1))} disabled={currentPage === 12}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-40">
                       <Icon name="chevron_right" />
                     </button>
                   </div>
                 )}
               </div>
-            </div>{/* ← closes max-w-[1400px] div */}
+            </div>
           </main>
 
-          {/* Mobile FAB */}
-          <button
-            onClick={() => setShowUpload(true)}
-            className="fixed bottom-6 right-6 lg:hidden w-14 h-14 bg-[#137fec] text-white rounded-full shadow-xl flex items-center justify-center z-50 hover:bg-[#0f6fd4] transition-colors"
-          >
+          <button onClick={() => setShowUpload(true)}
+            className="fixed bottom-6 right-6 lg:hidden w-14 h-14 bg-[#137fec] text-white rounded-full shadow-xl flex items-center justify-center z-50 hover:bg-[#0f6fd4] transition-colors">
             <Icon name="add" className="text-3xl" />
           </button>
         </div>
