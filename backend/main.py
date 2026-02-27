@@ -16,9 +16,14 @@ from app.api.api import api_router
 
 # ── Import all models so Base.metadata sees them ────────────────────
 import app.models  # noqa: F401
+# main.py — add after your imports, before app creation
+from app.core.database import Base, engine
+from app.models import user, course, enrollment, activity  # import all models
 
-# ── Create tables ───────────────────────────────────────────────────
+# Creates all tables that don't exist yet
 Base.metadata.create_all(bind=engine)
+# ── Create tables ───────────────────────────────────────────────────
+
 
 # ── Create FastAPI application ──────────────────────────────────────
 app = FastAPI(

@@ -19,6 +19,8 @@ from app.api.v1.endpoints import (
     revision,
     trainer,
     admin,
+    admin_knowledge,   # ← add this
+    admin_reports,
 )
 
 api_router = APIRouter()
@@ -35,7 +37,9 @@ api_router.include_router(analytics.router,   prefix="/analytics",   tags=["Anal
 api_router.include_router(learning.router,    prefix="/learning",    tags=["Learning Progress"])
 api_router.include_router(revision.router,    prefix="/revision",    tags=["Revision Assistant"])
 api_router.include_router(trainer.router, prefix="/trainer", tags=["Trainer"])
-api_router.include_router(admin.router, prefix="/admin",  tags=["Admin"])
+api_router.include_router(admin.router,   prefix="/admin",   tags=["Admin"])
+api_router.include_router(admin_knowledge.router, prefix="/knowledge", tags=["Knowledge Base"])
+api_router.include_router(admin_reports.router,   prefix="/reports",   tags=["Reports"])
 # ── AI Features ────────────────────────────────────────────────────
 api_router.include_router(ai_hub.router,      prefix="/ai-hub",      tags=["AI Learning Hub"])
 api_router.include_router(assessments.router,  prefix="/assessments", tags=["Assessments"])

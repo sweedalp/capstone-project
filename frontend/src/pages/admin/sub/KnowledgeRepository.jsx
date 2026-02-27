@@ -1,184 +1,343 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApp } from '../../../context/AdminContext.jsx'
-import { MOCK_CONTENT, AVATAR } from '../../../data/adminMockData.js'
-import { STORAGE_BREAKDOWN } from '../../../data/curriculumData.js'
-import Icon  from '../../../components/ui/Icon.jsx'
-import Badge from '../../../components/ui/Badge.jsx'
-import Modal from '../../../components/ui/Modal.jsx'
+import { adminKnowledgeApi } from '../../../services/adminApi'
 
-const TYPE_STYLE = { PDF:'text-red-600 bg-red-50', VIDEO:'text-purple-600 bg-purple-50', PPTX:'text-orange-600 bg-orange-50', ZIP:'text-slate-600 bg-slate-100', DOCX:'text-blue-600 bg-blue-50' }
-const AI_COLOR   = { complete:'green', processing:'blue', error:'red' }
+const Icon = ({ name, className = '' }) => (
+  <span className={`material-symbols-outlined select-none leading-none ${className}`}>{name}</span>
+)
 
-const TABS = [
-  {id:'all',       label:'All Content'},
-  {id:'pdf',       label:'PDFs'},
-  {id:'video',     label:'Videos'},
-  {id:'processed', label:'Processed'},
-  {id:'error',     label:'Errors'},
-]
+const TYPE_COLORS = {
+  PDF:   { label: 'PDF',   dot: 'text-red-500',    bg: 'bg-red-50'    },
+  VIDEO: { label: 'VIDEO', dot: 'text-purple-500',  bg: 'bg-purple-50' },
+  PPTX:  { label: 'PPTX',  dot: 'text-orange-500',  bg: 'bg-orange-50' },
+  DOCX:  { label: 'DOCX',  dot: 'text-blue-500',    bg: 'bg-blue-50'   },
+  ZIP:   { label: 'ZIP',   dot: 'text-slate-500',   bg: 'bg-slate-50'  },
+  TXT:   { label: 'TXT',   dot: 'text-green-500',   bg: 'bg-green-50'  },
+}
+
+const STATUS_COLORS = {
+  complete:   'text-green-600',
+  processing: 'text-blue-500',
+  error:      'text-red-500',
+}
+
+const TABS = ['All Content', 'PDFs', 'Videos', 'Processed', 'Errors']
+
+// SVG donut chart for storage
+function StorageDonut({ pct = 74 }) {
+  const r = 54, cx = 64, cy = 64
+  const circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ
+  return (
+    <svg width="128" height="128" viewBox="0 0 128 128">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="14" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#3b82f6" strokeWidth="14"
+        strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cy})`} />
+      <text x={cx} y={cy - 6} textAnchor="middle" className="text-2xl font-black" fontSize="22" fontWeight="900" fill="#0f172a">{pct}%</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="#94a3b8">Used</text>
+    </svg>
+  )
+}
 
 export default function KnowledgeRepository() {
   const navigate = useNavigate()
-  const { showToast } = useApp()
-  const [content, setContent] = useState(MOCK_CONTENT)
-  const [tab, setTab]         = useState('all')
-  const [search, setSearch]   = useState('')
-  const [selected, setSelected] = useState(null)
-  const [view, setView]       = useState('grid')
+  const fileRef  = useRef()
 
-  const filtered = content.filter(c => {
-    const matchTab = tab==='all' || c.type.toLowerCase()===tab || (tab==='processed'&&c.status==='processed') || (tab==='error'&&c.status==='error')
-    return matchTab && c.title.toLowerCase().includes(search.toLowerCase())
-  })
+  const [files, setFiles]         = useState([])
+  const [storage, setStorage]     = useState({ total_gb: 0, by_type: {} })
+  const [totalFiles, setTotal]    = useState(0)
+  const [loading, setLoading]     = useState(true)
+  const [activeTab, setActiveTab] = useState('All Content')
+  const [search, setSearch]       = useState('')
+  const [viewMode, setViewMode]   = useState('grid')   // grid | table
+  const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [toast, setToast]         = useState(null)
+  const [deleteId, setDeleteId]   = useState(null)
+
+  const STORAGE_LIMIT_GB = 25
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  // Map tab label → API file_type param
+  const tabToType = (tab) => {
+    const m = { 'PDFs': 'PDF', 'Videos': 'VIDEO', 'Processed': 'complete', 'Errors': 'error' }
+    return m[tab] || null
+  }
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const res = await adminKnowledgeApi.getAll({
+        fileType: tabToType(activeTab),
+        search: search || undefined,
+      })
+      setFiles(res.files || [])
+      setTotal(res.total || 0)
+      setStorage(res.storage || { total_gb: 0, by_type: {} })
+    } catch {
+      showToast('Failed to load files', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [activeTab, search])
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadPct(0)
+    try {
+      const newFile = await adminKnowledgeApi.upload(file, setUploadPct)
+      setFiles(prev => [newFile, ...prev])
+      setTotal(prev => prev + 1)
+      showToast(`"${file.name}" uploaded successfully`)
+    } catch (err) {
+      showToast(err?.response?.data?.detail || 'Upload failed', 'error')
+    } finally {
+      setUploading(false)
+      setUploadPct(0)
+      e.target.value = ''
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await adminKnowledgeApi.delete(id)
+      setFiles(prev => prev.filter(f => f.id !== id))
+      setTotal(prev => prev - 1)
+      showToast('File deleted')
+    } catch {
+      showToast('Delete failed', 'error')
+    } finally {
+      setDeleteId(null)
+    }
+  }
+
+  const storagePct = Math.min(Math.round((storage.total_gb / STORAGE_LIMIT_GB) * 100), 100)
+  const storageByType = [
+    { label: 'Videos',        gb: storage.by_type?.VIDEO || 0,  color: 'bg-purple-500' },
+    { label: 'PDFs',          gb: storage.by_type?.PDF   || 0,  color: 'bg-red-500'    },
+    { label: 'Presentations', gb: storage.by_type?.PPTX  || 0,  color: 'bg-orange-400' },
+    { label: 'Other',         gb: (storage.total_gb - (storage.by_type?.VIDEO||0) - (storage.by_type?.PDF||0) - (storage.by_type?.PPTX||0)), color: 'bg-slate-400' },
+  ].filter(x => x.gb > 0)
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white">Knowledge Base</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">{content.length} content items · 18.5 GB used</p>
+    <div className="min-h-screen bg-slate-50">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-bold flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+          <Icon name={toast.type === 'success' ? 'check_circle' : 'error'} />
+          {toast.msg}
         </div>
-        <button onClick={()=>showToast('Upload dialog would open','info')} className="btn-primary"><Icon name="upload_file" className="text-lg" />Upload Content</button>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Content list */}
-        <div className="lg:col-span-8 space-y-5">
-          <div className="card">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex gap-1 flex-wrap">
-                {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`tab-btn text-xs ${tab===t.id?'active':''}`}>{t.label}</button>)}
+      {/* Delete confirm modal */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl w-80">
+            <h3 className="font-bold text-slate-900 text-lg mb-2">Delete File?</h3>
+            <p className="text-slate-500 text-sm mb-5">This file will be permanently removed from storage.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+              <button onClick={() => handleDelete(deleteId)} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-6 max-w-[1400px] mx-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Knowledge Base</h1>
+            <p className="text-slate-500 mt-1">{totalFiles} content items · {storage.total_gb.toFixed(1)} GB used</p>
+          </div>
+          <button onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-60">
+            <Icon name="upload_file" className="text-lg" />
+            {uploading ? `Uploading ${uploadPct}%…` : 'Upload Content'}
+          </button>
+          <input ref={fileRef} type="file" className="hidden"
+            accept=".pdf,.mp4,.webm,.avi,.pptx,.ppt,.docx,.doc,.zip,.txt"
+            onChange={handleUpload} />
+        </div>
+
+        {/* Upload progress bar */}
+        {uploading && (
+          <div className="mb-4 bg-white rounded-xl border border-slate-200 p-4">
+            <div className="flex justify-between text-sm font-semibold text-slate-700 mb-2">
+              <span>Uploading…</span><span>{uploadPct}%</span>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full">
+              <div className="h-2 bg-blue-600 rounded-full transition-all" style={{ width: `${uploadPct}%` }} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-6">
+          {/* Left: files */}
+          <div className="flex-1 min-w-0">
+            {/* Tabs + search + view toggle */}
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+              <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
+                {TABS.map(t => (
+                  <button key={t} onClick={() => setActiveTab(t)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+                    {t}
+                  </button>
+                ))}
               </div>
-              <div className="flex gap-2 sm:ml-auto">
+              <div className="flex items-center gap-2">
                 <div className="relative">
                   <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
-                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search content…" className="input-field pl-9 text-xs w-48" />
+                  <input value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search content…"
+                    className="pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 w-52" />
                 </div>
-                <button onClick={()=>setView(v=>v==='grid'?'list':'grid')} className="btn-secondary p-2.5">
-                  <Icon name={view==='grid'?'view_list':'grid_view'} className="text-lg" />
+                <button onClick={() => setViewMode(v => v === 'grid' ? 'table' : 'grid')}
+                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50">
+                  <Icon name={viewMode === 'grid' ? 'table_rows' : 'grid_view'} className="text-slate-600 text-lg" />
                 </button>
               </div>
             </div>
 
-            {view==='grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-                {filtered.map(item=>(
-                  <div key={item.id} onClick={()=>setSelected(item)}
-                    className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group">
-                    <div className="flex items-start justify-between mb-3">
-                      <span className={`badge text-xs font-bold ${TYPE_STYLE[item.type]||'bg-slate-100 text-slate-600'}`}>{item.type}</span>
-                      <Badge color={AI_COLOR[item.aiStatus]}>{item.aiStatus}</Badge>
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors line-clamp-2">{item.title}</h4>
-                    <p className="text-xs text-slate-400 mb-3">{item.size} · {item.date}</p>
-                    <div className="flex items-center justify-between">
-                      <button onClick={e=>{e.stopPropagation();navigate('/users')}} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-primary">
-                        <img src={AVATAR} className="w-5 h-5 rounded-full" alt="" />{item.uploader}
-                      </button>
-                      <span className="text-xs text-slate-400 flex items-center gap-1"><Icon name="visibility" className="text-base" />{item.views}</span>
-                    </div>
+            {/* Files grid */}
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 animate-pulse">
+                    <div className="h-3 bg-slate-100 rounded w-1/4 mb-3" />
+                    <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2" />
                   </div>
                 ))}
               </div>
-            ):(
-              <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                {filtered.map(item=>(
-                  <div key={item.id} onClick={()=>setSelected(item)}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer">
-                    <span className={`badge text-xs ${TYPE_STYLE[item.type]||''}`}>{item.type}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{item.title}</p>
-                      <p className="text-xs text-slate-400">{item.uploader} · {item.date} · {item.size}</p>
+            ) : files.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center">
+                <Icon name="folder_open" className="text-5xl text-slate-300 mb-3" />
+                <p className="text-slate-500 font-semibold">No files found</p>
+                <p className="text-slate-400 text-sm mt-1">Upload content to get started</p>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {files.map(f => {
+                  const tc = TYPE_COLORS[f.file_type] || TYPE_COLORS.TXT
+                  return (
+                    <div key={f.id} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-all group">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold ${tc.dot}`}>{f.file_type}</span>
+                          <span className={`text-xs font-semibold ${STATUS_COLORS[f.status] || 'text-slate-400'}`}>{f.status}</span>
+                        </div>
+                        <button onClick={() => setDeleteId(f.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
+                          <Icon name="delete" className="text-lg" />
+                        </button>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1 line-clamp-2">{f.original_name}</h4>
+                      <p className="text-xs text-slate-400 mb-3">{f.file_size_mb} MB · {f.created_at ? new Date(f.created_at).toLocaleDateString() : ''}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600">
+                            {(f.uploader_name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          {f.uploader_name}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                          <Icon name="visibility" className="text-sm" />{f.view_count}
+                        </div>
+                      </div>
                     </div>
-                    <Badge color={AI_COLOR[item.aiStatus]}>{item.aiStatus}</Badge>
-                    <div className="flex gap-1">
-                      <button onClick={e=>{e.stopPropagation();navigate('/ai')}} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><Icon name="smart_toy" className="text-base text-slate-400 hover:text-primary" /></button>
-                      <button onClick={e=>{e.stopPropagation();setContent(c=>c.filter(x=>x.id!==item.id));showToast('Deleted','info')}} className="p-1.5 hover:bg-red-50 rounded-lg"><Icon name="delete" className="text-base text-slate-400 hover:text-red-500" /></button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
+              </div>
+            ) : (
+              /* Table view */
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      {['Type', 'Name', 'Size', 'Uploader', 'Views', 'Status', ''].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {files.map(f => {
+                      const tc = TYPE_COLORS[f.file_type] || TYPE_COLORS.TXT
+                      return (
+                        <tr key={f.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3"><span className={`text-xs font-bold ${tc.dot}`}>{f.file_type}</span></td>
+                          <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate">{f.original_name}</td>
+                          <td className="px-4 py-3 text-slate-500">{f.file_size_mb} MB</td>
+                          <td className="px-4 py-3 text-slate-500">{f.uploader_name}</td>
+                          <td className="px-4 py-3 text-slate-500">{f.view_count}</td>
+                          <td className="px-4 py-3"><span className={`text-xs font-semibold ${STATUS_COLORS[f.status]}`}>{f.status}</span></td>
+                          <td className="px-4 py-3">
+                            <button onClick={() => setDeleteId(f.id)} className="text-red-400 hover:text-red-600">
+                              <Icon name="delete" className="text-lg" />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
-            {filtered.length===0&&<div className="text-center py-12 text-slate-400"><Icon name="folder_off" className="text-4xl block mx-auto mb-2" /><p>No content found</p></div>}
           </div>
-        </div>
 
-        {/* Storage sidebar */}
-        <div className="lg:col-span-4 space-y-5">
-          <div className="card p-6">
-            <h3 className="font-bold text-slate-900 dark:text-white mb-5">Storage Usage</h3>
-            <div className="flex justify-center mb-5">
-              <div className="relative w-28 h-28">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#137fec" strokeWidth="3"
-                    strokeDasharray="74 26" strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-black text-slate-900 dark:text-white">74%</span>
-                  <span className="text-[10px] text-slate-400">Used</span>
-                </div>
+          {/* Right: storage panel */}
+          <div className="w-64 flex-shrink-0 space-y-4">
+            {/* Storage donut */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <h3 className="font-bold text-slate-900 mb-4">Storage Usage</h3>
+              <div className="flex justify-center mb-4">
+                <StorageDonut pct={storagePct} />
               </div>
-            </div>
-            <div className="space-y-3">
-              {STORAGE_BREAKDOWN.map(s=>(
-                <div key={s.type}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${s.colorClass}`} /><span className="font-semibold text-slate-700 dark:text-slate-300">{s.type}</span></div>
-                    <span className="text-slate-400">{s.size}</span>
+              <div className="space-y-2">
+                {storageByType.map(s => (
+                  <div key={s.label} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                      <span className="text-slate-600 font-medium">{s.label}</span>
+                    </div>
+                    <span className="text-slate-500">{s.gb.toFixed(1)} GB</span>
                   </div>
-                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                    <div className={`h-1.5 rounded-full ${s.colorClass}`} style={{width:`${s.pct}%`}} />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-3 text-center">{storage.total_gb.toFixed(1)} GB of {STORAGE_LIMIT_GB} GB used</p>
             </div>
-            <button onClick={()=>showToast('Cleanup wizard would open','info')} className="btn-secondary w-full justify-center mt-5 text-xs">
-              <Icon name="cleaning_services" className="text-base" />Run Cleanup Wizard
-            </button>
-          </div>
 
-          <div className="bg-gradient-to-br from-primary to-blue-600 rounded-xl p-6 text-white shadow-lg shadow-primary/20">
-            <Icon name="auto_awesome" className="text-3xl mb-3" />
-            <p className="font-bold mb-1">AI Processing Queue</p>
-            <p className="text-4xl font-black mb-1">3</p>
-            <p className="text-blue-100 text-xs">jobs currently active</p>
-            <button onClick={()=>navigate('/ai')} className="mt-4 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors w-full">
-              View AI Configuration →
+            {/* AI Queue placeholder */}
+            <div className="bg-blue-600 rounded-2xl p-5 text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="auto_awesome" className="text-xl" />
+                <span className="font-bold text-sm">AI Processing Queue</span>
+              </div>
+              <p className="text-3xl font-black mb-1">0</p>
+              <p className="text-blue-200 text-xs mb-3">jobs currently active</p>
+              <button onClick={() => navigate('/dashboard/admin/ai')}
+                className="w-full bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 rounded-xl transition-all">
+                View AI Configuration →
+              </button>
+            </div>
+
+            {/* Cleanup */}
+            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-2xl bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all">
+              <Icon name="cleaning_services" className="text-lg" />Run Cleanup Wizard
             </button>
           </div>
         </div>
       </div>
-
-      {/* Content detail modal */}
-      <Modal open={!!selected} onClose={()=>setSelected(null)} title="Content Details" size="lg">
-        {selected&&(
-          <div className="space-y-5">
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-5">
-              <div className="flex items-start gap-3 mb-4">
-                <span className={`badge text-sm font-bold px-3 py-1.5 ${TYPE_STYLE[selected.type]||''}`}>{selected.type}</span>
-                <Badge color={AI_COLOR[selected.aiStatus]}>{selected.aiStatus}</Badge>
-              </div>
-              <h4 className="text-lg font-bold text-slate-900 dark:text-white">{selected.title}</h4>
-              <p className="text-sm text-slate-500 mt-1">{selected.size} · Uploaded {selected.date}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[['Uploader',selected.uploader],['Views',selected.views],['AI Status',selected.aiStatus],['Tags',selected.tags.join(', ')]].map(([k,v])=>(
-                <div key={k} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                  <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider mb-1">{k}</p>
-                  <p className="font-bold text-slate-900 dark:text-white text-sm">{v}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={()=>navigate('/ai')} className="btn-primary"><Icon name="smart_toy" className="text-lg" />View AI Details</button>
-              <button onClick={()=>{navigate('/users');setSelected(null)}} className="btn-secondary"><Icon name="person" className="text-lg" />View Uploader</button>
-              <button onClick={()=>{showToast('Reprocessing started!','info');setSelected(null)}} className="btn-secondary ml-auto"><Icon name="refresh" className="text-lg" />Reprocess</button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

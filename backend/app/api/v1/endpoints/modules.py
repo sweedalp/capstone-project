@@ -209,14 +209,13 @@ async def upload_video(
     if not les:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    os.makedirs("static/videos", exist_ok=True)
-    filename = f"{lesson_id}_{file.filename.replace(' ', '_')}"
-    file_path = f"static/videos/{filename}"
+    os.makedirs("static/uploads/videos", exist_ok=True)
+    filename = f"{lesson_id}_{file.filename.replace(' ', '_')}"  # ← was missing!
+    file_path = f"static/uploads/videos/{filename}"
+    video_url = f"/static/uploads/videos/{filename}"             # ← one correct URL
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
-    video_url = f"/static/videos/{filename}"
 
     # Save or update LessonContent
     existing = db.query(LessonContent).filter(

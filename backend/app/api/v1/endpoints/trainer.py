@@ -18,7 +18,7 @@ from sqlalchemy import func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User,  UserRole
+from app.models.user import User, UserRole
 from app.models.course import Course, Category, LevelEnum
 from app.models.module import Module, Lesson, LessonContent, LessonTypeEnum, ContentTypeEnum
 from app.models.activity import ActivityLog
@@ -35,7 +35,7 @@ os.makedirs(f"{UPLOAD_DIR}/pdfs", exist_ok=True)
 
 # ── Auth dependency — trainer or admin only ───────────────────────
 def get_trainer_user(current_user: User = Depends(get_current_user)):
-    if current_user.role not in [UserRole.trainer, UserRole.admin]:
+    if current_user.role not in [UserRole.TRAINER, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Trainer or Admin access required")
     return current_user
 
@@ -191,7 +191,7 @@ def update_course(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != RoleEnum.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     if payload.title is not None:
@@ -220,7 +220,7 @@ def delete_course(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     db.delete(course)
@@ -238,7 +238,7 @@ def publish_course(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
     if not course.modules:
         raise HTTPException(status_code=400, detail="Course must have at least one module")
@@ -268,7 +268,7 @@ def unpublish_course(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     course.is_published = False
@@ -287,7 +287,7 @@ def get_modules(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     result = []
@@ -322,7 +322,7 @@ def create_module(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     # Auto order index
@@ -354,7 +354,7 @@ def delete_module(
     if not mod:
         raise HTTPException(status_code=404, detail="Module not found")
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     db.delete(mod)
@@ -375,7 +375,7 @@ def create_lesson(
     if not mod:
         raise HTTPException(status_code=404, detail="Module not found")
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     # Map lesson type
@@ -442,7 +442,7 @@ def update_lesson(
 
     mod = db.query(Module).filter(Module.id == lesson.module_id).first()
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     if payload.title is not None:
@@ -489,7 +489,7 @@ def delete_lesson(
 
     mod = db.query(Module).filter(Module.id == lesson.module_id).first()
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     db.delete(lesson)
@@ -517,7 +517,7 @@ def upload_video(
 
     mod = db.query(Module).filter(Module.id == lesson.module_id).first()
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     # Validate file type
@@ -573,7 +573,7 @@ def upload_pdf(
 
     mod = db.query(Module).filter(Module.id == lesson.module_id).first()
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     if file.content_type != "application/pdf":
@@ -619,7 +619,7 @@ def save_quiz(
 
     mod = db.query(Module).filter(Module.id == lesson.module_id).first()
     course = db.query(Course).filter(Course.id == mod.course_id).first()
-    if course.trainer_id != user.id and user.role != UserRole.admin:
+    if course.trainer_id != user.id and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not your course")
 
     quiz_data = {

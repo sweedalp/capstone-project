@@ -54,9 +54,9 @@ const LessonContent = () => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      apiClient.get(`/api/v1/content/lessons/${lessonId}`),
-      apiClient.get(`/api/v1/courses/${courseId}`),
-      apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
+     apiClient.get(`/api/v1/content/lessons/${lessonId}`),
+apiClient.get(`/api/v1/courses/${courseId}`),
+apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
     ]).then(([lessonRes, courseRes, modulesRes]) => {
       setLesson(lessonRes.data);
       setCourse(courseRes.data);
@@ -85,27 +85,38 @@ const LessonContent = () => {
     ...allLessons.slice(currentIdx + 1, currentIdx + 3).map(l => ({ ...l, isPrerequisite: false })),
   ].filter(l => l.id !== parseInt(lessonId));
 
-  const handleMarkComplete = async () => {
-    setMarking(true);
-    try {
-      const enrollRes = await apiClient.get('/api/v1/courses/my/enrolled');
-      const enr = enrollRes.data.find(e => e.id === parseInt(courseId));
-      if (!enr) throw new Error('Not enrolled');
-      await apiClient.post('/api/v1/progress/', {
-        enrollment_id: enr.id,
-        lesson_id: parseInt(lessonId),
-        is_completed: true,
-      });
-      setIsCompleted(true);
-      setAllLessons(prev => prev.map(l => l.id === parseInt(lessonId) ? { ...l, is_completed: true } : l));
-      if (nextLesson) setTimeout(() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`), 500);
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Could not mark complete');
-    } finally {
-      setMarking(false);
-    }
-  };
+ const handleMarkComplete = async () => {
+  setMarking(true);
+  try {
+    // Step 1: Get enrollment
+    const enrollRes = await apiClient.get('/api/v1/courses/my/enrolled');
+    const enr = enrollRes.data.find(e => e.id === parseInt(courseId) || e.course_id === parseInt(courseId));
 
+    // Step 2: Auto-enroll if not enrolled
+    if (!enr) {
+      await apiClient.post(`/api/v1/enrollments/enroll`, { course_id: parseInt(courseId) });
+    }
+
+    // Step 3: Mark complete — correct endpoint is /progress/complete
+    await apiClient.post('/api/v1/progress/complete', {
+      lesson_id: parseInt(lessonId),
+      score: null,
+      time_spent_seconds: 0,
+    });
+
+    setIsCompleted(true);
+    setAllLessons(prev => prev.map(l =>
+      l.id === parseInt(lessonId) ? { ...l, is_completed: true } : l
+    ));
+    if (nextLesson) {
+      setTimeout(() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`), 500);
+    }
+  } catch (err) {
+    alert(err.response?.data?.detail || 'Could not mark complete');
+  } finally {
+    setMarking(false);
+  }
+};
   // ── Content helpers ───────────────────────────────────────────────
   const getVideoUrl = () => lesson?.contents?.find(c => c.content_type === 'video_url')?.content || null;
   const getTextBody = () => lesson?.contents?.find(c => c.content_type === 'text_body')?.content || null;
@@ -113,12 +124,13 @@ const LessonContent = () => {
   const getLessonIcon = (type) => type === 'video' ? 'movie' : type === 'quiz' ? 'quiz' : 'article';
 
   // ── Universal video config — handles all URL types ────────────────
-  const getVideoConfig = (url) => {
-    if (!url) return null;
+ const getVideoConfig = (url) => {
+  if (!url) return null;
 
-    if (url.startsWith('/static/') || url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
-      return { type: 'direct', src: url };
-    }
+  // Local upload from trainer
+  if (url.startsWith('/static/')) {
+    return { type: 'direct', src: `http://localhost:8000${url}` };
+  }
     if (url.includes('youtube.com/watch?v=')) {
       const id = url.split('v=')[1]?.split('&')[0];
       return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
