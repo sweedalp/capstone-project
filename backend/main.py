@@ -29,24 +29,7 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ── Serve uploaded videos ───────────────────────────────────────────
-os.makedirs("static/videos", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-os.makedirs("static/uploads/videos", exist_ok=True)
-os.makedirs("static/uploads/pdfs", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=500,
-        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")},
-        content={
-            "message": "Internal server error",
-            "detail": str(exc) if settings.DEBUG else "An error occurred"
-        }
-    )
-
-# ── Configure CORS ──────────────────────────────────────────────────
+# ── Configure CORS (must be first middleware) ───────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -58,6 +41,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Create static directories and mount once ────────────────────────
+os.makedirs("static/uploads/videos", exist_ok=True)
+os.makedirs("static/uploads/pdfs", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Include API routes ──────────────────────────────────────────────
 app.include_router(api_router, prefix="/api/v1")
@@ -94,7 +82,7 @@ async def global_exception_handler(request, exc):
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=settings.DEBUG

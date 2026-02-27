@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../../../context/AdminContext.jsx'
 import { REPORT_TYPES, SCHEDULED_REPORTS, RECENT_REPORTS, AI_INSIGHTS } from '../../../data/curriculumData.js'
 import Icon from '../../../components/ui/Icon.jsx'
+import apiClient from '../../../services/api'
 
 const FORMAT_COLOR = { PDF:'text-red-600 bg-red-50', EXCEL:'text-green-600 bg-green-50', PPT:'text-orange-600 bg-orange-50' }
 
@@ -68,7 +69,23 @@ export default function Reports() {
                       </button>
                     ))}
                   </div>
-                  <button onClick={()=>showToast('Report generation started! Download will begin shortly.','success')}
+                  <button onClick={async () => {
+  try {
+    // Map report type to backend export type
+    const exportMap = { progress: 'users', enrollment: 'courses', content: 'activities', compliance: 'users' }
+    const exportType = exportMap[reportType] || 'users'
+    const res = await apiClient.get(`/api/v1/admin/export/${exportType}`, { responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'text/csv' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${exportType}_report.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
+    showToast('Report downloaded!', 'success')
+  } catch {
+    showToast('Export failed', 'error')
+  }
+}}
                     className="w-full btn-primary justify-center py-3 shadow-lg shadow-primary/20">
                     <Icon name="summarize" className="text-xl" />Compile &amp; Generate Report
                   </button>

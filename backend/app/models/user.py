@@ -8,7 +8,6 @@ from ..core.database import Base
 class UserRole(str, enum.Enum):
     LEARNER = "learner"
     TRAINER = "trainer"
-    LEADERSHIP = "leadership"
     ADMIN = "admin"
 
 
