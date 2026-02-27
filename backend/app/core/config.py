@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+from pathlib import Path
 
 class Settings(BaseSettings):
     # Application
@@ -37,7 +38,10 @@ class Settings(BaseSettings):
     MAIL_FROM_NAME: str = "AI LMS Platform"
 
     class Config:
-        env_file = r"D:\capstone-project\.env"
+        # Load environment variables from the repository root `.env`.
+        # This keeps local dev consistent across machines.
+        env_file = str(Path(__file__).resolve().parents[3] / ".env")
+        env_file_encoding = "utf-8"
         case_sensitive = True
 
 settings = Settings()

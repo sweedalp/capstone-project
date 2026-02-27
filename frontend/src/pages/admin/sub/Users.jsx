@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../../context/AdminContext.jsx'
-import { MOCK_USERS, AVATAR } from '../../../data/adminMockData.js'
+import apiClient from '../../../services/api'
 import Icon  from '../../../components/ui/Icon.jsx'
 import Badge from '../../../components/ui/Badge.jsx'
 import Modal from '../../../components/ui/Modal.jsx'
@@ -18,13 +18,49 @@ const TABS = [
 export default function Users() {
   const navigate = useNavigate()
   const { showToast } = useApp()
-  const [users, setUsers]         = useState(MOCK_USERS)
+  const [users, setUsers]         = useState([])
   const [search, setSearch]       = useState('')
   const [tab, setTab]             = useState('all')
   const [selectedUser, setSelected] = useState(null)
   const [addOpen, setAddOpen]     = useState(false)
   const [selected, setChecked]    = useState([])
-  const [newUser, setNew]         = useState({ name:'', email:'', role:'Learner', dept:'' })
+  const [newUser, setNew]         = useState({ name:'', email:'', role:'Learner' })
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState('')
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await apiClient.get('/api/v1/admin/users')
+        if (!active) return
+        const apiUsers = (res.data || []).map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          status: u.is_active ? 'active' : 'inactive',
+          joined: u.joined || '',
+          dept: '',
+          avatar: '',
+          lastLogin: '',
+          courses: 0,
+          uploads: 0,
+        }))
+        setUsers(apiUsers)
+      } catch (e) {
+        console.error(e)
+        if (!active) return
+        setError('Failed to load users from server.')
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [])
 
   const tabs = TABS.map(t => ({ ...t, count: t.id==='all' ? users.length : users.filter(u=>u.status===t.id).length }))
 
@@ -35,14 +71,39 @@ export default function Users() {
   })
 
   const toggle = (id) => setChecked(s => s.includes(id) ? s.filter(x=>x!==id) : [...s,id])
-  const approve = (id) => { setUsers(u=>u.map(x=>x.id===id?{...x,status:'active'}:x)); showToast('User approved!','success') }
-  const remove  = (id) => { setUsers(u=>u.filter(x=>x.id!==id)); showToast('User removed','info'); setSelected(null) }
+  const approve = async (id) => {
+    try {
+      const res = await apiClient.post(`/api/v1/admin/users/${id}/toggle-active`)
+      const updated = res.data
+      setUsers(u =>
+        u.map(x =>
+          x.id === id ? { ...x, status: updated.is_active ? 'active' : 'inactive' } : x
+        )
+      )
+      showToast('User status updated','success')
+    } catch (e) {
+      console.error(e)
+      showToast('Failed to update user','error')
+    }
+  }
+
+  const remove  = async (id) => {
+    try {
+      await apiClient.delete(`/api/v1/admin/users/${id}`)
+      setUsers(u=>u.filter(x=>x.id!==id))
+      showToast('User removed','info')
+      setSelected(null)
+    } catch (e) {
+      console.error(e)
+      showToast('Failed to remove user','error')
+    }
+  }
 
   const handleAdd = () => {
-    if(!newUser.name||!newUser.email) return
-    setUsers(u=>[...u,{id:Date.now(),...newUser,status:'pending',joined:'Today',courses:0,avatar:AVATAR,lastLogin:'Never',uploads:0}])
-    setAddOpen(false); setNew({name:'',email:'',role:'Learner',dept:''})
-    showToast('User added!','success')
+    // For now, admin cannot create new users directly; they self-register.
+    // Keep a light UX by just showing an info toast.
+    showToast('User creation is handled via Sign Up flow.','info')
+    setAddOpen(false)
   }
 
   return (
@@ -51,7 +112,7 @@ export default function Users() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 dark:text-white">User Management</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">{users.length} total users registered</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">{users.length} total users</p>
         </div>
         <div className="flex gap-2">
           <button onClick={()=>showToast('Import wizard would open','info')} className="btn-secondary"><Icon name="upload" className="text-lg" />Import CSV</button>
@@ -67,6 +128,13 @@ export default function Users() {
             <button onClick={()=>{showToast('Exported','success');setChecked([])}} className="btn-secondary text-xs py-1.5">Export</button>
             <button onClick={()=>{setUsers(u=>u.filter(x=>!selected.includes(x.id)));setChecked([]);showToast('Deleted','info')}} className="btn-danger text-xs py-1.5">Delete Selected</button>
           </div>
+        </div>
+      )}
+
+      {/* Error / loading */}
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+          {error}
         </div>
       )}
 
@@ -106,7 +174,9 @@ export default function Users() {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <img src={user.avatar} className="w-9 h-9 rounded-full object-cover border-2 border-slate-200" alt="" />
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border-2 border-slate-200 text-xs font-bold text-primary">
+                        {user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                      </div>
                       <div>
                         <button onClick={()=>setSelected(user)} className="text-sm font-bold text-slate-900 dark:text-white hover:text-primary transition-colors">{user.name}</button>
                         <p className="text-xs text-slate-400">{user.email}</p>

@@ -16,15 +16,33 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_EXPIRATION // 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+MAX_PASSWORD_LENGTH_BYTES = 72
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def _truncate_password(password: str) -> str:
+    """
+    Bcrypt only uses the first 72 bytes of the password and raises
+    if the input is longer. We proactively truncate so both hashing
+    and verification behave consistently and don't error.
+    """
+    if password is None:
+        return ""
+    return password[:MAX_PASSWORD_LENGTH_BYTES]
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate_password(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(_truncate_password(plain_password), hashed_password)
+    except ValueError:
+        # If bcrypt still rejects the password (e.g. due to an old incompatible hash),
+        # treat it as an authentication failure rather than crashing the request.
+        return False
 
 
 def create_access_token(data: dict) -> str:
