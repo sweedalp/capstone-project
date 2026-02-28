@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
 
 export default function RevisionAssistant() {
@@ -12,7 +13,7 @@ export default function RevisionAssistant() {
   const userName = localStorage.getItem('userName') || 'User';
   const userEmail = localStorage.getItem('userEmail') || '';
   const userRole = localStorage.getItem('userRole') || 'learner';
-  
+
   // Get data from navigation state (from AI Learning Hub or Dashboard)
   const passedData = location.state || {};
   const initialTopic = passedData.topic || null;
@@ -175,51 +176,7 @@ export default function RevisionAssistant() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-        <div className="p-6 flex items-center gap-3">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <span className="material-symbols-outlined text-2xl">auto_awesome</span>
-          </div>
-          <h2 className="text-xl font-bold tracking-tight text-blue-600">AI LMS</h2>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          {[
-            { label: 'Dashboard', icon: 'dashboard', path: '/learner/dashboard' },
-            { label: 'My Courses', icon: 'book_5', path: '/learner/courses' },
-            { label: 'AI Learning Hub', icon: 'psychology', path: '/learner/ai-hub' },
-            { label: 'Analytics', icon: 'monitoring', path: '/learner/analytics' },
-            { label: 'Search & QA', icon: 'search', path: '/learner/search' },
-          ].map(({ label, icon, path }) => (
-            <button key={path} onClick={() => navigate(path)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-left">
-              <span className="material-symbols-outlined">{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-          <div className="pt-8 pb-2 px-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Personal</p>
-          </div>
-          <button onClick={() => navigate('/learner/saved')}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">bookmark</span>
-            <span>Saved Resources</span>
-          </button>
-          <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">settings</span>
-            <span>Settings</span>
-          </button>
-        </nav>
-        <div className="p-4 mt-auto border-t border-slate-100 dark:border-slate-800">
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 mb-2 uppercase">Storage Used</p>
-            <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full w-[65%]"></div>
-            </div>
-            <p className="text-[10px] mt-2 text-slate-400">1.3GB of 2GB cloud sync used</p>
-          </div>
-        </div>
-      </aside>
+      <LearnerSidebar />
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -285,11 +242,10 @@ export default function RevisionAssistant() {
                             <span className="material-symbols-outlined text-blue-600 text-sm">psychology</span>
                           </div>
                         )}
-                        <div className={`max-w-lg p-4 rounded-lg text-sm leading-relaxed ${
-                          message.type === 'user'
+                        <div className={`max-w-lg p-4 rounded-lg text-sm leading-relaxed ${message.type === 'user'
                             ? 'bg-blue-600 text-white'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-                        }`}>
+                          }`}>
                           {message.text}
                         </div>
                       </div>
@@ -448,16 +404,14 @@ export default function RevisionAssistant() {
                     <div className="space-y-3">
                       {studyPlan.map((task) => (
                         <div key={task.id}
-                          className={`border rounded-lg p-4 transition-all ${
-                            task.completed
+                          className={`border rounded-lg p-4 transition-all ${task.completed
                               ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800'
                               : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/10'
-                          }`}>
+                            }`}>
                           <div className="flex items-start gap-3">
                             <button onClick={() => handleToggleTask(task.id)}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
-                                task.completed ? 'bg-green-600 border-green-600' : 'border-slate-300 hover:border-blue-500'
-                              }`}>
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${task.completed ? 'bg-green-600 border-green-600' : 'border-slate-300 hover:border-blue-500'
+                                }`}>
                               {task.completed && <span className="material-symbols-outlined text-white text-sm">check</span>}
                             </button>
                             <button onClick={() => handleTaskClick(task)} className={`flex-1 text-left ${task.completed ? 'opacity-60' : ''}`}>

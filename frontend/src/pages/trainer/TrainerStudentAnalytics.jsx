@@ -100,7 +100,24 @@ function StudentCard({ student, onViewProfile, onContact, onSchedule }) {
 function ContactModal({ student, onClose }) {
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   if (!student) return null;
+  const handleSend = async () => {
+    if (!message.trim()) return;
+    setSending(true);
+    try {
+      await apiClient.post('/api/v1/messaging', {
+        recipient_id: student.user_id,
+        subject: 'Message from trainer',
+        body: message,
+      });
+      setSent(true);
+    } catch {
+      alert('Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black/60 z-[500] flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8" onClick={e => e.stopPropagation()}>
@@ -123,8 +140,8 @@ function ContactModal({ student, onClose }) {
               placeholder={`Write your message to ${student.user_name}...`} />
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">Cancel</button>
-              <button onClick={() => { if (message.trim()) setSent(true); }} disabled={!message.trim()}
-                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">Send</button>
+              <button onClick={handleSend} disabled={!message.trim() || sending}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">{sending ? 'Sending...' : 'Send'}</button>
             </div>
           </>
         )}
@@ -137,7 +154,25 @@ function ScheduleModal({ student, onClose }) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [done, setDone] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   if (!student) return null;
+  const handleSchedule = async () => {
+    if (!date || !time) return;
+    setScheduling(true);
+    try {
+      await apiClient.post('/api/v1/meetings', {
+        title: `Check-in with ${student.user_name}`,
+        scheduled_at: `${date}T${time}`,
+        duration_minutes: 30,
+        description: `Scheduled check-in with ${student.user_name}`,
+      });
+      setDone(true);
+    } catch {
+      alert('Failed to schedule meeting');
+    } finally {
+      setScheduling(false);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black/60 z-[500] flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8" onClick={e => e.stopPropagation()}>
@@ -165,8 +200,8 @@ function ScheduleModal({ student, onClose }) {
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm mb-6 focus:outline-none focus:border-blue-400" />
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">Cancel</button>
-              <button onClick={() => { if (date && time) setDone(true); }} disabled={!date || !time}
-                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">Confirm</button>
+              <button onClick={handleSchedule} disabled={!date || !time || scheduling}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">{scheduling ? 'Scheduling...' : 'Confirm'}</button>
             </div>
           </>
         )}
@@ -178,6 +213,22 @@ function ScheduleModal({ student, onClose }) {
 function GroupMessageModal({ onClose }) {
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const handleSend = async () => {
+    if (!msg.trim()) return;
+    setSending(true);
+    try {
+      await apiClient.post('/api/v1/messaging/announce', {
+        subject: 'Class Announcement',
+        body: msg,
+      });
+      setSent(true);
+    } catch {
+      alert('Failed to send announcement');
+    } finally {
+      setSending(false);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black/60 z-[500] flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8" onClick={e => e.stopPropagation()}>
@@ -200,8 +251,8 @@ function GroupMessageModal({ onClose }) {
               placeholder="Write message to all students..." />
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold">Cancel</button>
-              <button onClick={() => { if (msg.trim()) setSent(true); }} disabled={!msg.trim()}
-                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">Send to Class</button>
+              <button onClick={handleSend} disabled={!msg.trim() || sending}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40">{sending ? 'Sending...' : 'Send to Class'}</button>
             </div>
           </>
         )}
@@ -352,10 +403,10 @@ export default function TrainerAIStudentAnalytics() {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { icon: "school",    iconBg: "bg-blue-600/10", iconColor: "text-blue-600",   label: "Total Courses",  value: stats?.total_courses || 0,  badge: `${stats?.published_courses || 0} live`, badgeColor: "text-green-600 bg-green-50" },
-                { icon: "menu_book", iconBg: "bg-purple-50",   iconColor: "text-purple-600", label: "Total Lessons",  value: stats?.total_lessons || 0,  badge: "Content",  badgeColor: "text-purple-600 bg-purple-50" },
-                { icon: "group",     iconBg: "bg-indigo-50",   iconColor: "text-indigo-600", label: "Total Students", value: stats?.total_students || 0, badge: "Enrolled", badgeColor: "text-emerald-600 bg-emerald-50" },
-                { icon: "layers",    iconBg: "bg-amber-50",    iconColor: "text-amber-600",  label: "Draft Courses",  value: stats?.draft_courses || 0,  badge: "Drafts",   badgeColor: "text-amber-600 bg-amber-50" },
+                { icon: "school", iconBg: "bg-blue-600/10", iconColor: "text-blue-600", label: "Total Courses", value: stats?.total_courses || 0, badge: `${stats?.published_courses || 0} live`, badgeColor: "text-green-600 bg-green-50" },
+                { icon: "menu_book", iconBg: "bg-purple-50", iconColor: "text-purple-600", label: "Total Lessons", value: stats?.total_lessons || 0, badge: "Content", badgeColor: "text-purple-600 bg-purple-50" },
+                { icon: "group", iconBg: "bg-indigo-50", iconColor: "text-indigo-600", label: "Total Students", value: stats?.total_students || 0, badge: "Enrolled", badgeColor: "text-emerald-600 bg-emerald-50" },
+                { icon: "layers", iconBg: "bg-amber-50", iconColor: "text-amber-600", label: "Draft Courses", value: stats?.draft_courses || 0, badge: "Drafts", badgeColor: "text-amber-600 bg-amber-50" },
               ].map((s, i) => (
                 <StatCard key={i} {...s} onClick={() => addToast(`Viewing ${s.label}`)} />
               ))}
@@ -424,9 +475,9 @@ export default function TrainerAIStudentAnalytics() {
                 </h3>
                 <div className="space-y-6">
                   {[
-                    { icon: "play_circle",      iconBg: "bg-blue-50",   iconColor: "text-blue-600",   title: "AI Explainer Videos",     sub: "Auto-generated", value: "92%", valueColor: "text-emerald-600" },
-                    { icon: "spatial_tracking", iconBg: "bg-purple-50", iconColor: "text-purple-600", title: "Interactive Walkthroughs", sub: "Guided tours",   value: "76%", valueColor: "text-amber-600" },
-                    { icon: "headphones",       iconBg: "bg-amber-50",  iconColor: "text-amber-600",  title: "Audio Summaries",         sub: "Podcast format", value: "45%", valueColor: "text-slate-400" },
+                    { icon: "play_circle", iconBg: "bg-blue-50", iconColor: "text-blue-600", title: "AI Explainer Videos", sub: "Auto-generated", value: "92%", valueColor: "text-emerald-600" },
+                    { icon: "spatial_tracking", iconBg: "bg-purple-50", iconColor: "text-purple-600", title: "Interactive Walkthroughs", sub: "Guided tours", value: "76%", valueColor: "text-amber-600" },
+                    { icon: "headphones", iconBg: "bg-amber-50", iconColor: "text-amber-600", title: "Audio Summaries", sub: "Podcast format", value: "45%", valueColor: "text-slate-400" },
                   ].map((e, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -458,10 +509,10 @@ export default function TrainerAIStudentAnalytics() {
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { icon: "auto_fix_high", label: "Create Content", color: "text-blue-600",   bg: "bg-blue-50",   action: () => navigate('/trainer/ai-studio') },
-                    { icon: "campaign",      label: "Message Class",  color: "text-indigo-600", bg: "bg-indigo-50", action: () => setGroupMsgModal(true) },
-                    { icon: "tune",          label: "Adjust Pace",    color: "text-amber-600",  bg: "bg-amber-50",  action: () => navigate(courseId ? `/trainer/courses/${courseId}` : '/trainer/dashboard') },
-                    { icon: "download",      label: "Export Report",  color: "text-rose-600",   bg: "bg-rose-50",   action: handleExportReport },
+                    { icon: "auto_fix_high", label: "Create Content", color: "text-blue-600", bg: "bg-blue-50", action: () => navigate('/trainer/ai-studio') },
+                    { icon: "campaign", label: "Message Class", color: "text-indigo-600", bg: "bg-indigo-50", action: () => setGroupMsgModal(true) },
+                    { icon: "tune", label: "Adjust Pace", color: "text-amber-600", bg: "bg-amber-50", action: () => navigate(courseId ? `/trainer/courses/${courseId}` : '/trainer/dashboard') },
+                    { icon: "download", label: "Export Report", color: "text-rose-600", bg: "bg-rose-50", action: handleExportReport },
                   ].map((a, i) => (
                     <button key={i} onClick={a.action}
                       className="p-4 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition-all group text-left">

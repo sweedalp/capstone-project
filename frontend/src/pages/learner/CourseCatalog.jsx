@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
 import '../../index.css';
 
@@ -44,40 +45,40 @@ const CourseCatalog = () => {
   useEffect(() => {
     apiClient.get('/api/v1/courses/categories')
       .then(res => setCategories(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const fetchMyCourses = () => {
     apiClient.get('/api/v1/courses/my/enrolled')
       .then(res => setMyCourses(res.data))
-      .catch(() => {});
+      .catch(() => { });
   };
   useEffect(() => { fetchMyCourses(); }, []);
-useEffect(() => {
-  setLoading(true);
-  const params = new URLSearchParams();
-  if (searchQuery) params.append('search', searchQuery);
-  if (selectedLevel) params.append('level', selectedLevel.toLowerCase());
-  // Only send category_id if exactly ONE is selected (backend limitation)
-  if (selectedCategories.length === 1) {
-    const cat = categories.find(c => c.name === selectedCategories[0]);
-    if (cat) params.append('category_id', cat.id);
-  }
-  params.append('skip', (currentPage - 1) * ITEMS_PER_PAGE);
-  params.append('limit', ITEMS_PER_PAGE);
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (searchQuery) params.append('search', searchQuery);
+    if (selectedLevel) params.append('level', selectedLevel.toLowerCase());
+    // Only send category_id if exactly ONE is selected (backend limitation)
+    if (selectedCategories.length === 1) {
+      const cat = categories.find(c => c.name === selectedCategories[0]);
+      if (cat) params.append('category_id', cat.id);
+    }
+    params.append('skip', (currentPage - 1) * ITEMS_PER_PAGE);
+    params.append('limit', ITEMS_PER_PAGE);
 
-  apiClient.get(`/api/v1/courses/?${params.toString()}`)
-    .then(res => {
-      let courses = res.data;
-      // Client-side filter for multi-category selection
-      if (selectedCategories.length > 1) {
-        courses = courses.filter(c => selectedCategories.includes(c.category_name));
-      }
-      setAllCourses(courses);
-      setLoading(false);
-    })
-    .catch(() => { setError('Failed to load courses'); setLoading(false); });
-}, [searchQuery, selectedLevel, selectedCategories, currentPage, categories]);
+    apiClient.get(`/api/v1/courses/?${params.toString()}`)
+      .then(res => {
+        let courses = res.data;
+        // Client-side filter for multi-category selection
+        if (selectedCategories.length > 1) {
+          courses = courses.filter(c => selectedCategories.includes(c.category_name));
+        }
+        setAllCourses(courses);
+        setLoading(false);
+      })
+      .catch(() => { setError('Failed to load courses'); setLoading(false); });
+  }, [searchQuery, selectedLevel, selectedCategories, currentPage, categories]);
 
   const enrolledIds = new Set(myCourses.map(c => c.id));
   const myCoursesMap = Object.fromEntries(myCourses.map(c => [c.id, c]));
@@ -151,50 +152,7 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-        <div className="p-6 flex items-center gap-3">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <span className="material-symbols-outlined text-2xl">auto_awesome</span>
-          </div>
-          <h2 className="text-xl font-bold tracking-tight text-blue-600">AI LMS</h2>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          <button onClick={() => navigate('/learner/dashboard')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">dashboard</span><span>Dashboard</span>
-          </button>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-600 font-semibold cursor-pointer" href="#">
-            <span className="material-symbols-outlined">book_5</span><span>My Courses</span>
-          </a>
-          <button onClick={() => navigate('/learner/ai-hub')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">psychology</span><span>AI Learning Hub</span>
-          </button>
-          <button onClick={() => navigate('/learner/analytics')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">monitoring</span><span>Analytics</span>
-          </button>
-          <button onClick={() => navigate('/learner/search')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">search</span><span>Search & QA</span>
-          </button>
-          <div className="pt-8 pb-2 px-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Personal</p>
-          </div>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer" href="#">
-            <span className="material-symbols-outlined">bookmark</span><span>Saved Resources</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer" href="#">
-            <span className="material-symbols-outlined">settings</span><span>Settings</span>
-          </a>
-        </nav>
-        <div className="p-4 mt-auto border-t border-slate-100">
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 mb-2 uppercase">Storage Used</p>
-            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full w-[65%]"></div>
-            </div>
-            <p className="text-[10px] mt-2 text-slate-400">1.3GB of 2GB cloud sync used</p>
-          </div>
-        </div>
-      </aside>
+      <LearnerSidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
@@ -367,8 +325,8 @@ useEffect(() => {
                           {course.thumbnail_url
                             ? <img className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" alt={course.title} src={course.thumbnail_url} />
                             : <div className="h-full w-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-5xl text-blue-400">school</span>
-                              </div>
+                              <span className="material-symbols-outlined text-5xl text-blue-400">school</span>
+                            </div>
                           }
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
                             <span className={`rounded ${getLevelColor(course.level)} px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-white`}>{course.level}</span>
@@ -460,8 +418,8 @@ useEffect(() => {
                 {selectedCourse.thumbnail_url
                   ? <img className="h-full w-full object-cover" alt={selectedCourse.title} src={selectedCourse.thumbnail_url} />
                   : <div className="h-full w-full bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-6xl text-blue-400">school</span>
-                    </div>
+                    <span className="material-symbols-outlined text-6xl text-blue-400">school</span>
+                  </div>
                 }
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
                   <h3 className="text-2xl font-bold text-white mb-2">{selectedCourse.title}</h3>

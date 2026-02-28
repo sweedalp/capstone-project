@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
 import '../../index.css';
 
@@ -181,37 +182,7 @@ const CourseOverview = () => {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar Navigation */}
-      <aside className="w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-        <div className="p-6 flex items-center gap-3">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg"><span className="material-symbols-outlined text-2xl">auto_awesome</span></div>
-          <h2 className="text-xl font-bold tracking-tight text-blue-600">AI LMS</h2>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          <button onClick={() => navigate('/learner/dashboard')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">dashboard</span><span>Dashboard</span>
-          </button>
-          <button onClick={() => navigate('/learner/courses')} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-600 font-semibold w-full text-left">
-            <span className="material-symbols-outlined">book_5</span><span>My Courses</span>
-          </button>
-          <button 
-            onClick={() => navigate('/learner/ai-hub')}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left"
-          >
-            <span className="material-symbols-outlined">psychology</span>
-            <span>AI Learning Hub</span>
-          </button>
-          <button onClick={() => navigate('/learner/analytics')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors w-full text-left">
-            <span className="material-symbols-outlined">monitoring</span><span>Analytics</span>
-          </button>
-        </nav>
-        <div className="p-4 mt-auto border-t border-slate-100">
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 mb-2 uppercase">Storage Used</p>
-            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden"><div className="bg-blue-600 h-full w-[65%]"></div></div>
-            <p className="text-[10px] mt-2 text-slate-400">1.3GB of 2GB cloud sync used</p>
-          </div>
-        </div>
-      </aside>
+      <LearnerSidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
@@ -291,8 +262,8 @@ const CourseOverview = () => {
                   {course.thumbnail_url
                     ? <img src={course.thumbnail_url} alt={course.title} className="w-32 h-32 rounded-xl object-cover shadow-lg" />
                     : <div className="w-32 h-32 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg">
-                        <span className="material-symbols-outlined text-6xl">school</span>
-                      </div>
+                      <span className="material-symbols-outlined text-6xl">school</span>
+                    </div>
                   }
                 </div>
                 <div className="flex-1 text-center md:text-left">
@@ -327,12 +298,19 @@ const CourseOverview = () => {
                         if (firstQuiz) {
                           navigate(`/learner/courses/${courseId}/assessments/${firstQuiz.id}`);
                         }
-  }}
-    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2">
-    <span className="material-symbols-outlined">quiz</span>Take Assessment
-  </button>
-)}
-                    <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 transition-all">
+                      }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2">
+                        <span className="material-symbols-outlined">quiz</span>Take Assessment
+                      </button>
+                    )}
+                    <button onClick={() => {
+                      const url = window.location.href;
+                      if (navigator.share) {
+                        navigator.share({ title: course.title, text: `Check out this course: ${course.title}`, url });
+                      } else {
+                        navigator.clipboard.writeText(url).then(() => alert('Course link copied to clipboard!')).catch(() => alert('Could not copy link'));
+                      }
+                    }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 transition-all">
                       <span className="material-symbols-outlined">share</span>Share
                     </button>
                   </div>

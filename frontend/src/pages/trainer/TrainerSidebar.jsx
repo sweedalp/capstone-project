@@ -14,10 +14,12 @@ const TrainerSidebar = ({ courseId }) => {
 
   const isActive = (id) => {
     if (id === 'dashboard') return path === '/trainer/dashboard' || path === '/dashboard/trainer';
-    if (id === 'content')   return path.includes('/trainer/content-library');
-    if (id === 'courses')   return path.includes('/trainer/courses') && !path.includes('/analytics') && !path.includes('/upload') && !path.includes('/ai-studio');
+    if (id === 'content') return path.includes('/trainer/content-library');
+    if (id === 'courses') return path.includes('/trainer/courses') && !path.includes('/analytics') && !path.includes('/upload') && !path.includes('/ai-studio');
     if (id === 'analytics') return path.includes('/analytics');
     if (id === 'ai-studio') return path.includes('/trainer/ai-studio');
+    if (id === 'messages') return path.includes('/trainer/messages');
+    if (id === 'meetings') return path.includes('/trainer/meetings');
     return false;
   };
 
@@ -26,7 +28,6 @@ const TrainerSidebar = ({ courseId }) => {
       id: 'dashboard',
       label: 'Dashboard',
       icon: 'dashboard',
-      // ✅ Fixed: consistent trainer dashboard path
       path: '/trainer/dashboard',
     },
     {
@@ -39,15 +40,25 @@ const TrainerSidebar = ({ courseId }) => {
       id: 'courses',
       label: 'Course Management',
       icon: 'school',
-      // ✅ Fixed: fallback to dashboard instead of hardcoded course ID
-      path: courseId ? `/trainer/courses/${courseId}` : '/trainer/dashboard',
+      path: courseId ? `/trainer/courses/${courseId}` : '/trainer/courses',
     },
     {
       id: 'analytics',
       label: 'Analytics',
       icon: 'analytics',
-      // ✅ Course-aware analytics link
       path: courseId ? `/trainer/courses/${courseId}/analytics` : '/trainer/analytics',
+    },
+    {
+      id: 'messages',
+      label: 'Messages',
+      icon: 'mail',
+      path: '/trainer/messages',
+    },
+    {
+      id: 'meetings',
+      label: 'Meetings',
+      icon: 'videocam',
+      path: '/trainer/meetings',
     },
     {
       id: 'ai-studio',

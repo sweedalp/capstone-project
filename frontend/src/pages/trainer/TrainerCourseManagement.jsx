@@ -27,8 +27,8 @@ function ChapterMenu({ onRename, onDelete, onAddLesson }) {
       {open && (
         <div className="absolute right-0 top-9 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-44 py-1">
           {[
-            { icon: "edit",   label: "Rename Chapter", fn: onRename },
-            { icon: "add",    label: "Add Lesson",     fn: onAddLesson },
+            { icon: "edit", label: "Rename Chapter", fn: onRename },
+            { icon: "add", label: "Add Lesson", fn: onAddLesson },
             { icon: "delete", label: "Delete Chapter", fn: onDelete, danger: true },
           ].map(({ icon, label, fn, danger }) => (
             <button key={label} onClick={() => { setOpen(false); fn?.(); }}
@@ -201,6 +201,8 @@ function AddLessonModal({ onClose, onAdd }) {
     title: '', lesson_type: 'video', duration_minutes: 0, content: '', content_type: 'video_url',
   });
   const [adding, setAdding] = useState(false);
+  const [contentFile, setContentFile] = useState(null);
+  const fileRef = useRef(null);
 
   const contentTypeMap = { video: 'video_url', text: 'text_body', quiz: 'quiz_json' };
 
@@ -208,7 +210,7 @@ function AddLessonModal({ onClose, onAdd }) {
     if (!form.title.trim()) return alert('Title required');
     setAdding(true);
     try {
-      await onAdd(form);
+      await onAdd({ ...form, uploadFile: contentFile || null });
       onClose();
     } catch {
       alert('Failed to add lesson');
@@ -216,6 +218,9 @@ function AddLessonModal({ onClose, onAdd }) {
       setAdding(false);
     }
   };
+
+  const fileAccept = form.lesson_type === 'video' ? '.mp4,.webm,.avi,.mov' : '.pdf,.ppt,.pptx';
+  const fileLabel = form.lesson_type === 'video' ? 'Upload Video (MP4, WebM, AVI)' : 'Upload PDF / PPT';
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
@@ -237,9 +242,9 @@ function AddLessonModal({ onClose, onAdd }) {
             <select
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
               value={form.lesson_type}
-              onChange={e => setForm({ ...form, lesson_type: e.target.value, content_type: contentTypeMap[e.target.value] || 'video_url' })}>
+              onChange={e => { setForm({ ...form, lesson_type: e.target.value, content_type: contentTypeMap[e.target.value] || 'video_url' }); setContentFile(null); }}>
               <option value="video">Video</option>
-              <option value="text">Text</option>
+              <option value="text">Text / PDF</option>
               <option value="quiz">Quiz</option>
             </select>
           </div>
@@ -250,25 +255,43 @@ function AddLessonModal({ onClose, onAdd }) {
               value={form.duration_minutes}
               onChange={e => setForm({ ...form, duration_minutes: parseInt(e.target.value) || 0 })} />
           </div>
-          {form.lesson_type === 'video' && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Video URL (YouTube, Drive etc)</label>
-              <input
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-                placeholder="https://youtube.com/watch?v=..."
-                value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} />
-            </div>
-          )}
-          {form.lesson_type === 'text' && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Text Content</label>
-              <textarea rows={3}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 resize-none"
-                placeholder="Enter lesson text content..."
-                // ✅ Fixed: was binding to wrong field (videoUrl)
-                value={form.content}
-                onChange={e => setForm({ ...form, content: e.target.value, content_type: 'text_body' })} />
-            </div>
+          {(form.lesson_type === 'video' || form.lesson_type === 'text') && (
+            <>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                  {form.lesson_type === 'video' ? 'Video URL (YouTube, Drive etc)' : 'Text Content'}
+                </label>
+                {form.lesson_type === 'video' ? (
+                  <input
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} />
+                ) : (
+                  <textarea rows={3}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 resize-none"
+                    placeholder="Enter lesson text content..."
+                    value={form.content}
+                    onChange={e => setForm({ ...form, content: e.target.value, content_type: 'text_body' })} />
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Or Upload File</label>
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  className="border-2 border-dashed border-slate-200 rounded-lg p-3 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                  <Icon name="cloud_upload" className="text-2xl text-slate-300 block mx-auto" />
+                  <p className="text-xs text-slate-500 mt-1">{contentFile ? contentFile.name : fileLabel}</p>
+                </div>
+                <input ref={fileRef} type="file" accept={fileAccept} className="hidden"
+                  onChange={e => { if (e.target.files[0]) setContentFile(e.target.files[0]); }} />
+                {contentFile && (
+                  <div className="flex items-center gap-2 mt-1 text-xs">
+                    <span className="text-slate-500">{(contentFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+                    <button type="button" onClick={() => setContentFile(null)} className="text-red-500 hover:underline">Remove</button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
@@ -303,12 +326,71 @@ export default function TrainerCourseManagement() {
   const [addLessonTarget, setAddLessonTarget] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
 
-  // ── Fetch course + modules ──────────────────────────────────────
+  // ── Course list state (when no courseId) ────────────────────────
+  const [courses, setCourses] = useState([]);
+  const [showCreateCourse, setShowCreateCourse] = useState(false);
+  const [newCourse, setNewCourse] = useState({ title: '', description: '', level: 'beginner' });
+  const [creating, setCreating] = useState(false);
+
+  // ── Fetch course list when no courseId ──────────────────────────
+  useEffect(() => {
+    if (courseId) return;
+    setLoading(true);
+    apiClient.get('/api/v1/trainer/courses')
+      .then(res => {
+        setCourses(res.data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setCourses([]);
+        setLoading(false);
+      });
+  }, [courseId]);
+
+  // ── Create course ──────────────────────────────────────────────
+  const handleCreateCourse = async () => {
+    if (!newCourse.title.trim()) return;
+    setCreating(true);
+    try {
+      const res = await apiClient.post('/api/v1/trainer/courses', newCourse);
+      setCourses(prev => [...prev, res.data]);
+      setShowCreateCourse(false);
+      setNewCourse({ title: '', description: '', level: 'beginner' });
+      // Navigate to the new course
+      navigate(`/trainer/courses/${res.data.id}`);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to create course');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ── Delete course ──────────────────────────────────────────────
+  const handleDeleteCourse = async (id) => {
+    if (!window.confirm('Delete this course and all its content?')) return;
+    try {
+      await apiClient.delete(`/api/v1/trainer/courses/${id}`);
+      setCourses(prev => prev.filter(c => c.id !== id));
+    } catch { alert('Failed to delete course'); }
+  };
+
+  // ── Toggle publish ─────────────────────────────────────────────
+  const handleTogglePublish = async (c) => {
+    try {
+      if (c.is_published) {
+        await apiClient.patch(`/api/v1/trainer/courses/${c.id}/unpublish`);
+      } else {
+        await apiClient.patch(`/api/v1/trainer/courses/${c.id}/publish`);
+      }
+      setCourses(prev => prev.map(x => x.id === c.id ? { ...x, is_published: !x.is_published } : x));
+    } catch { alert('Failed to update publish status'); }
+  };
+
+  // ── Fetch course + modules (when courseId is present) ───────────
   useEffect(() => {
     if (!courseId) return;
     setLoading(true);
     Promise.all([
-      // ✅ Fixed: use /api/v1/courses/{id} to fetch the course detail
       apiClient.get(`/api/v1/courses/${courseId}`),
       apiClient.get(`/api/v1/trainer/courses/${courseId}/modules`),
       apiClient.get('/api/v1/trainer/students'),
@@ -351,7 +433,22 @@ export default function TrainerCourseManagement() {
   // ── Lesson actions ──────────────────────────────────────────────
   const addLesson = async (moduleId, form) => {
     // ✅ Correct endpoint: POST /api/v1/trainer/modules/{id}/lessons
-    const res = await apiClient.post(`/api/v1/trainer/modules/${moduleId}/lessons`, form);
+    const { uploadFile, ...lessonData } = form;
+    const res = await apiClient.post(`/api/v1/trainer/modules/${moduleId}/lessons`, lessonData);
+    const lessonId = res.data.id || res.data.lesson_id;
+    // Upload file if provided
+    if (uploadFile && lessonId) {
+      const fd = new FormData();
+      fd.append('file', uploadFile);
+      const endpoint = form.lesson_type === 'video'
+        ? `/api/v1/trainer/lessons/${lessonId}/upload-video`
+        : `/api/v1/trainer/lessons/${lessonId}/upload-pdf`;
+      try {
+        await apiClient.post(endpoint, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } catch (e) {
+        console.error('File upload failed:', e);
+      }
+    }
     setModules(ms => ms.map(m =>
       m.id === moduleId ? { ...m, lessons: [...(m.lessons || []), res.data] } : m
     ));
@@ -380,9 +477,9 @@ export default function TrainerCourseManagement() {
   const totalLessons = modules.reduce((sum, m) => sum + (m.lessons || []).length, 0);
 
   const tabs = [
-    { icon: "menu_book",    label: "Content" },
-    { icon: "group",        label: "Students" },
-    { icon: "analytics",    label: "Analytics" },
+    { icon: "menu_book", label: "Content" },
+    { icon: "group", label: "Students" },
+    { icon: "analytics", label: "Analytics" },
     { icon: "auto_awesome", label: "AI Hub" },
   ];
 
@@ -391,6 +488,166 @@ export default function TrainerCourseManagement() {
       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
+
+  // ── Course List View (no courseId) ──────────────────────────────
+  if (!courseId) {
+    return (
+      <>
+        {/* Create Course Modal */}
+        {showCreateCourse && (
+          <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                <h3 className="font-bold text-slate-900">Create New Course</h3>
+                <button onClick={() => setShowCreateCourse(false)} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Course Title *</label>
+                  <input className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+                    placeholder="e.g. Introduction to Machine Learning"
+                    value={newCourse.title} onChange={e => setNewCourse({ ...newCourse, title: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Description</label>
+                  <textarea rows={3}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 resize-none"
+                    placeholder="Brief course description..."
+                    value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Level</label>
+                  <select className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+                    value={newCourse.level} onChange={e => setNewCourse({ ...newCourse, level: e.target.value })}>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 p-5 border-t border-slate-100">
+                <button onClick={() => setShowCreateCourse(false)}
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50">Cancel</button>
+                <button onClick={handleCreateCourse} disabled={creating || !newCourse.title.trim()}
+                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-60">
+                  {creating ? 'Creating...' : 'Create Course'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex h-screen overflow-hidden bg-slate-50">
+          <TrainerSidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Header */}
+            <header className="border-b border-slate-200 bg-white px-10 py-3 sticky top-0 z-50">
+              <div className="flex items-center justify-between gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 bg-blue-600/10 rounded-lg flex items-center justify-center">
+                    <Icon name="school" className="text-blue-600" />
+                  </div>
+                  <h2 className="text-slate-900 text-lg font-bold">Course Management</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]" />
+                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                      className="rounded-lg border-none bg-slate-100 py-2 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 w-56"
+                      placeholder="Search courses..." />
+                  </div>
+                  <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
+                </div>
+              </div>
+            </header>
+
+            {/* Main */}
+            <main className="flex-1 overflow-y-auto">
+              <div className="max-w-5xl mx-auto px-8 py-6">
+                {/* Heading */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                  <div>
+                    <h1 className="text-3xl font-black text-slate-900 mb-1">Your Courses</h1>
+                    <p className="text-slate-400">Create, manage, and publish your courses.</p>
+                  </div>
+                  <button onClick={() => setShowCreateCourse(true)}
+                    className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 flex items-center gap-2 shadow-md">
+                    <Icon name="add" className="text-[18px]" />Create New Course
+                  </button>
+                </div>
+
+                {/* Course Grid */}
+                {courses.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
+                    <Icon name="school" className="text-6xl text-slate-200 mb-4 block" />
+                    <p className="text-slate-500 font-medium text-lg mb-2">No courses yet</p>
+                    <p className="text-slate-400 text-sm mb-6">Create your first course to start building your curriculum.</p>
+                    <button onClick={() => setShowCreateCourse(true)}
+                      className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold text-sm hover:bg-blue-700">
+                      Create Your First Course
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {courses
+                      .filter(c => c.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(c => (
+                        <div key={c.id}
+                          className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden group">
+                          {/* Thumbnail */}
+                          <div onClick={() => navigate(`/trainer/courses/${c.id}`)}
+                            className="h-36 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center cursor-pointer relative">
+                            {c.thumbnail_url ? (
+                              <img src={c.thumbnail_url} alt={c.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <Icon name="school" className="text-5xl text-white/40" />
+                            )}
+                            <span className={`absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${c.is_published ? 'bg-green-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
+                              {c.is_published ? 'Published' : 'Draft'}
+                            </span>
+                          </div>
+                          {/* Body */}
+                          <div className="p-5">
+                            <h3 onClick={() => navigate(`/trainer/courses/${c.id}`)}
+                              className="font-bold text-slate-900 mb-1 cursor-pointer hover:text-blue-600 transition-colors line-clamp-1">{c.title}</h3>
+                            <p className="text-xs text-slate-400 mb-4 line-clamp-2">{c.description || 'No description'}</p>
+                            <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
+                              <span className="flex items-center gap-1"><Icon name="layers" className="text-sm" />{c.total_modules || 0} modules</span>
+                              <span className="flex items-center gap-1"><Icon name="group" className="text-sm" />{c.enrolled_count || 0} students</span>
+                              <span className="capitalize px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold">{c.level || 'beginner'}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => navigate(`/trainer/courses/${c.id}`)}
+                                className="flex-1 py-2 bg-blue-600/10 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600/20 transition-colors">
+                                Manage
+                              </button>
+                              <button onClick={() => handleTogglePublish(c)}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${c.is_published ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                                {c.is_published ? 'Unpublish' : 'Publish'}
+                              </button>
+                              <button onClick={() => handleDeleteCourse(c.id)}
+                                className="px-3 py-2 bg-rose-50 text-rose-500 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors">
+                                <Icon name="delete" className="text-sm" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    {/* Add Course Card */}
+                    <button onClick={() => setShowCreateCourse(true)}
+                      className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-600/5 transition-all min-h-[280px] group">
+                      <Icon name="add_circle" className="text-4xl mb-2 group-hover:scale-110 transition-transform" />
+                      <span className="font-bold text-sm">Create New Course</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -560,9 +817,9 @@ export default function TrainerCourseManagement() {
               {activeTab === "AI Hub" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { icon: "auto_awesome", label: "Quick Summary",  desc: "Generate AI summary",  tool: "summary" },
-                    { icon: "quiz",         label: "Quiz Generator", desc: "Auto-create quizzes", tool: "quiz" },
-                    { icon: "headphones",   label: "Audio Summary",  desc: "Convert to audio",    tool: "audio" },
+                    { icon: "auto_awesome", label: "Quick Summary", desc: "Generate AI summary", tool: "summary" },
+                    { icon: "quiz", label: "Quiz Generator", desc: "Auto-create quizzes", tool: "quiz" },
+                    { icon: "headphones", label: "Audio Summary", desc: "Convert to audio", tool: "audio" },
                   ].map(a => (
                     <button key={a.label}
                       onClick={() => navigate(`/trainer/ai-studio?course=${courseId}&tool=${a.tool}`)}
@@ -580,9 +837,9 @@ export default function TrainerCourseManagement() {
               {/* Stats */}
               <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { icon: "description", label: "Total Lessons",   value: totalLessons,      color: "blue" },
-                  { icon: "layers",      label: "Total Chapters",  value: modules.length,    color: "green" },
-                  { icon: "group",       label: "Enrolled Students", value: students.length, color: "purple" },
+                  { icon: "description", label: "Total Lessons", value: totalLessons, color: "blue" },
+                  { icon: "layers", label: "Total Chapters", value: modules.length, color: "green" },
+                  { icon: "group", label: "Enrolled Students", value: students.length, color: "purple" },
                 ].map((s, i) => (
                   <div key={i} className="p-4 bg-white rounded-xl border border-slate-200 flex items-center gap-4 shadow-sm">
                     <div className={`size-12 rounded-lg bg-${s.color}-100 flex items-center justify-center text-${s.color}-600`}>

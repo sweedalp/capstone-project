@@ -13,14 +13,20 @@ import AILearningHub from './pages/learner/AILearningHub'
 import Search from './pages/learner/Search'
 import RevisionAssistant from './pages/learner/RevisionAssistant'
 import Analytics from './pages/learner/Analytics'
+import LearnerMessages from './pages/learner/LearnerMessages'
+import LearnerMeetings from './pages/learner/LearnerMeetings'
+import LearnerSettings from './pages/learner/LearnerSettings'
+import LearnerSavedResources from './pages/learner/LearnerSavedResources'
 
 // trainer imports
-import TrainerDashboard        from './pages/trainer/TrainerDashboard'
+import TrainerDashboard from './pages/trainer/TrainerDashboard'
 import TrainerCourseManagement from './pages/trainer/TrainerCourseManagement'
-import TrainerUploadContent    from './pages/trainer/TrainerUploadContent'
-import TrainerAIContentStudio  from './pages/trainer/TrainerAIContentStudio'
+import TrainerUploadContent from './pages/trainer/TrainerUploadContent'
+import TrainerAIContentStudio from './pages/trainer/TrainerAIContentStudio'
 import TrainerStudentAnalytics from './pages/trainer/TrainerStudentAnalytics'
-import TrainerContentLibrary   from './pages/trainer/TrainerContentLibrary'
+import TrainerContentLibrary from './pages/trainer/TrainerContentLibrary'
+import TrainerMessages from './pages/trainer/TrainerMessages'
+import TrainerMeetings from './pages/trainer/TrainerMeetings'
 
 //admin import
 import AdminLayout from './components/layout/AdminLayout'
@@ -61,16 +67,23 @@ function App() {
         <Route path="/learner/revision" element={<RevisionAssistant />} />
         <Route path="/learner/analytics" element={<Analytics />} />
         <Route path="/learner/progress" element={<Analytics />} />
+        <Route path="/learner/messages" element={<LearnerMessages />} />
+        <Route path="/learner/meetings" element={<LearnerMeetings />} />
+        <Route path="/learner/settings" element={<LearnerSettings />} />
+        <Route path="/learner/saved" element={<LearnerSavedResources />} />
 
         {/* ── Trainer Routes (Pages 13–18) ── */}
-        <Route path="/dashboard/trainer"                   element={<TrainerDashboard />} />
-        <Route path="/trainer/dashboard"                   element={<TrainerDashboard />} />
-        <Route path="/trainer/courses/:courseId"           element={<TrainerCourseManagement />} />
-        <Route path="/trainer/courses/:courseId/upload"    element={<TrainerUploadContent />} />
-        <Route path="/trainer/ai-studio"                   element={<TrainerAIContentStudio />} />
+        <Route path="/dashboard/trainer" element={<TrainerDashboard />} />
+        <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
+        <Route path="/trainer/courses" element={<TrainerCourseManagement />} />
+        <Route path="/trainer/courses/:courseId" element={<TrainerCourseManagement />} />
+        <Route path="/trainer/courses/:courseId/upload" element={<TrainerUploadContent />} />
+        <Route path="/trainer/ai-studio" element={<TrainerAIContentStudio />} />
         <Route path="/trainer/courses/:courseId/analytics" element={<TrainerStudentAnalytics />} />
-        <Route path="/trainer/analytics"                   element={<TrainerStudentAnalytics />} />
-        <Route path="/trainer/content-library"             element={<TrainerContentLibrary />} />
+        <Route path="/trainer/analytics" element={<TrainerStudentAnalytics />} />
+        <Route path="/trainer/content-library" element={<TrainerContentLibrary />} />
+        <Route path="/trainer/messages" element={<TrainerMessages />} />
+        <Route path="/trainer/meetings" element={<TrainerMeetings />} />
 
         <Route path="/dashboard/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />

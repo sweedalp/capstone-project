@@ -123,10 +123,14 @@ def get_trainer_courses(
     db: Session = Depends(get_db),
 ):
     """Get all courses created by this trainer"""
+    from app.models.enrollment import Enrollment
     courses = db.query(Course).filter(Course.trainer_id == user.id).all()
     result = []
     for c in courses:
         total_lessons = sum(len(m.lessons) for m in c.modules)
+        enrolled_count = db.query(func.count(Enrollment.id)).filter(
+            Enrollment.course_id == c.id
+        ).scalar() or 0
         result.append({
             "id": c.id,
             "title": c.title,
@@ -136,6 +140,7 @@ def get_trainer_courses(
             "thumbnail_url": c.thumbnail_url,
             "total_modules": len(c.modules),
             "total_lessons": total_lessons,
+            "enrolled_count": enrolled_count,
             "created_at": c.created_at.isoformat() if c.created_at else None,
         })
     return result
@@ -228,6 +233,7 @@ def delete_course(
     return {"message": "Course deleted"}
 
 
+@router.patch("/courses/{course_id}/publish")
 @router.post("/courses/{course_id}/publish")
 def publish_course(
     course_id: int,
@@ -258,6 +264,7 @@ def publish_course(
     return {"message": "Course published", "course_id": course_id}
 
 
+@router.patch("/courses/{course_id}/unpublish")
 @router.post("/courses/{course_id}/unpublish")
 def unpublish_course(
     course_id: int,

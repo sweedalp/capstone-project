@@ -21,6 +21,10 @@ from app.api.v1.endpoints import (
     admin,
     admin_knowledge,   # ← add this
     admin_reports,
+    messaging,
+    meetings,
+    notifications,
+    saved_resources,
 )
 
 api_router = APIRouter()
@@ -40,6 +44,10 @@ api_router.include_router(trainer.router, prefix="/trainer", tags=["Trainer"])
 api_router.include_router(admin.router,   prefix="/admin",   tags=["Admin"])
 api_router.include_router(admin_knowledge.router, prefix="/knowledge", tags=["Knowledge Base"])
 api_router.include_router(admin_reports.router,   prefix="/reports",   tags=["Reports"])
+api_router.include_router(messaging.router,       prefix="/messaging", tags=["Messaging"])
+api_router.include_router(meetings.router,        prefix="/meetings",  tags=["Meetings"])
+api_router.include_router(notifications.router,   prefix="/notifications", tags=["Notifications"])
+api_router.include_router(saved_resources.router, prefix="/saved-resources", tags=["Saved Resources"])
 # ── AI Features ────────────────────────────────────────────────────
 api_router.include_router(ai_hub.router,      prefix="/ai-hub",      tags=["AI Learning Hub"])
 api_router.include_router(assessments.router,  prefix="/assessments", tags=["Assessments"])

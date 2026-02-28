@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TrainerSidebar from './TrainerSidebar';
 import TrainerProfileDropdown from './TrainerProfileDropdown';
@@ -26,6 +26,12 @@ const TrainerDashboard = () => {
     level: 'beginner',
     thumbnail_url: '',
   });
+  const [contentFiles, setContentFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const fileInputRef = useRef(null);
+
+  const ACCEPTED_EXTS = '.mp4,.webm,.avi,.mov,.pdf,.ppt,.pptx';
 
   const userName = localStorage.getItem('userName') || 'Trainer';
   const userEmail = localStorage.getItem('userEmail') || '';
@@ -55,7 +61,20 @@ const TrainerDashboard = () => {
     e.preventDefault();
     if (!newCourseData.title.trim()) return alert('Course title is required');
     setCreating(true);
+    setUploadProgress('');
     try {
+      // Upload content files first
+      if (contentFiles.length > 0) {
+        for (let i = 0; i < contentFiles.length; i++) {
+          setUploadProgress(`Uploading ${i + 1}/${contentFiles.length}: ${contentFiles[i].name}`);
+          const formData = new FormData();
+          formData.append('file', contentFiles[i].file);
+          await apiClient.post('/api/v1/knowledge/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+      }
+      setUploadProgress('Creating course...');
       const res = await apiClient.post('/api/v1/trainer/courses', {
         title: newCourseData.title,
         description: newCourseData.description,
@@ -66,12 +85,13 @@ const TrainerDashboard = () => {
       const newCourse = res.data;
       setShowCourseCreationModal(false);
       setNewCourseData({ title: '', description: '', category_id: '', level: 'beginner', thumbnail_url: '' });
-      // Navigate to course management with real ID
+      setContentFiles([]);
       navigate(`/trainer/courses/${newCourse.id}`);
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to create course');
     } finally {
       setCreating(false);
+      setUploadProgress('');
     }
   };
 
@@ -200,59 +220,59 @@ const TrainerDashboard = () => {
                 {courses
                   .filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map((course) => (
-                  <div key={course.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-bold text-slate-900">{course.title}</h3>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${course.is_published ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {course.is_published ? 'Published' : 'Draft'}
-                            </span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium capitalize">
-                              {course.level}
-                            </span>
+                    <div key={course.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                      <div className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-bold text-slate-900">{course.title}</h3>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${course.is_published ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {course.is_published ? 'Published' : 'Draft'}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium capitalize">
+                                {course.level}
+                              </span>
+                            </div>
+                            {course.description && (
+                              <p className="text-sm text-slate-500 mb-3 line-clamp-2">{course.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">layers</span>
+                                {course.total_modules} modules
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">menu_book</span>
+                                {course.total_lessons} lessons
+                              </span>
+                            </div>
                           </div>
-                          {course.description && (
-                            <p className="text-sm text-slate-500 mb-3 line-clamp-2">{course.description}</p>
-                          )}
-                          <div className="flex items-center gap-4 text-xs text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-sm">layers</span>
-                              {course.total_modules} modules
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-sm">menu_book</span>
-                              {course.total_lessons} lessons
-                            </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handlePublish(course.id, course.is_published)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${course.is_published ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
+                              {course.is_published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button
+                              onClick={() => navigate(`/trainer/courses/${course.id}`)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-all">
+                              Manage
+                            </button>
+                            <button
+                              onClick={() => navigate(`/trainer/courses/${course.id}/analytics`)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">
+                              Analytics
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCourse(course.id, course.title)}
+                              className="p-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-all">
+                              <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handlePublish(course.id, course.is_published)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${course.is_published ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
-                            {course.is_published ? 'Unpublish' : 'Publish'}
-                          </button>
-                          <button
-                            onClick={() => navigate(`/trainer/courses/${course.id}`)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-all">
-                            Manage
-                          </button>
-                          <button
-                            onClick={() => navigate(`/trainer/courses/${course.id}/analytics`)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">
-                            Analytics
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCourse(course.id, course.title)}
-                            className="p-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-all">
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </section>
@@ -355,7 +375,7 @@ const TrainerDashboard = () => {
                 <input
                   type="text"
                   value={newCourseData.title}
-                  onChange={(e) => setNewCourseData({...newCourseData, title: e.target.value})}
+                  onChange={(e) => setNewCourseData({ ...newCourseData, title: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                   placeholder="e.g. Advanced Python Programming"
                 />
@@ -365,7 +385,7 @@ const TrainerDashboard = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
                 <textarea
                   value={newCourseData.description}
-                  onChange={(e) => setNewCourseData({...newCourseData, description: e.target.value})}
+                  onChange={(e) => setNewCourseData({ ...newCourseData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none"
                   placeholder="Brief description..."
                   rows="3"
@@ -376,7 +396,7 @@ const TrainerDashboard = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Category</label>
                 <select
                   value={newCourseData.category_id}
-                  onChange={(e) => setNewCourseData({...newCourseData, category_id: e.target.value})}
+                  onChange={(e) => setNewCourseData({ ...newCourseData, category_id: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
                   <option value="">Select a category</option>
@@ -391,10 +411,51 @@ const TrainerDashboard = () => {
                 <input
                   type="text"
                   value={newCourseData.thumbnail_url}
-                  onChange={(e) => setNewCourseData({...newCourseData, thumbnail_url: e.target.value})}
+                  onChange={(e) => setNewCourseData({ ...newCourseData, thumbnail_url: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                   placeholder="https://images.unsplash.com/..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Course Content Files</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
+                >
+                  <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">cloud_upload</span>
+                  <p className="text-sm text-slate-600 font-medium">Click to upload files</p>
+                  <p className="text-xs text-slate-400 mt-1">Video (MP4, WebM, AVI), PDF, PowerPoint (PPT, PPTX)</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_EXTS}
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setContentFiles(prev => [...prev, ...files.map(f => ({ file: f, name: f.name, size: f.size }))]);
+                    e.target.value = '';
+                  }}
+                />
+                {contentFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {contentFiles.map((cf, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                        <span className="material-symbols-outlined text-blue-600 text-base">
+                          {cf.name.match(/\.(mp4|webm|avi|mov)$/i) ? 'video_library' : cf.name.match(/\.pdf$/i) ? 'picture_as_pdf' : 'slideshow'}
+                        </span>
+                        <span className="text-sm text-slate-700 flex-1 truncate">{cf.name}</span>
+                        <span className="text-xs text-slate-400">{(cf.size / (1024 * 1024)).toFixed(1)} MB</span>
+                        <button type="button" onClick={() => setContentFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-red-500">
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -407,7 +468,7 @@ const TrainerDashboard = () => {
                         name="level"
                         value={level}
                         checked={newCourseData.level === level}
-                        onChange={(e) => setNewCourseData({...newCourseData, level: e.target.value})}
+                        onChange={(e) => setNewCourseData({ ...newCourseData, level: e.target.value })}
                       />
                       <span className="text-sm capitalize">{level}</span>
                     </label>
@@ -428,7 +489,7 @@ const TrainerDashboard = () => {
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {creating
-                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Creating...</>
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>{uploadProgress || 'Creating...'}</>
                     : 'Create Course'
                   }
                 </button>

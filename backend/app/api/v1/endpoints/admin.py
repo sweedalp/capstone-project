@@ -4,9 +4,11 @@ Admin Endpoints — Stats, Users, Categories, Courses, Activities, Export
 
 import csv
 import io
+import os
+import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -436,3 +438,57 @@ def export_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={export_type}_report.csv"},
     )
+
+
+# ── Thumbnail Upload ─────────────────────────────────────────────
+THUMB_DIR = "static/uploads/thumbnails"
+os.makedirs(THUMB_DIR, exist_ok=True)
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+@router.post("/upload-thumbnail")
+async def upload_thumbnail(
+    file: UploadFile = File(...),
+    _admin: User = Depends(require_role(["admin", "trainer"])),
+):
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only image files (JPEG, PNG, WebP, GIF) are allowed")
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image too large (max 10MB)")
+    save_path = os.path.join(THUMB_DIR, unique_name)
+    with open(save_path, "wb") as f:
+        f.write(contents)
+    url = f"/static/uploads/thumbnails/{unique_name}"
+    return {"url": url, "filename": unique_name}
+
+
+@router.post("/courses/{course_id}/upload-thumbnail")
+async def upload_course_thumbnail(
+    course_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_role(["admin", "trainer"])),
+):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only image files (JPEG, PNG, WebP, GIF) are allowed")
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image too large (max 10MB)")
+    save_path = os.path.join(THUMB_DIR, unique_name)
+    with open(save_path, "wb") as f:
+        f.write(contents)
+    url = f"/static/uploads/thumbnails/{unique_name}"
+    course.thumbnail_url = url
+    db.commit()
+    return {"url": url, "filename": unique_name, "course_id": course_id}

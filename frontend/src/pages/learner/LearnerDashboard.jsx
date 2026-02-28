@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
 import VoiceAIDrawer from '../../components/VoiceAIDrawer';
 import '../../index.css';
@@ -40,14 +41,28 @@ const LearnerDashboard = () => {
   const recentActivities = dashboardData?.recent_activity || [];
   const personalizedRecommendations = dashboardData?.struggles || [];
 
-  const notifications = [
-    { id: 1, type: 'deadline', icon: 'schedule', iconColor: 'text-rose-600', iconBg: 'bg-rose-100', title: 'Neural Nets Quiz Due Soon', message: 'Quiz deadline is tomorrow at 11:59 PM', time: '2 hours ago', unread: true },
-    { id: 2, type: 'achievement', icon: 'military_tech', iconColor: 'text-amber-600', iconBg: 'bg-amber-100', title: 'New Badge Earned!', message: 'You earned "Python Master" badge', time: '5 hours ago', unread: true },
-    { id: 3, type: 'ai', icon: 'psychology', iconColor: 'text-blue-600', iconBg: 'bg-blue-100', title: 'AI Generated Summary Ready', message: 'Your study session recap is available', time: 'Yesterday', unread: false },
-    { id: 4, type: 'course', icon: 'auto_stories', iconColor: 'text-purple-600', iconBg: 'bg-purple-100', title: 'New Lesson Available', message: 'Module 4: Deep Learning has been released', time: '2 days ago', unread: false }
-  ];
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  useEffect(() => {
+    apiClient.get('/api/v1/notifications/')
+      .then(res => {
+        const items = (res.data.notifications || []).map(n => ({
+          ...n,
+          iconColor: n.icon_color,
+          iconBg: n.icon_bg,
+          unread: !n.is_read,
+          time: new Date(n.created_at).toLocaleString(),
+        }));
+        setNotifications(items);
+        setUnreadCount(res.data.unread_count || 0);
+      })
+      .catch(() => {
+        // Notifications endpoint may not have data yet — show empty
+        setNotifications([]);
+        setUnreadCount(0);
+      });
+  }, []);
 
   const handleLogout = () => { localStorage.clear(); navigate('/login'); };
   const handleAskAI = () => { navigate('/learner/ai-hub', { state: { openChat: true } }); };
@@ -134,49 +149,7 @@ const LearnerDashboard = () => {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-        <div className="p-6 flex items-center gap-3">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <span className="material-symbols-outlined text-2xl">auto_awesome</span>
-          </div>
-          <h2 className="text-xl font-bold tracking-tight text-blue-600">AI LMS</h2>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-600 font-semibold cursor-pointer" href="#">
-            <span className="material-symbols-outlined">dashboard</span><span>Dashboard</span>
-          </a>
-          <button onClick={() => navigate('/learner/courses')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left">
-            <span className="material-symbols-outlined">book_5</span><span>My Courses</span>
-          </button>
-          <button onClick={() => navigate('/learner/ai-hub')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left">
-            <span className="material-symbols-outlined">psychology</span><span>AI Learning Hub</span>
-          </button>
-          <button onClick={() => navigate('/learner/analytics')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left">
-            <span className="material-symbols-outlined">monitoring</span><span>Analytics</span>
-          </button>
-          <button onClick={() => navigate('/learner/search')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left">
-            <span className="material-symbols-outlined">search</span><span>Search & QA</span>
-          </button>
-          <div className="pt-8 pb-2 px-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Personal</p>
-          </div>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer" href="#">
-            <span className="material-symbols-outlined">bookmark</span><span>Saved Resources</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer" href="#">
-            <span className="material-symbols-outlined">settings</span><span>Settings</span>
-          </a>
-        </nav>
-        <div className="p-4 mt-auto border-t border-slate-100 dark:border-slate-800">
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 mb-2 uppercase">Storage Used</p>
-            <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full w-[65%]"></div>
-            </div>
-            <p className="text-[10px] mt-2 text-slate-400">1.3GB of 2GB cloud sync used</p>
-          </div>
-        </div>
-      </aside>
+      <LearnerSidebar />
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">

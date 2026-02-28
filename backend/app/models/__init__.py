@@ -10,6 +10,10 @@ from app.models.activity import ActivityLog
 from app.models.ai_cache import AICache
 from app.models.knowledge_model import KnowledgeFile
 from app.models.report_model import Report, ScheduledReport
+from app.models.message import Message
+from app.models.meeting import Meeting
+from app.models.notification import Notification
+from app.models.saved_resource import SavedResource
 
 __all__ = [
     "User", "UserRole",
@@ -20,4 +24,8 @@ __all__ = [
     "AICache",
     "KnowledgeFile",
     "Report", "ScheduledReport",
+    "Message",
+    "Meeting",
+    "Notification",
+    "SavedResource",
 ]

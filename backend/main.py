@@ -16,13 +16,9 @@ from app.api.api import api_router
 
 # ── Import all models so Base.metadata sees them ────────────────────
 import app.models  # noqa: F401
-# main.py — add after your imports, before app creation
-from app.core.database import Base, engine
-from app.models import user, course, enrollment, activity  # import all models
 
-# Creates all tables that don't exist yet
-Base.metadata.create_all(bind=engine)
 # ── Create tables ───────────────────────────────────────────────────
+Base.metadata.create_all(bind=engine)
 
 
 # ── Create FastAPI application ──────────────────────────────────────
@@ -50,6 +46,7 @@ app.add_middleware(
 # ── Create static directories and mount once ────────────────────────
 os.makedirs("static/uploads/videos", exist_ok=True)
 os.makedirs("static/uploads/pdfs", exist_ok=True)
+os.makedirs("static/uploads/thumbnails", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Include API routes ──────────────────────────────────────────────
