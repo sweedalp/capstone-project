@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User, UserRole
 from app.models.message import Message
+from app.core.notifications import create_notification
 
 router = APIRouter()
 
@@ -90,6 +91,20 @@ def send_message(
         body=payload.body,
     )
     db.add(msg)
+
+    # Create in-app notification for the recipient
+    sender_name = current_user.full_name or current_user.username
+    create_notification(
+        db,
+        user_id=payload.recipient_id,
+        title="New Message",
+        message=f"{sender_name}: {payload.subject or payload.body[:80]}",
+        icon="mail",
+        icon_color="text-blue-600",
+        icon_bg="bg-blue-100",
+        notification_type="message",
+    )
+
     db.commit()
     db.refresh(msg)
     return {
@@ -150,6 +165,7 @@ def send_announcement(
     if not learners:
         return {"message": "No learners found", "sent_to": 0}
     count = 0
+    sender_name = current_user.full_name or current_user.username
     for learner in learners:
         msg = Message(
             sender_id=current_user.id,
@@ -158,6 +174,16 @@ def send_announcement(
             body=payload.body,
         )
         db.add(msg)
+        create_notification(
+            db,
+            user_id=learner.id,
+            title="📢 Announcement",
+            message=f"{sender_name}: {payload.subject or payload.body[:80]}",
+            icon="campaign",
+            icon_color="text-amber-600",
+            icon_bg="bg-amber-100",
+            notification_type="announcement",
+        )
         count += 1
     db.commit()
     return {"message": f"Announcement sent to {count} learners", "sent_to": count}

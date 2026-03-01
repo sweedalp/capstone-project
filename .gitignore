@@ -89,3 +89,5 @@ temp/
 tmp/
 
 
+backend/static/uploads/
+backend/static/uploads/*

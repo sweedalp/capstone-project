@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 import uvicorn
 import os
 
@@ -21,6 +23,17 @@ import app.models  # noqa: F401
 Base.metadata.create_all(bind=engine)
 
 
+# ── CORS headers for static files (fixes PDF/video iframe embedding) ─
+class StaticFilesCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+            response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
+        return response
+
+
 # ── Create FastAPI application ──────────────────────────────────────
 app = FastAPI(
     title="LearnAI Pro API",
@@ -30,7 +43,9 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ── Configure CORS (must be first middleware) ───────────────────────
+# ── Middleware (order matters: StaticCORS first, then CORSMiddleware) ─
+app.add_middleware(StaticFilesCORSMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -41,11 +56,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-# ── Create static directories and mount once ────────────────────────
-os.makedirs("static/uploads/videos", exist_ok=True)
-os.makedirs("static/uploads/pdfs", exist_ok=True)
+# ── Create static directories and mount ─────────────────────────────
+os.makedirs("static/uploads/videos",     exist_ok=True)
+os.makedirs("static/uploads/pdfs",       exist_ok=True)
 os.makedirs("static/uploads/thumbnails", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

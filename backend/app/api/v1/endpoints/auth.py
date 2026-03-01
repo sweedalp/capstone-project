@@ -131,7 +131,54 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "full_name": current_user.full_name,
         "role": current_user.role,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
     }
+
+
+# ---------------- UPDATE PROFILE ----------------
+
+@router.put("/profile")
+def update_profile(
+    full_name: str = None,
+    email: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if full_name is not None:
+        current_user.full_name = full_name
+    if email is not None:
+        existing = db.query(User).filter(User.email == email, User.id != current_user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        current_user.email = email
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "message": "Profile updated",
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+    }
+
+
+# ---------------- CHANGE PASSWORD ----------------
+
+@router.put("/change-password")
+def change_password(
+    current_password: str,
+    new_password: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+    current_user.hashed_password = hash_password(new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}
 
 
 # ---------------- FORGOT PASSWORD ----------------

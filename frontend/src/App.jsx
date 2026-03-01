@@ -27,6 +27,8 @@ import TrainerStudentAnalytics from './pages/trainer/TrainerStudentAnalytics'
 import TrainerContentLibrary from './pages/trainer/TrainerContentLibrary'
 import TrainerMessages from './pages/trainer/TrainerMessages'
 import TrainerMeetings from './pages/trainer/TrainerMeetings'
+import TrainerProfile from './pages/trainer/TrainerProfile'
+import TrainerSettings from './pages/trainer/TrainerSettings'
 
 //admin import
 import AdminLayout from './components/layout/AdminLayout'
@@ -84,6 +86,8 @@ function App() {
         <Route path="/trainer/content-library" element={<TrainerContentLibrary />} />
         <Route path="/trainer/messages" element={<TrainerMessages />} />
         <Route path="/trainer/meetings" element={<TrainerMeetings />} />
+        <Route path="/trainer/profile" element={<TrainerProfile />} />
+        <Route path="/trainer/settings" element={<TrainerSettings />} />
 
         <Route path="/dashboard/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />

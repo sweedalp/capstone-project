@@ -8,6 +8,7 @@ const LessonContent = () => {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
 
+  // ── Data state ────────────────────────────────────────────────────
   const [lesson, setLesson] = useState(null);
   const [course, setCourse] = useState(null);
   const [allLessons, setAllLessons] = useState([]);
@@ -15,7 +16,10 @@ const LessonContent = () => {
   const [error, setError] = useState(null);
   const [marking, setMarking] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
+  // ── UI state ──────────────────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [knowledgeLevel, setKnowledgeLevel] = useState('beginner');
@@ -34,6 +38,7 @@ const LessonContent = () => {
   const userEmail = localStorage.getItem('userEmail') || '';
   const userRole = localStorage.getItem('userRole') || 'Learner';
 
+  // ── Mock notifications (real endpoint not yet built) ──────────────
   const notifications = [
     { id: 1, title: 'New Lesson Available', message: 'Check out the new lesson added to your course.', time: '5 minutes ago', icon: 'school', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', unread: true },
     { id: 2, title: 'Assignment Due Soon', message: 'Your assignment is due in 2 days.', time: '1 hour ago', icon: 'assignment', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', unread: true },
@@ -51,12 +56,14 @@ const LessonContent = () => {
     { code: 'ja-JP', name: '日本語 (Japan)', flag: '🇯🇵' },
   ];
 
+  // ── Load lesson data ──────────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
+    setSaved(false); // reset saved state on lesson change
     Promise.all([
-     apiClient.get(`/api/v1/content/lessons/${lessonId}`),
-apiClient.get(`/api/v1/courses/${courseId}`),
-apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
+      apiClient.get(`/api/v1/content/lessons/${lessonId}`),
+      apiClient.get(`/api/v1/courses/${courseId}`),
+      apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
     ]).then(([lessonRes, courseRes, modulesRes]) => {
       setLesson(lessonRes.data);
       setCourse(courseRes.data);
@@ -70,6 +77,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
     }).catch(() => { setError('Failed to load lesson'); setLoading(false); });
   }, [courseId, lessonId]);
 
+  // ── Derived lesson navigation ─────────────────────────────────────
   const currentIdx = allLessons.findIndex(l => l.id === parseInt(lessonId));
   const previousLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
   const nextLesson = currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null;
@@ -85,52 +93,84 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
     ...allLessons.slice(currentIdx + 1, currentIdx + 3).map(l => ({ ...l, isPrerequisite: false })),
   ].filter(l => l.id !== parseInt(lessonId));
 
- const handleMarkComplete = async () => {
-  setMarking(true);
-  try {
-    // Step 1: Get enrollment
-    const enrollRes = await apiClient.get('/api/v1/courses/my/enrolled');
-    const enr = enrollRes.data.find(e => e.id === parseInt(courseId) || e.course_id === parseInt(courseId));
-
-    // Step 2: Auto-enroll if not enrolled
-    if (!enr) {
-      await apiClient.post(`/api/v1/enrollments/enroll`, { course_id: parseInt(courseId) });
+  // ── Mark complete ─────────────────────────────────────────────────
+  const handleMarkComplete = async () => {
+    setMarking(true);
+    try {
+      const enrollRes = await apiClient.get('/api/v1/courses/my/enrolled');
+      const enr = enrollRes.data.find(e => e.id === parseInt(courseId) || e.course_id === parseInt(courseId));
+      if (!enr) {
+        await apiClient.post(`/api/v1/enrollments/enroll`, { course_id: parseInt(courseId) });
+      }
+      await apiClient.post('/api/v1/progress/complete', {
+        lesson_id: parseInt(lessonId),
+        score: null,
+        time_spent_seconds: 0,
+      });
+      setIsCompleted(true);
+      setAllLessons(prev => prev.map(l =>
+        l.id === parseInt(lessonId) ? { ...l, is_completed: true } : l
+      ));
+      if (nextLesson) {
+        setTimeout(() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`), 500);
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not mark complete');
+    } finally {
+      setMarking(false);
     }
+  };
 
-    // Step 3: Mark complete — correct endpoint is /progress/complete
-    await apiClient.post('/api/v1/progress/complete', {
-      lesson_id: parseInt(lessonId),
-      score: null,
-      time_spent_seconds: 0,
-    });
-
-    setIsCompleted(true);
-    setAllLessons(prev => prev.map(l =>
-      l.id === parseInt(lessonId) ? { ...l, is_completed: true } : l
-    ));
-    if (nextLesson) {
-      setTimeout(() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`), 500);
+  // ── Save to library ───────────────────────────────────────────────
+  const handleSave = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    try {
+      await apiClient.post('/api/v1/saved-resources/', {
+        title: lesson.title,
+        resource_type: lesson.lesson_type || 'lesson',
+        lesson_id: parseInt(lessonId),
+        icon: lesson.lesson_type === 'video' ? 'movie'
+            : lesson.lesson_type === 'quiz'  ? 'quiz'
+            : 'article',
+        icon_color: lesson.lesson_type === 'video' ? 'text-amber-600'
+                  : lesson.lesson_type === 'quiz'  ? 'text-green-600'
+                  : 'text-blue-600',
+        icon_bg: lesson.lesson_type === 'video' ? 'bg-amber-100'
+               : lesson.lesson_type === 'quiz'  ? 'bg-green-100'
+               : 'bg-blue-100',
+        url: null,
+      });
+      setSaved(true);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to save lesson');
+    } finally {
+      setSaving(false);
     }
-  } catch (err) {
-    alert(err.response?.data?.detail || 'Could not mark complete');
-  } finally {
-    setMarking(false);
-  }
-};
+  };
+
   // ── Content helpers ───────────────────────────────────────────────
-  const getVideoUrl = () => lesson?.contents?.find(c => c.content_type === 'video_url')?.content || null;
-  const getTextBody = () => lesson?.contents?.find(c => c.content_type === 'text_body')?.content || null;
-  const getFileUrl = () => lesson?.contents?.find(c => c.content_type === 'file_url')?.content || null;
+  // Supports both shapes:
+  //   1. lesson.contents[] array  (learner content endpoint)
+  //   2. lesson.video_url / lesson.pdf_url / lesson.text_body  (trainer endpoint)
+  const getVideoUrl = () =>
+    lesson?.contents?.find(c => c.content_type === 'video_url')?.content
+    || lesson?.video_url
+    || null;
+  const getTextBody = () =>
+    lesson?.contents?.find(c => c.content_type === 'text_body')?.content
+    || lesson?.text_body
+    || null;
+  const getFileUrl = () =>
+    lesson?.contents?.find(c => c.content_type === 'file_url')?.content
+    || lesson?.pdf_url
+    || null;
   const getLessonIcon = (type) => type === 'video' ? 'movie' : type === 'quiz' ? 'quiz' : 'article';
 
-  // ── Universal video config — handles all URL types ────────────────
- const getVideoConfig = (url) => {
-  if (!url) return null;
-
-  // Local upload from trainer
-  if (url.startsWith('/static/')) {
-    return { type: 'direct', src: `http://localhost:8000${url}` };
-  }
+  // ── Universal video config ────────────────────────────────────────
+  const getVideoConfig = (url) => {
+    if (!url) return null;
+    if (url.startsWith('/static/')) return { type: 'direct', src: `http://localhost:8000${url}` };
     if (url.includes('youtube.com/watch?v=')) {
       const id = url.split('v=')[1]?.split('&')[0];
       return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
@@ -139,9 +179,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
       const id = url.split('youtu.be/')[1]?.split('?')[0];
       return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
     }
-    if (url.includes('youtube.com/embed/')) {
-      return { type: 'iframe', src: url };
-    }
+    if (url.includes('youtube.com/embed/')) return { type: 'iframe', src: url };
     if (url.includes('vimeo.com/')) {
       const id = url.split('vimeo.com/')[1]?.split('?')[0];
       return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
@@ -161,30 +199,25 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
   };
 
   const handleStartQuiz = () => {
-    const quizLesson = allLessons.find(l =>
-      l.lesson_type === 'quiz' && l.moduleName === lesson?.moduleName
-    );
-    if (quizLesson) {
-      navigate(`/learner/courses/${courseId}/assessments/${quizLesson.id}`);
-    } else {
-      const anyQuiz = allLessons.find(l => l.lesson_type === 'quiz');
-      if (anyQuiz) navigate(`/learner/courses/${courseId}/assessments/${anyQuiz.id}`);
-    }
+    const quizLesson = allLessons.find(l => l.lesson_type === 'quiz' && l.moduleName === lesson?.moduleName)
+      || allLessons.find(l => l.lesson_type === 'quiz');
+    if (quizLesson) navigate(`/learner/courses/${courseId}/assessments/${quizLesson.id}`);
   };
 
   const aiEnhancements = [
-    { icon: 'mic', title: 'Audio Summary', subtitle: 'Listen to 2-min recap', color: 'indigo' },
-    { icon: 'movie', title: 'Video Explainer', subtitle: 'Simplified visual recap', color: 'amber' },
-    { icon: 'explore', title: 'Walkthrough', subtitle: 'Step-by-step guide', color: 'emerald' },
+    { icon: 'mic',     title: 'Audio Summary',   subtitle: 'Listen to 2-min recap',    color: 'indigo' },
+    { icon: 'movie',   title: 'Video Explainer',  subtitle: 'Simplified visual recap',  color: 'amber'  },
+    { icon: 'explore', title: 'Walkthrough',      subtitle: 'Step-by-step guide',       color: 'emerald'},
   ];
 
   const walkthroughSteps = [
-    { title: 'Understanding the Concept', description: `You're about to study: "${lesson?.title || ''}". Read through the key ideas before watching.`, icon: 'lightbulb' },
-    { title: 'Watch & Take Notes', description: 'Write down key points as you go. This reinforces memory retention significantly.', icon: 'edit_note' },
-    { title: 'Check Your Understanding', description: 'Try explaining the concept in your own words. If you can teach it, you truly understand it.', icon: 'psychology' },
-    { title: 'Practice It!', description: 'Apply what you learned by completing the quiz or advancing to the next lesson.', icon: 'task_alt' },
+    { title: 'Understanding the Concept',   description: `You're about to study: "${lesson?.title || ''}". Read through the key ideas before watching.`, icon: 'lightbulb'  },
+    { title: 'Watch & Take Notes',          description: 'Write down key points as you go. This reinforces memory retention significantly.',              icon: 'edit_note'  },
+    { title: 'Check Your Understanding',    description: 'Try explaining the concept in your own words. If you can teach it, you truly understand it.',    icon: 'psychology' },
+    { title: 'Practice It!',               description: 'Apply what you learned by completing the quiz or advancing to the next lesson.',                  icon: 'task_alt'   },
   ];
 
+  // ── Close notifications on outside click ─────────────────────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target))
@@ -194,6 +227,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
+  // ── Loading / error states ────────────────────────────────────────
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-slate-50">
       <div className="text-center">
@@ -214,8 +248,8 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
   );
 
   const videoConfig = getVideoConfig(getVideoUrl());
-  const textBody = getTextBody();
-  const fileUrl = getFileUrl();
+  const textBody    = getTextBody();
+  const fileUrl     = getFileUrl();
 
   return (
     <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
@@ -225,24 +259,31 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
         <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 shrink-0 z-20">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 text-white p-1.5 rounded-lg"><span className="material-symbols-outlined text-2xl">auto_awesome</span></div>
+              <div className="bg-blue-600 text-white p-1.5 rounded-lg">
+                <span className="material-symbols-outlined text-2xl">auto_awesome</span>
+              </div>
               <h2 className="text-lg font-bold tracking-tight">AI Learning LMS</h2>
             </div>
             <nav className="hidden md:flex items-center gap-6">
               <button onClick={() => navigate('/learner/dashboard')} className="text-sm font-medium hover:text-blue-600 transition-colors">Dashboard</button>
-              <button onClick={() => navigate('/learner/courses')} className="text-sm font-medium text-blue-600">My Courses</button>
-              <button onClick={() => navigate('/learner/ai-hub')} className="text-sm font-medium hover:text-blue-600 transition-colors">AI Hub</button>
+              <button onClick={() => navigate('/learner/courses')}   className="text-sm font-medium text-blue-600">My Courses</button>
+              <button onClick={() => navigate('/learner/ai-hub')}    className="text-sm font-medium hover:text-blue-600 transition-colors">AI Hub</button>
               <button onClick={() => navigate('/learner/analytics')} className="text-sm font-medium hover:text-blue-600 transition-colors">Analytics</button>
             </nav>
           </div>
+
           <div className="flex items-center gap-4">
-            <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/learner/search?q=${encodeURIComponent(searchQuery)}`); }} className="relative group">
+            <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/learner/search?q=${encodeURIComponent(searchQuery)}`); }} className="relative">
               <button type="submit" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">search</button>
-              <input className="w-64 pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm" placeholder="Search..." type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+              <input className="w-64 pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm" placeholder="Search..."
+                type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </form>
+
             <button onClick={() => navigate('/learner/ai-hub')} className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
               <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>
             </button>
+
+            {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
                 <span className="material-symbols-outlined">notifications</span>
@@ -282,6 +323,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </div>
               )}
             </div>
+
             <div className="h-8 w-px bg-slate-200 mx-1"></div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
@@ -303,7 +345,9 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 <div className="h-full bg-blue-600 transition-all"
                   style={{ width: `${Math.round((allLessons.filter(l => l.is_completed).length / Math.max(allLessons.length, 1)) * 100)}%` }}></div>
               </div>
-              <p className="text-[10px] mt-1 text-slate-400">{allLessons.filter(l => l.is_completed).length}/{allLessons.length} lessons complete</p>
+              <p className="text-[10px] mt-1 text-slate-400">
+                {allLessons.filter(l => l.is_completed).length}/{allLessons.length} lessons complete
+              </p>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {Object.entries(lessonsByModule).map(([moduleName, lessons], mIdx) => (
@@ -373,8 +417,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                       <p className="text-white/50 text-sm mb-6">This recording is hosted externally and cannot be embedded</p>
                       <a href={videoConfig.src} target="_blank" rel="noreferrer"
                         className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                        <span className="material-symbols-outlined">open_in_new</span>
-                        Watch Recording
+                        <span className="material-symbols-outlined">open_in_new</span>Watch Recording
                       </a>
                     </div>
                   )}
@@ -387,39 +430,60 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                   </div>
                   <button onClick={() => setShowLanguageModal(true)}
                     className="absolute bottom-4 right-4 flex items-center gap-2 bg-black/40 hover:bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors backdrop-blur-sm">
-                    <span className="material-symbols-outlined text-sm">translate</span>
-                    {selectedLanguage}
+                    <span className="material-symbols-outlined text-sm">translate</span>{selectedLanguage}
                   </button>
                 </div>
               )}
 
               {/* ── PDF SECTION ── */}
-              {fileUrl && (
-                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                  <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-                      <span className="font-bold">PDF Document</span>
-                    </div>
-                    <a href={fileUrl} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-blue-600 text-sm font-semibold hover:underline">
-                      <span className="material-symbols-outlined text-sm">open_in_new</span>
-                      Open in new tab
-                    </a>
-                  </div>
-                  <iframe
-                    src={fileUrl.includes('drive.google.com') ?
-                      fileUrl.replace('/view', '/preview') :
-                      `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`
-                    }
-                    className="w-full"
-                    style={{ height: '600px' }}
-                    title="PDF Document"
-                  />
-                </div>
-              )}
+              {fileUrl && (() => {
+                // Build the embeddable src based on URL type
+                const isLocal = fileUrl.startsWith('/static/') || fileUrl.startsWith('http://localhost');
+                const isGDrive = fileUrl.includes('drive.google.com');
+                const localSrc = fileUrl.startsWith('/static/')
+                  ? `http://localhost:8000${fileUrl}`
+                  : fileUrl;
+                const embedSrc = isLocal
+                  ? localSrc
+                  : isGDrive
+                  ? fileUrl.replace('/view', '/preview').replace('/edit', '/preview')
+                  : null; // external URLs can't be embedded reliably
 
-              {/* Lesson Header */}
+                return (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                    <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
+                        <span className="font-bold">PDF Document</span>
+                      </div>
+                      <a href={isLocal ? localSrc : fileUrl} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1 text-blue-600 text-sm font-semibold hover:underline">
+                        <span className="material-symbols-outlined text-sm">open_in_new</span>Open in new tab
+                      </a>
+                    </div>
+                    {embedSrc ? (
+                      <iframe
+                        src={embedSrc}
+                        className="w-full"
+                        style={{ height: '600px' }}
+                        title="PDF Document"
+                      />
+                    ) : (
+                      <div className="p-12 text-center bg-slate-50">
+                        <span className="material-symbols-outlined text-5xl text-red-400 mb-4 block">picture_as_pdf</span>
+                        <p className="text-slate-600 font-medium mb-2">PDF preview not available</p>
+                        <p className="text-slate-400 text-sm mb-6">This file is hosted externally and cannot be embedded</p>
+                        <a href={fileUrl} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                          <span className="material-symbols-outlined">open_in_new</span>Open PDF
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── Lesson Header + Action Buttons ── */}
               <div className="flex items-start justify-between mb-6 gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -434,19 +498,39 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                     {lesson.description || `In this lesson, you'll explore ${lesson.title}. Follow along carefully and use the AI tools on the right to enhance your understanding.`}
                   </p>
                 </div>
+
                 <div className="flex items-center gap-2 shrink-0">
                   {!isCompleted && (
                     <button onClick={handleMarkComplete} disabled={marking}
-                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-60">
-                      {marking ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[18px]">check_circle</span>}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-60 transition-colors">
+                      {marking
+                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        : <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                      }
                       Mark Complete
                     </button>
                   )}
-                  <button onClick={() => setShowLanguageModal(true)} className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200">
+
+                  <button onClick={() => setShowLanguageModal(true)}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                     <span className="material-symbols-outlined text-lg">translate</span>Language
                   </button>
-                  <button className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200">
-                    <span className="material-symbols-outlined text-lg">bookmark</span>Save
+
+                  {/* ── SAVE BUTTON — wired up ── */}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || saved}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all
+                      ${saved
+                        ? 'bg-blue-600 text-white cursor-default'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-60'
+                      }`}
+                  >
+                    {saving
+                      ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                      : <span className="material-symbols-outlined text-lg">{saved ? 'bookmark' : 'bookmark_border'}</span>
+                    }
+                    {saved ? 'Saved!' : 'Save'}
                   </button>
                 </div>
               </div>
@@ -462,7 +546,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </div>
               )}
 
-              {/* Related Concepts */}
+              {/* ── Related Concepts ── */}
               {relatedConcepts.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -490,7 +574,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </div>
               )}
 
-              {/* ── QUIZ SECTION ── */}
+              {/* ── Quiz CTA ── */}
               <div className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -509,7 +593,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </div>
               </div>
 
-              {/* Footer Nav */}
+              {/* ── Footer Nav ── */}
               <div className="flex items-center justify-between border-t border-slate-100 mt-8 pt-8">
                 {previousLesson ? (
                   <button onClick={() => navigate(`/learner/courses/${courseId}/lessons/${previousLesson.id}`)} className="flex items-center gap-3 group px-4 py-2 rounded-lg hover:bg-slate-50">
@@ -520,6 +604,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                     </div>
                   </button>
                 ) : <div></div>}
+
                 {nextLesson ? (
                   <button onClick={() => navigate(`/learner/courses/${courseId}/lessons/${nextLesson.id}`)} className="flex items-center gap-3 group px-4 py-2 rounded-lg bg-blue-600 text-white shadow-lg hover:bg-blue-700">
                     <div className="text-right">
@@ -549,9 +634,9 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 {aiEnhancements.map((tool, idx) => (
                   <button key={idx}
                     onClick={() => {
-                      if (tool.title === 'Audio Summary') setShowAudioPlayer(true);
-                      else if (tool.title === 'Video Explainer') setShowVideoModal(true);
-                      else if (tool.title === 'Walkthrough') { setShowWalkthroughOverlay(true); setWalkthroughStep(0); }
+                      if (tool.title === 'Audio Summary')   setShowAudioPlayer(true);
+                      if (tool.title === 'Video Explainer') setShowVideoModal(true);
+                      if (tool.title === 'Walkthrough')     { setShowWalkthroughOverlay(true); setWalkthroughStep(0); }
                     }}
                     className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 hover:border-blue-600 transition-all text-left group">
                     <div className={`w-10 h-10 rounded-lg bg-${tool.color}-100 text-${tool.color}-600 flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -565,6 +650,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                   </button>
                 ))}
               </div>
+
               <div className="bg-blue-600/5 border border-blue-600/10 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold text-blue-600 uppercase">AI Processing Units</span>
@@ -575,6 +661,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">53 units remaining this month</p>
               </div>
+
               <div className="pt-4 border-t border-slate-200 space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase">Knowledge Level</label>
                 <div className="flex p-1 bg-slate-200 rounded-lg">
@@ -586,6 +673,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                   ))}
                 </div>
               </div>
+
               <div className="pt-4 border-t border-slate-200 flex flex-col">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-3 flex items-center justify-between">
                   AI Q&A Assistant <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -607,9 +695,11 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                 </button>
               </div>
             </div>
+
             <div className="p-4 bg-white border-t border-slate-200">
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-2">
-                <span>LESSON PROGRESS</span><span>{isCompleted ? '100%' : 'In Progress'}</span>
+                <span>LESSON PROGRESS</span>
+                <span>{isCompleted ? '100%' : 'In Progress'}</span>
               </div>
               <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-emerald-500 w-full' : 'bg-blue-600 w-[45%]'}`}></div>
@@ -618,7 +708,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
           </aside>
         </div>
 
-        {/* Expand sidebar */}
+        {/* Expand sidebar button */}
         {sidebarCollapsed && (
           <button onClick={() => setSidebarCollapsed(false)} className="fixed left-0 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2 rounded-r-lg shadow-lg z-30">
             <span className="material-symbols-outlined">chevron_right</span>
@@ -752,8 +842,7 @@ apiClient.get(`/api/v1/content/courses/${courseId}/modules`),
                   <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden cursor-pointer"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
-                      const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-                      setAudioProgress(pct);
+                      setAudioProgress(Math.round(((e.clientX - rect.left) / rect.width) * 100));
                     }}>
                     <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${audioProgress}%` }}></div>
                   </div>

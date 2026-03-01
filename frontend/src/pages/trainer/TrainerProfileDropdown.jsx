@@ -20,8 +20,8 @@ const TrainerProfileDropdown = ({
   const dropdownRef = useRef(null);
 
   // ✅ Normalise props — support both naming conventions
-  const displayName = name  || userName  || localStorage.getItem('userName')  || 'Trainer';
-  const displaySub  = role  || userEmail || localStorage.getItem('userEmail') || 'trainer';
+  const displayName = name || userName || localStorage.getItem('userName') || 'Trainer';
+  const displaySub = role || userEmail || localStorage.getItem('userEmail') || 'trainer';
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -43,10 +43,10 @@ const TrainerProfileDropdown = ({
   };
 
   const menuItems = [
-    { icon: 'person',   label: 'My Profile',       danger: false, onClick: () => setDropdownOpen(false) },
-    { icon: 'settings', label: 'Account Settings',  danger: false, onClick: () => setDropdownOpen(false) },
-    { icon: 'help',     label: 'Help & Support',    danger: false, onClick: () => setDropdownOpen(false) },
-    { icon: 'logout',   label: 'Logout',            danger: true,  onClick: () => { setDropdownOpen(false); setShowLogoutModal(true); } },
+    { icon: 'person', label: 'My Profile', danger: false, onClick: () => { setDropdownOpen(false); navigate('/trainer/profile'); } },
+    { icon: 'settings', label: 'Account Settings', danger: false, onClick: () => { setDropdownOpen(false); navigate('/trainer/settings'); } },
+    { icon: 'help', label: 'Help & Support', danger: false, onClick: () => { setDropdownOpen(false); window.open('mailto:support@lms.com', '_blank'); } },
+    { icon: 'logout', label: 'Logout', danger: true, onClick: () => { setDropdownOpen(false); setShowLogoutModal(true); } },
   ];
 
   return (

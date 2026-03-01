@@ -54,7 +54,7 @@ api_router.include_router(assessments.router,  prefix="/assessments", tags=["Ass
 
 
 # ── Phase 4 — not yet built ────────────────────────────────────────
-# api_router.include_router(videos.router,    prefix="/videos",    tags=["Videos"])
+#api_router.include_router(videos.router,    prefix="/videos",    tags=["Videos"])
 # api_router.include_router(knowledge.router, prefix="/knowledge", tags=["Knowledge Base"])
 # api_router.include_router(voice.router,     prefix="/voice",     tags=["Voice Assistant"])
 # api_router.include_router(avatar.router,    prefix="/avatar",    tags=["AI Avatar"])

@@ -19,7 +19,7 @@ from app.models.saved_resource import SavedResource
 router = APIRouter()
 
 
-# ── Schemas ──────────────────────────────────────────────────────────────
+# ── Schemas ───────────────────────────────────────────────────────
 class SavedResourceOut(BaseModel):
     id: int
     title: str
@@ -45,7 +45,7 @@ class SaveResourceIn(BaseModel):
     url: Optional[str] = None
 
 
-# ── Endpoints ────────────────────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────
 @router.get("/", response_model=List[SavedResourceOut])
 def list_saved_resources(
     current_user: User = Depends(get_current_user),

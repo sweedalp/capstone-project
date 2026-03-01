@@ -53,7 +53,6 @@ def get_stats(
     total_trainers    = db.query(func.count(User.id)).filter(User.role == UserRole("trainer")).scalar() or 0
     total_learners    = db.query(func.count(User.id)).filter(User.role == UserRole("learner")).scalar() or 0
 
-    # Active learners = role is learner AND account is active
     active_learners = db.query(func.count(User.id)).filter(
         User.role == UserRole("learner"),
         User.is_active.is_(True),
@@ -325,15 +324,23 @@ def create_course(
         "intermediate": LevelEnum.intermediate,
         "advanced":     LevelEnum.advanced,
     }
+
     category_id = payload.get("category_id")
     if category_id:
         if not db.query(Category).filter(Category.id == category_id).first():
             raise HTTPException(status_code=404, detail="Category not found")
+
+    # ✅ FIXED: use trainer_id from payload, fallback to admin
+    trainer_id = payload.get("trainer_id") or _admin.id
+    trainer = db.query(User).filter(User.id == trainer_id).first()
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+
     course = Course(
         title=payload["title"],
         description=payload.get("description"),
         level=level_map.get(payload.get("level", "beginner"), LevelEnum.beginner),
-        trainer_id=_admin.id,
+        trainer_id=trainer_id,
         category_id=category_id,
         is_published=False,
     )
@@ -383,6 +390,106 @@ def unpublish_course(
     course.is_published = False
     db.commit()
     return {"message": "Unpublished"}
+
+
+# ── Reassign trainer on existing course ───────────────────────────
+@router.post("/courses/{course_id}/reassign-trainer")
+def reassign_trainer(
+    course_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_role(["admin"])),
+):
+    """Allow admin to change which trainer owns a course."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    trainer_id = payload.get("trainer_id")
+    if not trainer_id:
+        raise HTTPException(status_code=400, detail="trainer_id is required")
+    trainer = db.query(User).filter(User.id == trainer_id).first()
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+    course.trainer_id = trainer_id
+    db.commit()
+    return {"message": "Trainer reassigned", "trainer_name": trainer.full_name}
+
+
+# ── Enroll learner into course ────────────────────────────────────
+@router.post("/courses/{course_id}/enroll")
+def admin_enroll_learner(
+    course_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_role(["admin"])),
+):
+    """Admin manually enrolls a learner (or multiple) into a course."""
+    from app.models.enrollment import Enrollment
+    import datetime
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Accept either a single learner_id or a list
+    learner_ids = payload.get("learner_ids") or (
+        [payload["learner_id"]] if payload.get("learner_id") else []
+    )
+    if not learner_ids:
+        raise HTTPException(status_code=400, detail="learner_id or learner_ids required")
+
+    enrolled = []
+    skipped  = []
+    for lid in learner_ids:
+        learner = db.query(User).filter(User.id == lid).first()
+        if not learner:
+            skipped.append({"id": lid, "reason": "user not found"})
+            continue
+        existing = db.query(Enrollment).filter(
+            Enrollment.course_id == course_id,
+            Enrollment.user_id == lid,
+        ).first()
+        if existing:
+            skipped.append({"id": lid, "reason": "already enrolled"})
+            continue
+        enr = Enrollment(
+            course_id=course_id,
+            user_id=lid,
+            enrolled_at=datetime.datetime.utcnow(),
+        )
+        db.add(enr)
+        enrolled.append(lid)
+
+    db.commit()
+    return {
+        "enrolled_count": len(enrolled),
+        "skipped_count":  len(skipped),
+        "enrolled":       enrolled,
+        "skipped":        skipped,
+    }
+
+
+# ── List learners for enrollment picker ──────────────────────────
+@router.get("/learners")
+def list_learners(
+    search:    Optional[str] = Query(None),
+    page:      int           = Query(1, ge=1),
+    page_size: int           = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_role(["admin"])),
+):
+    """Return all learners — used by admin enrollment picker."""
+    query = db.query(User).filter(User.role == UserRole("learner"))
+    if search:
+        query = query.filter(
+            User.full_name.ilike(f"%{search}%") | User.email.ilike(f"%{search}%")
+        )
+    total = query.count()
+    users = query.order_by(User.full_name).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total,
+        "users": [_to_admin_user_dict(u) for u in users],
+    }
 
 
 # ── Activities ────────────────────────────────────────────────────
