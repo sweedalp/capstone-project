@@ -11,26 +11,24 @@ const Icon = ({ name, className = "" }) => (
   </span>
 );
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getAssetType(lesson) {
   if (lesson.lesson_type === "video") return "video";
   if (lesson.lesson_type === "quiz")  return "document";
   return "audio";
 }
-
 function getBadgeIcon(type) {
   return { video: "videocam", document: "description", audio: "mic" }[type] || "description";
 }
-
 function getEnhancement(lesson) {
   if (lesson.lesson_type === "video")
-    return { icon: "mic", text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10", tc: "text-[#137fec]", ic: "text-[#137fec]" };
+    return { icon: "mic",         text: "🎤 Audio summary available", bg: "bg-blue-600/5 border border-blue-600/10",    tc: "text-[#137fec]",   ic: "text-[#137fec]" };
   if (lesson.lesson_type === "quiz")
-    return { icon: "quiz", text: "✨ AI Quiz ready", bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" };
-  return { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10", tc: "text-amber-600", ic: "text-amber-500" };
+    return { icon: "quiz",        text: "✨ AI Quiz ready",           bg: "bg-emerald-500/5 border border-emerald-500/10", tc: "text-emerald-600", ic: "text-emerald-500" };
+  return   { icon: "description", text: "📄 AI Transcript generated", bg: "bg-amber-500/5 border border-amber-500/10",   tc: "text-amber-600",   ic: "text-amber-500" };
 }
 
-// Convert backend lesson → asset shape used by UI cards
+// Convert lesson → UI asset
 function lessonToAsset(lesson, course) {
   const type = getAssetType(lesson);
   return {
@@ -47,14 +45,57 @@ function lessonToAsset(lesson, course) {
     courseId: String(course.id),
     usedInLessons: 1,
     uploadedAt: "today",
+    isKnowledgeBase: false,
     enhancement: getEnhancement(lesson),
     thumb: course.thumbnail_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.title)}&background=137fec&color=fff&size=320`,
   };
 }
 
-// ── Modals ────────────────────────────────────────────────────────
+// ✅ Convert admin KB file → UI asset
+function kbFileToAsset(kf) {
+  const typeMap  = { VIDEO: "video", PDF: "document", PPTX: "document", DOCX: "document", ZIP: "document", TXT: "document" };
+  const iconMap  = { VIDEO: "videocam", PDF: "picture_as_pdf", PPTX: "slideshow", DOCX: "description", ZIP: "folder_zip", TXT: "article" };
+  const type     = typeMap[kf.file_type] || "document";
+  const isVideo  = type === "video";
+  return {
+    id:              `kb-${kf.id}`,
+    title:           kf.original_name,
+    badgeIcon:       iconMap[kf.file_type] || "description",
+    badgeText:       kf.file_type,
+    type,
+    collectionId:    "kb-admin",
+    hasQuiz:         false,
+    aiEnhanced:      false,
+    views:           kf.view_count || 0,
+    course:          "Knowledge Base",
+    courseId:        null,
+    usedInLessons:   0,
+    uploadedAt:      kf.created_at,
+    isKnowledgeBase: true,
+    kbFileId:        kf.id,
+    kbUrl:           kf.url,          // e.g. /static/uploads/knowledge/abc.pdf
+    sizeMb:          kf.file_size_mb,
+    enhancement: {
+      icon: "library_books",
+      text: "📚 Admin Knowledge Base",
+      bg:   "bg-purple-500/5 border border-purple-500/10",
+      tc:   "text-purple-600",
+      ic:   "text-purple-500",
+    },
+    thumb: isVideo
+      ? `https://ui-avatars.com/api/?name=${encodeURIComponent(kf.original_name)}&background=137fec&color=fff&size=320`
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(kf.original_name)}&background=7c3aed&color=fff&size=320`,
+  };
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
 function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
   if (!asset) return null;
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const kbFullUrl = asset.kbUrl
+    ? (asset.kbUrl.startsWith("http") ? asset.kbUrl : `${API_BASE}${asset.kbUrl}`)
+    : null;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -66,31 +107,64 @@ function AssetDetailModal({ asset, onClose, onEdit, onReuse, onAIEnhance }) {
           <img src={asset.thumb} alt={asset.title} className="w-full rounded-xl object-cover" style={{ aspectRatio: "16/9" }} />
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Duration</p>
-              <p className="text-lg font-black text-slate-900">{asset.badgeText}</p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-3">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Type</p>
               <p className="text-lg font-black text-slate-900 capitalize">{asset.type}</p>
             </div>
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Source</p>
+              <p className="text-sm font-bold text-slate-900">{asset.course}</p>
+            </div>
           </div>
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Course</p>
-            <p className="text-sm font-semibold text-slate-800">{asset.course}</p>
-          </div>
+          {asset.sizeMb && (
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">File Size</p>
+              <p className="text-sm font-semibold text-slate-800">{asset.sizeMb} MB</p>
+            </div>
+          )}
           <div className={`${asset.enhancement.bg} rounded-lg p-3`}>
             <p className={`text-sm font-semibold ${asset.enhancement.tc} flex items-center gap-2`}>
               <Icon name={asset.enhancement.icon} className={`text-base ${asset.enhancement.ic}`} />
               {asset.enhancement.text}
             </p>
           </div>
+
+          {/* ✅ KB file: inline preview */}
+          {asset.isKnowledgeBase && kbFullUrl && (
+            <div className="rounded-xl overflow-hidden border border-slate-200">
+              {asset.type === "video" ? (
+                <video src={kbFullUrl} controls className="w-full" style={{ aspectRatio: "16/9" }} />
+              ) : (
+                <div className="bg-slate-50 p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon name={asset.badgeIcon} className="text-purple-600 text-xl" />
+                    <span className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{asset.title}</span>
+                  </div>
+                  <a href={kbFullUrl} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+                    <Icon name="open_in_new" className="text-sm" />Open File
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onReuse} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] transition-colors">Reuse</button>
-          <button onClick={onEdit} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">Edit</button>
-          <button onClick={onAIEnhance} className="flex-1 py-2.5 bg-amber-50 text-amber-700 rounded-lg text-sm font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1">
-            <Icon name="auto_awesome" className="text-base" /> AI Enhance
-          </button>
+          {!asset.isKnowledgeBase && (
+            <>
+              <button onClick={onReuse} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4]">Reuse</button>
+              <button onClick={onEdit}  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200">Edit</button>
+              <button onClick={onAIEnhance} className="flex-1 py-2.5 bg-amber-50 text-amber-700 rounded-lg text-sm font-bold hover:bg-amber-100 flex items-center justify-center gap-1">
+                <Icon name="auto_awesome" className="text-base" />AI Enhance
+              </button>
+            </>
+          )}
+          {asset.isKnowledgeBase && kbFullUrl && (
+            <a href={kbFullUrl} target="_blank" rel="noreferrer"
+              className="flex-1 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 flex items-center justify-center gap-2">
+              <Icon name="download" className="text-base" />Download / Open
+            </a>
+          )}
+          <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200">Close</button>
         </div>
       </div>
     </div>
@@ -119,15 +193,14 @@ function ReuseModal({ asset, courses, onClose, onConfirm }) {
               <Icon name="check_circle" className="text-green-600 text-2xl" />
             </div>
             <p className="font-bold text-slate-900">Content Added!</p>
-            <p className="text-sm text-slate-500 text-center">Redirecting to Course Management…</p>
           </div>
         ) : (
           <>
             <div className="p-5 space-y-4">
-              <p className="text-sm text-slate-600">Select the course to add <strong>{asset.title}</strong> to:</p>
+              <p className="text-sm text-slate-600">Select course to add <strong>{asset.title}</strong> to:</p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {courses.map(c => (
-                  <label key={c.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50 transition-colors">
+                  <label key={c.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50">
                     <input type="radio" name="course-select" value={c.id}
                       checked={selectedCourse === String(c.id)}
                       onChange={() => setSelectedCourse(String(c.id))} className="accent-[#137fec]" />
@@ -137,9 +210,9 @@ function ReuseModal({ asset, courses, onClose, onConfirm }) {
               </div>
             </div>
             <div className="flex gap-3 p-5 border-t border-slate-100">
-              <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50">Cancel</button>
+              <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
               <button onClick={handleConfirm} disabled={!selectedCourse}
-                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4] disabled:opacity-40 disabled:cursor-not-allowed">
+                className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold disabled:opacity-40">
                 Add to Course
               </button>
             </div>
@@ -159,132 +232,17 @@ function DeleteModal({ asset, onClose, onConfirm }) {
           <h3 className="font-bold text-rose-600">Delete Content</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
         </div>
-        <div className="p-5 space-y-3">
+        <div className="p-5">
           <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-start gap-3">
             <Icon name="warning" className="text-rose-500 text-xl flex-shrink-0 mt-0.5" />
             <p className="text-sm text-rose-700">
-              Are you sure you want to permanently delete <strong>{asset.title}</strong>? This action cannot be undone.
+              Delete <strong>{asset.title}</strong>? This cannot be undone.
             </p>
           </div>
         </div>
         <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700">Delete</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BulkAddModal({ count, courses, onClose, onConfirm }) {
-  const [selectedCourse, setSelectedCourse] = useState("");
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h3 className="font-bold text-slate-900">Add {count} Item{count !== 1 ? "s" : ""} to Course</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
-        </div>
-        <div className="p-5 space-y-3 max-h-64 overflow-y-auto">
-          {courses.map(c => (
-            <label key={c.id} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:border-[#137fec]/50">
-              <input type="radio" name="bulk-course" value={c.id}
-                checked={selectedCourse === String(c.id)}
-                onChange={() => setSelectedCourse(String(c.id))} className="accent-[#137fec]" />
-              <span className="text-sm font-medium text-slate-700">{c.title}</span>
-            </label>
-          ))}
-        </div>
-        <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
-          <button onClick={() => { if (selectedCourse) onConfirm(selectedCourse); }}
-            disabled={!selectedCourse}
-            className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold disabled:opacity-40">
-            Add to Course
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BulkDeleteModal({ count, onClose, onConfirm }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h3 className="font-bold text-rose-600">Delete {count} Item{count !== 1 ? "s" : ""}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
-        </div>
-        <div className="p-5">
-          <p className="text-sm text-slate-600">Permanently delete <strong>{count} selected item{count !== 1 ? "s" : ""}</strong>? This removes them from all courses.</p>
-        </div>
-        <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-rose-600 text-white rounded-lg text-sm font-bold">Delete All</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewCollectionModal({ onClose, onConfirm }) {
-  const [name, setName] = useState("");
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h3 className="font-bold text-slate-900">New Collection</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
-        </div>
-        <div className="p-5">
-          <input autoFocus value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && name.trim()) { onConfirm(name.trim()); onClose(); } }}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#137fec]/30"
-            placeholder="e.g. Python Course Materials" />
-        </div>
-        <div className="flex gap-3 p-5 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
-          <button onClick={() => { if (name.trim()) { onConfirm(name.trim()); onClose(); } }}
-            className="flex-1 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold">Create</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UploadModal({ courses, onClose, onGoToUploadPage }) {
-  const [dragging, setDragging] = useState(false);
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-900">Upload New Asset</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="close" /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div onDragOver={e => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={e => { e.preventDefault(); setDragging(false); }}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragging ? "border-[#137fec] bg-blue-50" : "border-slate-200 hover:border-[#137fec]/50"}`}>
-            <Icon name="cloud_upload" className="text-5xl text-slate-300 mb-3 block" />
-            <p className="text-sm font-semibold text-slate-700">Drag & drop your files here</p>
-            <p className="text-xs text-slate-400 mt-1">Supports MP4, MP3, PDF, DOCX up to 500MB</p>
-            <button onClick={onGoToUploadPage}
-              className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold hover:bg-[#0f6fd4]">
-              Browse Files
-            </button>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Course</label>
-            <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="flex gap-3 p-6 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
-          <button onClick={onGoToUploadPage} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold">Upload Asset</button>
+          <button onClick={onClose}    className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold">Cancel</button>
+          <button onClick={onConfirm}  className="flex-1 py-2.5 bg-rose-600 text-white rounded-lg text-sm font-bold">Delete</button>
         </div>
       </div>
     </div>
@@ -293,7 +251,7 @@ function UploadModal({ courses, onClose, onGoToUploadPage }) {
 
 function FilterDrawer({ open, onClose, onApply, courseNames }) {
   const [assetType, setAssetType] = useState("All");
-  const [courses, setCourses] = useState([]);
+  const [courses,   setCourses]   = useState([]);
   const toggleCourse = opt => setCourses(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
   const handleApply = () => { onApply({ assetType, courses }); onClose(); };
   const handleReset = () => { setAssetType("All"); setCourses([]); onApply({ assetType: "All", courses: [] }); onClose(); };
@@ -319,7 +277,7 @@ function FilterDrawer({ open, onClose, onApply, courseNames }) {
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Course</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Source</p>
             <div className="space-y-2">
               {courseNames.map(opt => (
                 <label key={opt} className="flex items-center gap-2.5 cursor-pointer">
@@ -332,14 +290,14 @@ function FilterDrawer({ open, onClose, onApply, courseNames }) {
         </div>
         <div className="p-6 border-t border-slate-100 flex gap-3">
           <button onClick={handleReset} className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600">Reset</button>
-          <button onClick={handleApply} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold">Apply Filters</button>
+          <button onClick={handleApply} className="flex-1 py-2.5 bg-[#137fec] text-white rounded-lg text-sm font-bold">Apply</button>
         </div>
       </div>
     </div>
   );
 }
 
-function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete }) {
+function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete, isKb }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -348,14 +306,17 @@ function CardMenu({ open, onClose, onEdit, onReuse, onAIEnhance, onDelete }) {
     return () => document.removeEventListener("mousedown", h);
   }, [open, onClose]);
   if (!open) return null;
-  return (
-    <div ref={ref} className="absolute right-0 top-7 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-44 py-1 overflow-hidden">
-      {[
+  const items = isKb
+    ? [{ icon: "delete", label: "Delete", fn: onDelete, danger: true }]
+    : [
         { icon: "edit",         label: "Edit",            fn: onEdit },
         { icon: "refresh",      label: "Reuse in Course", fn: onReuse },
         { icon: "auto_awesome", label: "AI Enhance",      fn: onAIEnhance },
         { icon: "delete",       label: "Delete",          fn: onDelete, danger: true },
-      ].map(({ icon, label, fn, danger }) => (
+      ];
+  return (
+    <div ref={ref} className="absolute right-0 top-7 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-44 py-1 overflow-hidden">
+      {items.map(({ icon, label, fn, danger }) => (
         <button key={label} onClick={() => { fn?.(); onClose(); }}
           className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium hover:bg-slate-50 ${danger ? "text-rose-600" : "text-slate-700"}`}>
           <Icon name={icon} className={`text-base ${danger ? "text-rose-400" : "text-slate-400"}`} />
@@ -382,10 +343,11 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
             <Icon name={asset.badgeIcon} className="text-xs" />{asset.badgeText}
           </div>
         </div>
-        {asset.aiEnhanced && (
+        {/* ✅ KB badge */}
+        {asset.isKnowledgeBase && (
           <div className="absolute bottom-3 left-3">
-            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-              <Icon name="auto_awesome" className="text-xs" />AI Enhanced
+            <span className="bg-purple-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+              <Icon name="library_books" className="text-xs" />Knowledge Base
             </span>
           </div>
         )}
@@ -400,16 +362,24 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
             <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600">
               <Icon name="more_vert" />
             </button>
-            <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)} onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete} />
+            <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)}
+              onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete}
+              isKb={asset.isKnowledgeBase} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
-            <Icon name="school" className="text-sm" />{asset.course}
+          <div className={`flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded ${asset.isKnowledgeBase ? "bg-purple-50 text-purple-700" : "bg-slate-100 text-slate-500"}`}>
+            <Icon name={asset.isKnowledgeBase ? "library_books" : "school"} className="text-sm" />
+            {asset.course}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded capitalize">
             <Icon name="label" className="text-sm" />{asset.type}
           </div>
+          {asset.sizeMb && (
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+              {asset.sizeMb} MB
+            </div>
+          )}
         </div>
         <div className={`${e.bg} rounded-lg p-2.5 mb-5`}>
           <p className={`text-[11px] font-semibold ${e.tc} flex items-center gap-1.5`}>
@@ -417,15 +387,30 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
           </p>
         </div>
         <div className="mt-auto grid grid-cols-3 gap-2">
-          <button onClick={onReuse} className="flex items-center justify-center gap-1 py-2 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4]">
-            <Icon name="refresh" className="text-base" />Reuse
-          </button>
-          <button onClick={onEdit} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
-            <Icon name="edit" className="text-base" />Edit
-          </button>
-          <button onClick={onAIEnhance} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
-            <Icon name="auto_awesome" className="text-base text-amber-500" />
-          </button>
+          {!asset.isKnowledgeBase ? (
+            <>
+              <button onClick={onReuse} className="flex items-center justify-center gap-1 py-2 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4]">
+                <Icon name="refresh" className="text-base" />Reuse
+              </button>
+              <button onClick={onEdit} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+                <Icon name="edit" className="text-base" />Edit
+              </button>
+              <button onClick={onAIEnhance} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+                <Icon name="auto_awesome" className="text-base text-amber-500" />
+              </button>
+            </>
+          ) : (
+            <>
+              <a href={asset.kbUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:8000"}${asset.kbUrl}` : "#"}
+                target="_blank" rel="noreferrer"
+                className="col-span-2 flex items-center justify-center gap-1 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+                <Icon name="open_in_new" className="text-base" />Open File
+              </a>
+              <button onClick={onDelete} className="flex items-center justify-center py-2 bg-rose-50 text-rose-500 rounded-lg text-xs font-bold hover:bg-rose-100">
+                <Icon name="delete" className="text-base" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -435,6 +420,7 @@ function AssetCard({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDe
 function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDelete, onAIEnhance }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { enhancement: e } = asset;
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
   return (
     <div className={`group bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex items-center gap-4 p-4 ${selected ? "border-[#137fec] ring-2 ring-[#137fec]/20" : "border-slate-200"}`}>
       <input type="checkbox" checked={selected} onChange={onSelect} className="accent-[#137fec] w-4 h-4 flex-shrink-0" onClick={ev => ev.stopPropagation()} />
@@ -443,16 +429,18 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
         <div className="absolute top-1.5 right-1.5 bg-black/60 text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase flex items-center gap-0.5">
           <Icon name={asset.badgeIcon} className="text-[10px]" />{asset.badgeText}
         </div>
+        {asset.isKnowledgeBase && (
+          <div className="absolute bottom-1 left-1 bg-purple-600 text-white px-1 py-0.5 rounded text-[8px] font-bold">KB</div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <h3 onClick={onPreview} className="text-sm font-bold text-slate-900 group-hover:text-[#137fec] transition-colors truncate cursor-pointer">{asset.title}</h3>
         <div className="flex gap-2 mt-1.5 flex-wrap">
-          <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-            <Icon name="school" className="text-xs" />{asset.course}
+          <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded ${asset.isKnowledgeBase ? "bg-purple-50 text-purple-700" : "bg-slate-100 text-slate-500"}`}>
+            <Icon name={asset.isKnowledgeBase ? "library_books" : "school"} className="text-xs" />{asset.course}
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded capitalize">
-            {asset.type}
-          </span>
+          <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded capitalize">{asset.type}</span>
+          {asset.sizeMb && <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{asset.sizeMb} MB</span>}
         </div>
         <div className={`${e.bg} rounded-lg px-2 py-1 mt-2 inline-flex items-center gap-1`}>
           <Icon name={e.icon} className={`text-xs ${e.ic}`} />
@@ -460,75 +448,70 @@ function AssetRow({ asset, selected, onSelect, onPreview, onReuse, onEdit, onDel
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button onClick={onReuse} className="flex items-center gap-1 px-3 py-1.5 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4]">
-          <Icon name="refresh" className="text-sm" />Reuse
-        </button>
-        <button onClick={onEdit} className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
-          <Icon name="edit" className="text-sm" />Edit
-        </button>
-        <button onClick={onAIEnhance} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
-          <Icon name="auto_awesome" className="text-sm text-amber-500" />
-        </button>
+        {!asset.isKnowledgeBase ? (
+          <>
+            <button onClick={onReuse}     className="flex items-center gap-1 px-3 py-1.5 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4]"><Icon name="refresh" className="text-sm" />Reuse</button>
+            <button onClick={onEdit}      className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200"><Icon name="edit" className="text-sm" />Edit</button>
+            <button onClick={onAIEnhance} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200"><Icon name="auto_awesome" className="text-sm text-amber-500" /></button>
+          </>
+        ) : (
+          <a href={asset.kbUrl ? `${API_BASE}${asset.kbUrl}` : "#"} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+            <Icon name="open_in_new" className="text-sm" />Open
+          </a>
+        )}
         <div className="relative">
-          <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600">
-            <Icon name="more_vert" />
-          </button>
-          <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)} onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete} />
+          <button onClick={() => setMenuOpen(p => !p)} className="text-slate-400 hover:text-slate-600"><Icon name="more_vert" /></button>
+          <CardMenu open={menuOpen} onClose={() => setMenuOpen(false)}
+            onEdit={onEdit} onReuse={onReuse} onAIEnhance={onAIEnhance} onDelete={onDelete}
+            isKb={asset.isKnowledgeBase} />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function TrainerContentLibrary() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const actionParam  = searchParams.get("action");
-  const studentParam = searchParams.get("student");
-
-  const userName = localStorage.getItem("userName") || "Trainer";
+  const userName  = localStorage.getItem("userName") || "Trainer";
   const userEmail = localStorage.getItem("userEmail") || "";
 
-  // ── Real data state ───────────────────────────────────────────
-  const [assets, setAssets]       = useState([]);
-  const [courses, setCourses]     = useState([]);
+  const [assets,      setAssets]      = useState([]);
+  const [courses,     setCourses]     = useState([]);
   const [collections, setCollections] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+  const [kbCount,     setKbCount]     = useState(0);  // ✅ track KB file count
 
-  // ── UI state ──────────────────────────────────────────────────
-  const [activeCategory,    setActiveCategory]    = useState("All Assets");
-  const [activeCollection,  setActiveCollection]  = useState(null);
-  const [viewMode,          setViewMode]          = useState("grid");
-  const [searchQuery,       setSearchQuery]       = useState("");
-  const [selectedIds,       setSelectedIds]       = useState([]);
-  const [drawerFilters,     setDrawerFilters]     = useState({ assetType: "All", courses: [] });
+  const [activeCategory,   setActiveCategory]   = useState("All Assets");
+  const [activeCollection, setActiveCollection] = useState(null);
+  const [viewMode,         setViewMode]         = useState("grid");
+  const [searchQuery,      setSearchQuery]      = useState("");
+  const [selectedIds,      setSelectedIds]      = useState([]);
+  const [drawerFilters,    setDrawerFilters]    = useState({ assetType: "All", courses: [] });
 
-  const [showUpload,         setShowUpload]         = useState(false);
-  const [showFilters,        setShowFilters]        = useState(false);
-  const [detailAsset,        setDetailAsset]        = useState(null);
-  const [reuseAsset,         setReuseAsset]         = useState(null);
-  const [deleteAsset,        setDeleteAsset]        = useState(null);
-  const [showBulkAdd,        setShowBulkAdd]        = useState(false);
-  const [showBulkDelete,     setShowBulkDelete]     = useState(false);
-  const [showNewCollection,  setShowNewCollection]  = useState(false);
+  const [showFilters,       setShowFilters]       = useState(false);
+  const [detailAsset,       setDetailAsset]       = useState(null);
+  const [reuseAsset,        setReuseAsset]        = useState(null);
+  const [deleteAsset,       setDeleteAsset]       = useState(null);
+  const [showBulkDelete,    setShowBulkDelete]    = useState(false);
 
-  // ── Fetch real data ───────────────────────────────────────────
+  // ── Fetch: lessons from courses + KB files from admin ─────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch all trainer courses, then fetch modules+lessons for each
+        const allAssets = [];
+
+        // 1️⃣ Trainer's own courses & lessons
         const coursesRes = await apiClient.get("/api/v1/trainer/courses");
         const courseList = coursesRes.data || [];
         setCourses(courseList);
 
-        // Build collections from real courses
-        setCollections(courseList.map(c => ({ id: `course-${c.id}`, label: c.title })));
+        const courseCollections = courseList.map(c => ({ id: `course-${c.id}`, label: c.title }));
 
-        // For each course, fetch modules (which include lessons)
-        const allAssets = [];
         await Promise.all(
           courseList.map(async (course) => {
             try {
@@ -539,12 +522,29 @@ export default function TrainerContentLibrary() {
                   allAssets.push(lessonToAsset(lesson, course));
                 });
               });
-            } catch {
-              // skip courses that fail
-            }
+            } catch { /* skip */ }
           })
         );
+
+        // 2️⃣ Admin Knowledge Base files
+        let kbCollection = null;
+        try {
+          const kbRes  = await apiClient.get("/api/v1/knowledge?page_size=100");
+          const kbFiles = kbRes.data?.files || [];
+          setKbCount(kbFiles.length);
+          kbFiles.forEach(kf => allAssets.push(kbFileToAsset(kf)));
+          if (kbFiles.length > 0) {
+            kbCollection = { id: "kb-admin", label: `📚 Knowledge Base (${kbFiles.length})` };
+          }
+        } catch {
+          // KB fetch failed (e.g. not admin/trainer) — silently skip
+        }
+
         setAssets(allAssets);
+        setCollections([
+          ...courseCollections,
+          ...(kbCollection ? [kbCollection] : []),
+        ]);
       } catch (err) {
         setError("Failed to load content library");
       } finally {
@@ -554,12 +554,12 @@ export default function TrainerContentLibrary() {
     fetchData();
   }, []);
 
-  // ── Actions ───────────────────────────────────────────────────
-  const handleEdit      = (asset) => navigate(`/trainer/courses/${asset.courseId}`);
-  const handleReuse     = (asset) => { setReuseAsset(asset); setDetailAsset(null); };
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleEdit      = (asset) => { if (!asset.isKnowledgeBase) navigate(`/trainer/courses/${asset.courseId}`); };
+  const handleReuse     = (asset) => { if (!asset.isKnowledgeBase) { setReuseAsset(asset); setDetailAsset(null); } };
   const handleDelete    = (asset) => { setDeleteAsset(asset); setDetailAsset(null); };
   const handlePreview   = (asset) => setDetailAsset(asset);
-  const handleAIEnhance = (asset) => navigate(`/trainer/ai-studio?asset=${asset.id}`);
+  const handleAIEnhance = (asset) => { if (!asset.isKnowledgeBase) navigate(`/trainer/ai-studio?asset=${asset.id}`); };
 
   const handleReuseConfirm = (courseId) => {
     setReuseAsset(null);
@@ -568,6 +568,12 @@ export default function TrainerContentLibrary() {
 
   const handleDeleteConfirm = async () => {
     try {
+      if (deleteAsset.isKnowledgeBase) {
+        // KB files can only be deleted by admin — show message
+        alert("Knowledge Base files can only be deleted by an Admin.");
+        setDeleteAsset(null);
+        return;
+      }
       await apiClient.delete(`/api/v1/trainer/lessons/${deleteAsset.id}`);
       setAssets(prev => prev.filter(a => a.id !== deleteAsset.id));
       setSelectedIds(prev => prev.filter(id => id !== deleteAsset.id));
@@ -583,47 +589,41 @@ export default function TrainerContentLibrary() {
 
   const handleBulkDeleteConfirm = async () => {
     try {
-      await Promise.all(selectedIds.map(id => apiClient.delete(`/api/v1/trainer/lessons/${id}`)));
-      setAssets(prev => prev.filter(a => !selectedIds.includes(a.id)));
+      const nonKbIds = selectedIds.filter(id => !String(id).startsWith("kb-"));
+      await Promise.all(nonKbIds.map(id => apiClient.delete(`/api/v1/trainer/lessons/${id}`)));
+      setAssets(prev => prev.filter(a => !nonKbIds.includes(a.id)));
       clearSelection();
-    } catch {
-      alert("Some deletes failed");
-    } finally {
-      setShowBulkDelete(false);
-    }
+    } catch { alert("Some deletes failed"); }
+    finally { setShowBulkDelete(false); }
   };
 
-  const handleBulkAddConfirm = (courseId) => {
-    setShowBulkAdd(false);
-    clearSelection();
-    navigate(`/trainer/courses/${courseId}`);
-  };
-
-  const handleNewCollection = (name) => {
-    const id = `custom-${Date.now()}`;
-    setCollections(prev => [...prev, { id, label: name }]);
-  };
-
-  // ── Filtering ─────────────────────────────────────────────────
+  // ── Filtering ─────────────────────────────────────────────────────────────
   const courseNames = [...new Set(assets.map(a => a.course))];
 
   const filtered = assets.filter(a => {
     const matchSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase())
       || a.course.toLowerCase().includes(searchQuery.toLowerCase());
-    const catMap = { "All Assets": true, "Video Lessons": a.type === "video", "Audio Content": a.type === "audio", "Documents": a.type === "document" };
-    const matchCat = catMap[activeCategory] ?? true;
-    const matchColl = activeCollection ? a.collectionId === activeCollection : true;
-    const typeMap = { "All": true, "Videos": a.type === "video", "Audio": a.type === "audio", "Documents": a.type === "document" };
-    const matchType = typeMap[drawerFilters.assetType] ?? true;
+    const catMap = {
+      "All Assets":    true,
+      "Video Lessons": a.type === "video",
+      "Audio Content": a.type === "audio",
+      "Documents":     a.type === "document",
+      "Knowledge Base": a.isKnowledgeBase,       // ✅ new category
+    };
+    const matchCat   = catMap[activeCategory] ?? true;
+    const matchColl  = activeCollection ? a.collectionId === activeCollection : true;
+    const typeMap    = { "All": true, "Videos": a.type === "video", "Audio": a.type === "audio", "Documents": a.type === "document" };
+    const matchType  = typeMap[drawerFilters.assetType] ?? true;
     const matchCourse = drawerFilters.courses.length === 0 || drawerFilters.courses.includes(a.course);
     return matchSearch && matchCat && matchColl && matchType && matchCourse;
   });
 
   const categories = [
-    { icon: "grid_view",   label: "All Assets" },
-    { icon: "videocam",    label: "Video Lessons" },
-    { icon: "mic",         label: "Audio Content" },
-    { icon: "description", label: "Documents" },
+    { icon: "grid_view",    label: "All Assets" },
+    { icon: "videocam",     label: "Video Lessons" },
+    { icon: "mic",          label: "Audio Content" },
+    { icon: "description",  label: "Documents" },
+    { icon: "library_books", label: "Knowledge Base" },   // ✅ new
   ];
 
   if (loading) return (
@@ -654,14 +654,13 @@ export default function TrainerContentLibrary() {
         .line-clamp-1{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;}
       `}</style>
 
-      {showUpload    && <UploadModal courses={courses} onClose={() => setShowUpload(false)} onGoToUploadPage={() => { setShowUpload(false); navigate("/trainer/dashboard"); }} />}
-      <FilterDrawer   open={showFilters} onClose={() => setShowFilters(false)} onApply={setDrawerFilters} courseNames={courseNames} />
-      {detailAsset   && <AssetDetailModal asset={detailAsset} onClose={() => setDetailAsset(null)} onEdit={() => { setDetailAsset(null); handleEdit(detailAsset); }} onReuse={() => handleReuse(detailAsset)} onAIEnhance={() => { setDetailAsset(null); handleAIEnhance(detailAsset); }} />}
-      {reuseAsset    && <ReuseModal asset={reuseAsset} courses={courses} onClose={() => setReuseAsset(null)} onConfirm={handleReuseConfirm} />}
-      {deleteAsset   && <DeleteModal asset={deleteAsset} onClose={() => setDeleteAsset(null)} onConfirm={handleDeleteConfirm} />}
-      {showBulkAdd   && <BulkAddModal count={selectedIds.length} courses={courses} onClose={() => setShowBulkAdd(false)} onConfirm={handleBulkAddConfirm} />}
-      {showBulkDelete && <BulkDeleteModal count={selectedIds.length} onClose={() => setShowBulkDelete(false)} onConfirm={handleBulkDeleteConfirm} />}
-      {showNewCollection && <NewCollectionModal onClose={() => setShowNewCollection(false)} onConfirm={handleNewCollection} />}
+      <FilterDrawer open={showFilters} onClose={() => setShowFilters(false)} onApply={setDrawerFilters} courseNames={courseNames} />
+      {detailAsset  && <AssetDetailModal asset={detailAsset} onClose={() => setDetailAsset(null)}
+        onEdit={() => { setDetailAsset(null); handleEdit(detailAsset); }}
+        onReuse={() => handleReuse(detailAsset)}
+        onAIEnhance={() => { setDetailAsset(null); handleAIEnhance(detailAsset); }} />}
+      {reuseAsset   && <ReuseModal asset={reuseAsset} courses={courses} onClose={() => setReuseAsset(null)} onConfirm={handleReuseConfirm} />}
+      {deleteAsset  && <DeleteModal asset={deleteAsset} onClose={() => setDeleteAsset(null)} onConfirm={handleDeleteConfirm} />}
 
       <div className="flex h-screen overflow-hidden" style={{ fontFamily: "'Lexend',sans-serif", backgroundColor: "#f6f7f8" }}>
         <TrainerSidebar />
@@ -681,18 +680,13 @@ export default function TrainerContentLibrary() {
                   <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
                   <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                     className="w-full bg-slate-100 rounded-lg pl-10 pr-10 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-[#137fec]/30"
-                    placeholder="Search your assets..." />
+                    placeholder="Search assets..." />
                   {searchQuery && (
                     <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                       <Icon name="close" className="text-base" />
                     </button>
                   )}
                 </div>
-                <button onClick={() => setShowUpload(true)}
-                  className="bg-[#137fec] hover:bg-[#0f6fd4] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm flex-shrink-0">
-                  <Icon name="upload" className="text-lg" />
-                  <span className="hidden sm:inline">Upload New Asset</span>
-                </button>
                 <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
               </div>
             </div>
@@ -700,6 +694,7 @@ export default function TrainerContentLibrary() {
 
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-[1400px] mx-auto p-6 flex gap-8">
+
               {/* Sidebar */}
               <aside className="w-64 flex-shrink-0 hidden xl:block">
                 <div className="flex flex-col gap-8 sticky top-24">
@@ -710,43 +705,59 @@ export default function TrainerContentLibrary() {
                         <li key={label}>
                           <button onClick={() => { setActiveCategory(label); setActiveCollection(null); }}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${activeCategory === label && !activeCollection ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}>
-                            <Icon name={icon} className="text-[20px] flex-shrink-0" />{label}
+                            <Icon name={icon} className="text-[20px] flex-shrink-0" />
+                            {label}
+                            {label === "Knowledge Base" && kbCount > 0 && (
+                              <span className="ml-auto bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{kbCount}</span>
+                            )}
                           </button>
                         </li>
                       ))}
                     </ul>
                   </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Collections</h3>
-                      <button onClick={() => setShowNewCollection(true)} className="text-[#137fec] hover:text-[#0f6fd4]">
-                        <Icon name="add" className="text-base" />
-                      </button>
                     </div>
                     <ul className="space-y-1">
                       {collections.map(c => (
                         <li key={c.id}>
                           <button onClick={() => { setActiveCollection(c.id); setActiveCategory("All Assets"); }}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${activeCollection === c.id ? "bg-[#137fec]/10 text-[#137fec] font-semibold" : "text-slate-600 hover:bg-slate-100"}`}>
-                            <Icon name="folder" className="text-[20px] flex-shrink-0" />
+                            <Icon name={c.id === "kb-admin" ? "library_books" : "folder"} className="text-[20px] flex-shrink-0" />
                             <span className="truncate">{c.label}</span>
                           </button>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  {/* Storage */}
+
+                  {/* Stats */}
                   <div className="p-4 rounded-xl bg-[#137fec]/5 border border-[#137fec]/10">
                     <p className="text-xs font-bold text-[#137fec] uppercase mb-2">Total Assets</p>
                     <p className="text-2xl font-black text-slate-900">{assets.length}</p>
-                    <p className="text-[11px] text-slate-500 mt-1">across {courses.length} course{courses.length !== 1 ? "s" : ""}</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {courses.length} course{courses.length !== 1 ? "s" : ""}
+                      {kbCount > 0 ? ` · ${kbCount} KB files` : ""}
+                    </p>
                   </div>
+
+                  {/* KB info box */}
+                  {kbCount > 0 && (
+                    <div className="p-4 rounded-xl bg-purple-50 border border-purple-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon name="library_books" className="text-purple-600 text-base" />
+                        <p className="text-xs font-bold text-purple-700">Knowledge Base</p>
+                      </div>
+                      <p className="text-[11px] text-purple-600">{kbCount} file{kbCount !== 1 ? "s" : ""} uploaded by Admin</p>
+                    </div>
+                  )}
                 </div>
               </aside>
 
               {/* Main content */}
               <div className="flex-1 min-w-0">
-                {/* Header row */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                   <div>
                     <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
@@ -755,9 +766,7 @@ export default function TrainerContentLibrary() {
                       <span className="text-slate-900 font-medium">Content Library</span>
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Content Library</h1>
-                    <p className="text-slate-500 mt-1 text-sm">
-                      {filtered.length} asset{filtered.length !== 1 ? "s" : ""} found
-                    </p>
+                    <p className="text-slate-500 mt-1 text-sm">{filtered.length} asset{filtered.length !== 1 ? "s" : ""} found</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={() => setShowFilters(true)}
@@ -777,15 +786,11 @@ export default function TrainerContentLibrary() {
                   </div>
                 </div>
 
-                {/* Bulk action bar */}
+                {/* Bulk bar */}
                 {selectedIds.length > 0 && (
                   <div className="mb-6 flex items-center gap-3 p-3 bg-[#137fec]/5 border border-[#137fec]/20 rounded-xl">
                     <span className="text-sm font-bold text-[#137fec]">{selectedIds.length} selected</span>
                     <div className="flex gap-2 ml-auto">
-                      <button onClick={() => setShowBulkAdd(true)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-[#137fec] text-white rounded-lg text-xs font-bold hover:bg-[#0f6fd4]">
-                        <Icon name="add" className="text-sm" />Add to Course
-                      </button>
                       <button onClick={() => setShowBulkDelete(true)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold hover:bg-rose-600">
                         <Icon name="delete" className="text-sm" />Delete
@@ -798,27 +803,17 @@ export default function TrainerContentLibrary() {
                   </div>
                 )}
 
-                {/* Empty state */}
+                {/* Empty */}
                 {filtered.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-24 text-center">
                     <Icon name="search_off" className="text-6xl text-slate-200 mb-4" />
                     <p className="text-lg font-bold text-slate-400">
-                      {assets.length === 0 ? "No lessons found in your courses" : "No assets match your filters"}
+                      {assets.length === 0 ? "No assets found" : "No assets match your filters"}
                     </p>
-                    <p className="text-sm text-slate-400 mt-1">
-                      {assets.length === 0 ? "Create courses and add lessons to see them here" : "Try adjusting your search or filters"}
-                    </p>
-                    {assets.length === 0 ? (
-                      <button onClick={() => navigate("/trainer/dashboard")}
-                        className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold">
-                        Go to Dashboard
-                      </button>
-                    ) : (
-                      <button onClick={() => { setSearchQuery(""); setDrawerFilters({ assetType: "All", courses: [] }); }}
-                        className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold">
-                        Clear Filters
-                      </button>
-                    )}
+                    <button onClick={() => { setSearchQuery(""); setDrawerFilters({ assetType: "All", courses: [] }); setActiveCategory("All Assets"); setActiveCollection(null); }}
+                      className="mt-4 px-4 py-2 bg-[#137fec] text-white rounded-lg text-sm font-bold">
+                      Clear Filters
+                    </button>
                   </div>
                 )}
 
@@ -848,12 +843,6 @@ export default function TrainerContentLibrary() {
               </div>
             </div>
           </main>
-
-          {/* Mobile FAB */}
-          <button onClick={() => setShowUpload(true)}
-            className="fixed bottom-6 right-6 lg:hidden w-14 h-14 bg-[#137fec] text-white rounded-full shadow-xl flex items-center justify-center z-50">
-            <Icon name="add" className="text-3xl" />
-          </button>
         </div>
       </div>
     </>
