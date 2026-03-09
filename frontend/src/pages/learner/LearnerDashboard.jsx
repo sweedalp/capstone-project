@@ -33,7 +33,7 @@ const LearnerDashboard = () => {
       });
   }, []);
 
-  const firstName = dashboardData?.welcome_name || userName.split(' ')[0];
+  const firstName = (dashboardData?.welcome_name || userName).split(' ')[0] || 'there';
   const weeklyGoalPercent = dashboardData?.weekly_goal_percent ?? 0;
   const modulesRemaining = dashboardData?.modules_remaining ?? 0;
   const learningProgressCourses = dashboardData?.courses_in_progress || [];
