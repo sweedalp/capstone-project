@@ -250,6 +250,7 @@ const SignUp = () => {
                 <div className="relative group">
                   <input
                     className={`w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-600/20 text-sm transition-all outline-none ${errors.password ? 'ring-2 ring-red-500/20 bg-red-50/50' : ''}`}
+                    title="Must be 8+ chars with uppercase, lowercase and a number"
                     id="password"
                     name="password"
                     placeholder="••••••••"
@@ -270,6 +271,7 @@ const SignUp = () => {
                   </button>
                   <span className="absolute left-2 top-1 material-symbols-outlined text-slate-400 text-lg transition-colors group-focus-within:text-blue-600">lock</span>
                 </div>
+                {errors.password && <p className="mt-0.5 text-[10px] text-red-500 font-medium">{errors.password}</p>}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1" htmlFor="confirm">Confirm</label>
@@ -296,6 +298,7 @@ const SignUp = () => {
                     </span>
                   </button>
                 </div>
+                {errors.confirmPassword && <p className="mt-0.5 text-[10px] text-red-500 font-medium">{errors.confirmPassword}</p>}
               </div>
             </div>
 
@@ -314,6 +317,8 @@ const SignUp = () => {
                 I agree to the <a className="text-blue-600 hover:underline font-semibold" href="#">Terms</a> and <a className="text-blue-600 hover:underline font-semibold" href="#">Privacy Policy</a>.
               </label>
             </div>
+            {errors.agreeToTerms && <p className="text-[10px] text-red-500 font-medium">{errors.agreeToTerms}</p>}
+            {errors.submit && <p className="text-[10px] text-red-500 font-medium text-center">{errors.submit}</p>}
 
             {/* Submit Button */}
             <button

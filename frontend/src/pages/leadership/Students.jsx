@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import LeadershipShell from './LeadershipShell';
 import { Avatar, StatusBadge, ProgressBar, Card, Btn, Modal, Input } from './_ui';
 import { useLeadershipData } from './_store';
+import { leadershipApi } from '../../services/adminApi';
 
 const FILTERS = [
   { value: 'all',           label: 'All Students'    },
@@ -25,7 +26,33 @@ export default function Students() {
 
   const [expandedId, setExpandedId] = useState(null);
   const [interventionModal, setInterventionModal] = useState(null);
+  const [messageModal, setMessageModal] = useState(null);
+  const [msgFields, setMsgFields] = useState({ subject: '', body: '' });
+  const [msgSending, setMsgSending] = useState(false);
   const [page, setPage] = useState(1);
+
+  const handleSendMessage = async () => {
+    if (!msgFields.subject.trim() || !msgFields.body.trim()) {
+      toast.error('Please fill in both subject and message');
+      return;
+    }
+    setMsgSending(true);
+    try {
+      await leadershipApi.sendMessage({
+        to_name:  messageModal.name,
+        to_email: messageModal.email,
+        subject:  msgFields.subject,
+        body:     msgFields.body,
+      });
+      toast.success(`Message sent to ${messageModal.name}`);
+      setMessageModal(null);
+      setMsgFields({ subject: '', body: '' });
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to send email. Please try again.');
+    } finally {
+      setMsgSending(false);
+    }
+  };
   const PER_PAGE = 8;
 
   const filtered = getFilteredStudents();
@@ -209,7 +236,7 @@ export default function Students() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Btn variant="secondary" className="text-[12px] py-1.5"
-                                onClick={() => toast.success(`Message sent to ${s.name}`)}>
+                                onClick={() => { setMessageModal(s); setMsgFields({ subject: `Regarding your progress in ${s.course}`, body: '' }); }}>
                                 <span className="material-symbols-outlined text-[14px]">mail</span> Message
                               </Btn>
                               <Btn className="text-[12px] py-1.5"
@@ -245,6 +272,46 @@ export default function Students() {
           </div>
         </Card>
       </div>
+
+      {/* ── Message Modal ── */}
+      <Modal
+        open={!!messageModal}
+        onClose={() => { setMessageModal(null); setMsgFields({ subject: '', body: '' }); }}
+        title={`Message – ${messageModal?.name}`}
+        footer={<>
+          <Btn variant="secondary" onClick={() => { setMessageModal(null); setMsgFields({ subject: '', body: '' }); }}>Cancel</Btn>
+          <Btn disabled={msgSending} onClick={handleSendMessage}>
+            <span className="material-symbols-outlined text-[16px]">{msgSending ? 'hourglass_empty' : 'send'}</span>
+            {msgSending ? 'Sending…' : 'Send Message'}
+          </Btn>
+        </>}>
+        {messageModal && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">To</label>
+              <input readOnly value={`${messageModal.name} — ${messageModal.email}`}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] bg-slate-50 text-slate-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Subject</label>
+              <input
+                value={msgFields.subject}
+                onChange={e => setMsgFields(f => ({ ...f, subject: e.target.value }))}
+                placeholder="e.g. Your progress update"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 focus:border-[#137fec] transition" />
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Message</label>
+              <textarea
+                rows={5}
+                value={msgFields.body}
+                onChange={e => setMsgFields(f => ({ ...f, body: e.target.value }))}
+                placeholder="Write your message here…"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 resize-none" />
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* ── Intervention Modal ── */}
       <Modal open={!!interventionModal} onClose={() => setInterventionModal(null)}

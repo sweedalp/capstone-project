@@ -1,17 +1,17 @@
 // ─── Leadership Module Mock Data ───────────────────────────────────────────
 export const STUDENTS = [
-  { id: 'AI-20492', name: 'Alex Johnson',    avatar: 'AJ', course: 'Neural Networks II',             progress: 92, module: '12/13', status: 'top-performer', lastActive: '2 hours ago',  score: 96, jobReady: true  },
-  { id: 'AI-21033', name: 'Sarah Williams',  avatar: 'SW', course: 'Machine Learning Fundamentals',  progress: 24, module: '3/15',  status: 'at-risk',        lastActive: '8 days ago',   score: 41, jobReady: false },
-  { id: 'AI-20512', name: 'Michael Chen',    avatar: 'MC', course: 'Data Science & AI',              progress: 68, module: '8/12',  status: 'on-track',        lastActive: '1 hour ago',   score: 74, jobReady: false },
-  { id: 'AI-19822', name: 'Emily Davis',     avatar: 'ED', course: 'Neural Networks II',             progress: 100,module: 'Done', status: 'completed',       lastActive: 'Oct 25, 2023', score: 89, jobReady: true  },
-  { id: 'AI-20901', name: 'James Wilson',    avatar: 'JW', course: 'Python Mastery',                 progress: 45, module: '5/11',  status: 'behind',          lastActive: '3 days ago',   score: 58, jobReady: false },
-  { id: 'AI-21100', name: 'Priya Patel',     avatar: 'PP', course: 'Data Science & AI',              progress: 88, module: '10/12', status: 'top-performer',   lastActive: '30 min ago',   score: 91, jobReady: true  },
-  { id: 'AI-19900', name: 'Carlos Rodriguez',avatar: 'CR', course: 'Python Mastery',                 progress: 33, module: '4/11',  status: 'at-risk',         lastActive: '5 days ago',   score: 38, jobReady: false },
-  { id: 'AI-21250', name: 'Aisha Okafor',    avatar: 'AO', course: 'Machine Learning Fundamentals',  progress: 75, module: '10/15', status: 'on-track',        lastActive: '4 hours ago',  score: 80, jobReady: false },
-  { id: 'AI-20345', name: 'Tom Nguyen',      avatar: 'TN', course: 'Neural Networks II',             progress: 55, module: '7/13',  status: 'behind',          lastActive: '2 days ago',   score: 62, jobReady: false },
-  { id: 'AI-21400', name: 'Fatima Hassan',   avatar: 'FH', course: 'Python Mastery',                 progress: 98, module: '10/11', status: 'top-performer',   lastActive: '1 hour ago',   score: 94, jobReady: true  },
-  { id: 'AI-21500', name: 'Diego Morales',   avatar: 'DM', course: 'Data Science & AI',              progress: 12, module: '1/12',  status: 'at-risk',         lastActive: '12 days ago',  score: 29, jobReady: false },
-  { id: 'AI-21600', name: 'Yuki Tanaka',     avatar: 'YT', course: 'Python Mastery',                 progress: 60, module: '7/11',  status: 'on-track',        lastActive: '6 hours ago',  score: 71, jobReady: false },
+  { id: 'AI-20492', name: 'Alex Johnson',     email: 'alex.johnson@learnai.com',     avatar: 'AJ', course: 'Neural Networks II',             progress: 92, module: '12/13', status: 'top-performer', lastActive: '2 hours ago',  score: 96, jobReady: true  },
+  { id: 'AI-21033', name: 'Sarah Williams',   email: 'sarah.williams@learnai.com',   avatar: 'SW', course: 'Machine Learning Fundamentals',  progress: 24, module: '3/15',  status: 'at-risk',       lastActive: '8 days ago',   score: 41, jobReady: false },
+  { id: 'AI-20512', name: 'Michael Chen',     email: 'michael.chen@learnai.com',     avatar: 'MC', course: 'Data Science & AI',              progress: 68, module: '8/12',  status: 'on-track',      lastActive: '1 hour ago',   score: 74, jobReady: false },
+  { id: 'AI-19822', name: 'Emily Davis',      email: 'emily.davis@learnai.com',      avatar: 'ED', course: 'Neural Networks II',             progress: 100,module: 'Done', status: 'completed',     lastActive: 'Oct 25, 2023', score: 89, jobReady: true  },
+  { id: 'AI-20901', name: 'James Wilson',     email: 'james.wilson@learnai.com',     avatar: 'JW', course: 'Python Mastery',                 progress: 45, module: '5/11',  status: 'behind',        lastActive: '3 days ago',   score: 58, jobReady: false },
+  { id: 'AI-21100', name: 'Priya Patel',      email: 'priya.patel@learnai.com',      avatar: 'PP', course: 'Data Science & AI',              progress: 88, module: '10/12', status: 'top-performer', lastActive: '30 min ago',   score: 91, jobReady: true  },
+  { id: 'AI-19900', name: 'Carlos Rodriguez', email: 'carlos.rodriguez@learnai.com', avatar: 'CR', course: 'Python Mastery',                 progress: 33, module: '4/11',  status: 'at-risk',       lastActive: '5 days ago',   score: 38, jobReady: false },
+  { id: 'AI-21250', name: 'Aisha Okafor',     email: 'aisha.okafor@learnai.com',     avatar: 'AO', course: 'Machine Learning Fundamentals',  progress: 75, module: '10/15', status: 'on-track',      lastActive: '4 hours ago',  score: 80, jobReady: false },
+  { id: 'AI-20345', name: 'Tom Nguyen',       email: 'tom.nguyen@learnai.com',       avatar: 'TN', course: 'Neural Networks II',             progress: 55, module: '7/13',  status: 'behind',        lastActive: '2 days ago',   score: 62, jobReady: false },
+  { id: 'AI-21400', name: 'Fatima Hassan',    email: 'fatima.hassan@learnai.com',    avatar: 'FH', course: 'Python Mastery',                 progress: 98, module: '10/11', status: 'top-performer', lastActive: '1 hour ago',   score: 94, jobReady: true  },
+  { id: 'AI-21500', name: 'Diego Morales',    email: 'diego.morales@learnai.com',    avatar: 'DM', course: 'Data Science & AI',              progress: 12, module: '1/12',  status: 'at-risk',       lastActive: '12 days ago',  score: 29, jobReady: false },
+  { id: 'AI-21600', name: 'Yuki Tanaka',      email: 'yuki.tanaka@learnai.com',      avatar: 'YT', course: 'Python Mastery',                 progress: 60, module: '7/11',  status: 'on-track',      lastActive: '6 hours ago',  score: 71, jobReady: false },
 ];
 
 export const COURSES = [

@@ -1,9 +1,14 @@
-from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional, List
 import os
 from pathlib import Path
 
+# Always resolve .env relative to this file (backend/.env), regardless of where uvicorn is launched from
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", case_sensitive=True)
+    
     # Application
     APP_NAME: str = "LMS & Knowledge Intelligence Platform"
     APP_ENV: str = "development"
@@ -21,7 +26,7 @@ class Settings(BaseSettings):
     JWT_EXPIRATION: int = 3600  # 1 hour
     
     # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000"]
+    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]
     
     # File Upload
     UPLOAD_MAX_SIZE: int = 100 * 1024 * 1024  # 100MB
@@ -36,13 +41,6 @@ class Settings(BaseSettings):
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_FROM_NAME: str = "AI LMS Platform"
-
-    class Config:
-        # Load environment variables from the repository root `.env`.
-        # This keeps local dev consistent across machines.
-        env_file = str(Path(__file__).resolve().parents[3] / ".env")
-        env_file_encoding = "utf-8"
-        case_sensitive = True
 
 settings = Settings()
 

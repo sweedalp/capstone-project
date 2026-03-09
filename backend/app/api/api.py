@@ -25,6 +25,7 @@ from app.api.v1.endpoints import (
     meetings,
     notifications,
     saved_resources,
+    leadership,
 )
 
 api_router = APIRouter()
@@ -48,6 +49,7 @@ api_router.include_router(messaging.router,       prefix="/messaging", tags=["Me
 api_router.include_router(meetings.router,        prefix="/meetings",  tags=["Meetings"])
 api_router.include_router(notifications.router,   prefix="/notifications", tags=["Notifications"])
 api_router.include_router(saved_resources.router, prefix="/saved-resources", tags=["Saved Resources"])
+api_router.include_router(leadership.router,      prefix="/leadership",     tags=["Leadership"])
 # ── AI Features ────────────────────────────────────────────────────
 api_router.include_router(ai_hub.router,      prefix="/ai-hub",      tags=["AI Learning Hub"])
 api_router.include_router(assessments.router,  prefix="/assessments", tags=["Assessments"])

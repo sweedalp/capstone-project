@@ -37,6 +37,9 @@ const NOTIFICATIONS = [
 export default function LeadershipShell({ children }) {
   const navigate = useNavigate();
 
+  const userName  = localStorage.getItem('userName')  || 'Leadership User';
+  const userEmail = localStorage.getItem('userEmail') || '';
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen]           = useState(false);
   const [notifOpen, setNotifOpen]                 = useState(false);
@@ -223,7 +226,7 @@ export default function LeadershipShell({ children }) {
                 aria-expanded={dropdownOpen}
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-[12px] font-bold leading-none">Alex Rivera</p>
+                  <p className="text-[12px] font-bold leading-none">{userName}</p>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">Program Director</p>
                 </div>
                 <div
@@ -237,8 +240,8 @@ export default function LeadershipShell({ children }) {
                 <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50">
                   {/* User info */}
                   <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-[13px] font-bold text-slate-900">Alex Rivera</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">alex.rivera@company.com</p>
+                    <p className="text-[13px] font-bold text-slate-900">{userName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{userEmail}</p>
                   </div>
 
                   {/* Links */}

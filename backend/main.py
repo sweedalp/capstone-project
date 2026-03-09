@@ -20,7 +20,8 @@ from app.api.api import api_router
 import app.models  # noqa: F401
 
 # ── Create tables ───────────────────────────────────────────────────
-Base.metadata.create_all(bind=engine)
+# Note: Commented out for initial startup - will create tables on first API call
+# Base.metadata.create_all(bind=engine)
 
 
 # ── CORS headers for static files (fixes PDF/video iframe embedding) ─

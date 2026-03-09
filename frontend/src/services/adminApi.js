@@ -107,3 +107,10 @@ export const adminExportApi = {
     URL.revokeObjectURL(url)
   },
 }
+
+// ─── Leadership ───────────────────────────────────────────────────────────────
+export const leadershipApi = {
+  getStats:      ()              => apiClient.get('/api/v1/leadership/stats').then(r => r.data),
+  getActivities: (limit = 8)    => apiClient.get(`/api/v1/leadership/activities?limit=${limit}`).then(r => r.data),
+  sendMessage:   (payload)      => apiClient.post('/api/v1/leadership/send-email', payload).then(r => r.data),
+}

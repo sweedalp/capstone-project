@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LeadershipShell from './LeadershipShell'
+import { leadershipApi } from '../../services/adminApi'
 
 
 const Icon = ({ name, className = '' }) => (
@@ -63,14 +65,13 @@ function ActivityChart() {
   )
 }
 
-// ✅ Matches App.jsx route: <Route path="/dashboard/admin" element={<AdminLayout />}>
-const BASE = '/dashboard/admin'
+const BASE = '/leadership'
 
 const QUICK_ACTIONS = [
-  { label:'Add New User',    icon:'person_add',  path:`${BASE}/users`,     color:'bg-blue-500'   },
-  { label:'Upload Content',  icon:'upload_file', path:`${BASE}/knowledge`, color:'bg-purple-500' },
-  { label:'Run AI Job',      icon:'play_circle', path:`${BASE}/ai`,        color:'bg-green-500'  },
-  { label:'Generate Report', icon:'summarize',   path:`${BASE}/reports`,   color:'bg-blue-600'   },
+  { label:'View Students',   icon:'group',       path:`${BASE}/students`,   color:'bg-blue-500'   },
+  { label:'Curriculum',      icon:'auto_stories',path:`${BASE}/curriculum`, color:'bg-purple-500' },
+  { label:'Analytics',       icon:'bar_chart',   path:`${BASE}/analytics`,  color:'bg-green-500'  },
+  { label:'Management',      icon:'manage_accounts', path:`${BASE}/management`, color:'bg-blue-600' },
 ]
 
 const AI_SERVICES_SUMMARY = [
@@ -107,8 +108,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      adminDashboardApi.getStats(),
-      adminDashboardApi.getActivities(8),
+      leadershipApi.getStats(),
+      leadershipApi.getActivities(8),
     ]).then(([statsData, activitiesData]) => {
       setStats(statsData)
       setActivities(activitiesData || [])
@@ -117,15 +118,15 @@ export default function Dashboard() {
   }, [])
 
   const STATS = stats ? [
-    { label:'Total Users',     value: stats.total_users?.toLocaleString()    || '0', sub:`${stats.total_trainers || 0} trainers · ${stats.total_learners || 0} learners`, icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/users`    },
-    { label:'Active Learners', value: stats.active_learners?.toLocaleString() || '0', sub:`${stats.total_enrollments || 0} total enrollments`,                              icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/users`    },
-    { label:'Content Items',   value: stats.total_lessons?.toLocaleString()  || '0', sub:`Across ${stats.total_courses || 0} courses`,                                     icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/knowledge`},
-    { label:'Total Courses',   value: stats.total_courses?.toLocaleString()  || '0', sub:`${stats.published_courses || 0} published · ${stats.draft_courses || 0} drafts`, icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/courses`  },
+    { label:'Total Users',     value: stats.total_users?.toLocaleString()    || '0', sub:`${stats.total_trainers || 0} trainers · ${stats.total_learners || 0} learners`, icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/students`   },
+    { label:'Active Learners', value: stats.active_learners?.toLocaleString() || '0', sub:`${stats.total_enrollments || 0} total enrollments`,                              icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/students`   },
+    { label:'Content Items',   value: stats.total_lessons?.toLocaleString()  || '0', sub:`Across ${stats.total_courses || 0} courses`,                                     icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/curriculum` },
+    { label:'Total Courses',   value: stats.total_courses?.toLocaleString()  || '0', sub:`${stats.published_courses || 0} published · ${stats.draft_courses || 0} drafts`, icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/curriculum` },
   ] : [
-    { label:'Total Users',     value:'—', sub:'Loading...', icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/users`    },
-    { label:'Active Learners', value:'—', sub:'Loading...', icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/users`    },
-    { label:'Content Items',   value:'—', sub:'Loading...', icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/knowledge`},
-    { label:'Total Courses',   value:'—', sub:'Loading...', icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/courses`  },
+    { label:'Total Users',     value:'—', sub:'Loading...', icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/students`   },
+    { label:'Active Learners', value:'—', sub:'Loading...', icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/students`   },
+    { label:'Content Items',   value:'—', sub:'Loading...', icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/curriculum` },
+    { label:'Total Courses',   value:'—', sub:'Loading...', icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/curriculum` },
   ]
 
   const actionIcon = (action) => {
@@ -152,6 +153,7 @@ export default function Dashboard() {
   }
 
   return (
+    <LeadershipShell>
     <div>
       {toastMsg && (
         <div className={`fixed top-6 right-6 z-[999] px-5 py-3 rounded-xl shadow-xl text-sm font-bold flex items-center gap-3 ${toastMsg.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
@@ -166,13 +168,9 @@ export default function Dashboard() {
           <p className="text-slate-500 mt-1">Welcome back, {userName}. Here's what's happening today.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => navigate(`${BASE}/reports`)}
+          <button onClick={() => navigate('/leadership/analytics')}
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
             <Icon name="bar_chart" className="text-lg" />View Reports
-          </button>
-          <button onClick={() => { setLoading(true); window.location.reload() }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all">
-            <Icon name="refresh" className="text-lg" />Refresh
           </button>
         </div>
       </div>
@@ -252,8 +250,8 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Icon name="smart_toy" className="text-blue-600 text-xl" />AI Services
             </h3>
-            <button onClick={() => navigate(`${BASE}/ai`)} className="text-xs text-blue-600 font-semibold hover:underline">
-              Configure →
+            <button onClick={() => navigate(`${BASE}/analytics`)} className="text-xs text-blue-600 font-semibold hover:underline">
+              View Analytics →
             </button>
           </div>
           <div className="space-y-3">
@@ -346,5 +344,6 @@ export default function Dashboard() {
 
       </div>
     </div>
+    </LeadershipShell>
   )
 }
