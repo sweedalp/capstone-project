@@ -1,0 +1,9 @@
+ fastapi
+ uvicorn
+ python-multipart
+ openai-whisper
+ moviepy
+ python-dotenv
+ requests
+# brew install ffmpeg   # Mac (REQUIRED for Whisper)
+websocket-client

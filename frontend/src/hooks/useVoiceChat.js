@@ -1,321 +1,306 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-/**
- * useVoiceChat - Custom hook for real-time voice interaction
- * 
- * Manages WebSocket connection to voice AI backend
- * Handles audio recording, streaming, and playback
- * 
- * Backend Pipeline:
- * 1. Audio chunks → Whisper (Speech-to-Text)
- * 2. Transcription → Ollama/Llama (LLM Response)
- * 3. Text response → Coqui TTS (Text-to-Speech)
- * 4. Audio response → Frontend playback
- * 
- * @param {Object} config - Configuration options
- * @param {string} config.wsUrl - WebSocket URL (e.g., 'wss://localhost:8000/api/voice')
- * @param {Object} config.context - Context object (courseId, lessonId, language)
- * @param {string} config.authToken - User authentication token
- */
-const useVoiceChat = ({ wsUrl, context = {}, authToken = null }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [transcription, setTranscription] = useState('');
-  const [aiResponse, setAiResponse] = useState('');
-  const [error, setError] = useState(null);
-  const [latency, setLatency] = useState(0);
-
-  const wsRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const streamRef = useRef(null);
-  const audioElementRef = useRef(null);
-  const requestTimestampRef = useRef(null);
-
-  // Initialize WebSocket connection
-  useEffect(() => {
-    let reconnectTimeout;
-
-    const connect = () => {
-      try {
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          console.log('[VoiceChat] WebSocket connected');
-          setIsConnected(true);
-          setError(null);
-
-          // Send initialization message with context
-          ws.send(JSON.stringify({
-            type: 'init',
-            token: authToken,
-            context: {
-              courseId: context.courseId || null,
-              lessonId: context.lessonId || null,
-              language: context.language || 'en',
-              timestamp: Date.now()
-            }
-          }));
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            handleWebSocketMessage(message);
-          } catch (err) {
-            console.error('[VoiceChat] Failed to parse message:', err);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('[VoiceChat] WebSocket error:', error);
-          setError('Connection error. Retrying...');
-          setIsConnected(false);
-        };
-
-        ws.onclose = () => {
-          console.log('[VoiceChat] WebSocket closed');
-          setIsConnected(false);
-          // Attempt to reconnect after 3 seconds
-          reconnectTimeout = setTimeout(connect, 3000);
-        };
-      } catch (err) {
-        console.error('[VoiceChat] Connection failed:', err);
-        setError('Failed to connect to voice service');
-      }
-    };
-
-    connect();
-
-    // Cleanup on unmount
-    return () => {
-      clearTimeout(reconnectTimeout);
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
-      }
-    };
-  }, [wsUrl, authToken, context.courseId, context.lessonId, context.language]);
-
-  // Handle WebSocket messages
-  const handleWebSocketMessage = useCallback((message) => {
-    switch (message.type) {
-      case 'transcription':
-        console.log('[VoiceChat] Transcription:', message.text);
-        setTranscription(message.text);
-        setIsListening(false);
-        setIsProcessing(true);
-        break;
-
-      case 'ai_response':
-        console.log('[VoiceChat] AI Response:', message.text);
-        setAiResponse(message.text);
-        setIsProcessing(false);
-
-        // Calculate latency
-        if (requestTimestampRef.current) {
-          const responseLatency = Date.now() - requestTimestampRef.current;
-          setLatency(responseLatency);
-        }
-
-        // Play TTS audio if available
-        if (message.audio_url) {
-          playAudioResponse(message.audio_url);
-        }
-        break;
-
-      case 'audio_chunk':
-        // Handle streamed TTS audio chunks
-        if (message.data) {
-          playAudioChunk(message.data);
-        }
-        break;
-
-      case 'error':
-        console.error('[VoiceChat] Server error:', message.message);
-        setError(message.message || 'An error occurred');
-        setIsListening(false);
-        setIsProcessing(false);
-        setIsSpeaking(false);
-        break;
-
-      case 'status':
-        console.log('[VoiceChat] Status:', message.message);
-        break;
-
-      default:
-        console.warn('[VoiceChat] Unknown message type:', message.type);
-    }
-  }, []);
-
-  // Start voice recording
-  const startListening = useCallback(async () => {
-    try {
-      setError(null);
-      setTranscription('');
-      setAiResponse('');
-
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 16000 // Optimal for Whisper
-        } 
-      });
-      
-      streamRef.current = stream;
-
-      // Initialize AudioContext for audio processing
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-        audioBitsPerSecond: 16000
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-
-      // Handle audio data chunks
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-          // Convert blob to base64 and send to server
-          const reader = new FileReader();
-          reader.readAsDataURL(event.data);
-          reader.onloadend = () => {
-            const base64Audio = reader.result.split(',')[1];
-            wsRef.current.send(JSON.stringify({
-              type: 'audio_chunk',
-              data: base64Audio,
-              timestamp: Date.now()
-            }));
-          };
-        }
-      };
-
-      // Start recording
-      mediaRecorder.start(250); // Send chunks every 250ms for real-time streaming
-      setIsListening(true);
-      requestTimestampRef.current = Date.now();
-
-      console.log('[VoiceChat] Started listening');
-    } catch (err) {
-      console.error('[VoiceChat] Failed to start listening:', err);
-      setError('Failed to access microphone. Please check permissions.');
-    }
-  }, []);
-
-  // Stop voice recording
-  const stopListening = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      console.log('[VoiceChat] Stopped listening');
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-
-    setIsListening(false);
-
-    // Notify server that recording has stopped
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'audio_end',
-        timestamp: Date.now()
-      }));
-    }
-  }, []);
-
-  // Play TTS audio response
-  const playAudioResponse = useCallback((audioUrl) => {
-    try {
-      const audio = new Audio(audioUrl);
-      audioElementRef.current = audio;
-
-      audio.onplay = () => {
-        setIsSpeaking(true);
-        console.log('[VoiceChat] Started speaking');
-      };
-
-      audio.onended = () => {
-        setIsSpeaking(false);
-        console.log('[VoiceChat] Finished speaking');
-      };
-
-      audio.onerror = (err) => {
-        console.error('[VoiceChat] Audio playback error:', err);
-        setIsSpeaking(false);
-        setError('Failed to play audio response');
-      };
-
-      audio.play();
-    } catch (err) {
-      console.error('[VoiceChat] Failed to play audio:', err);
-      setError('Audio playback failed');
-    }
-  }, []);
-
-  // Play streamed audio chunks
-  const playAudioChunk = useCallback((base64Audio) => {
-    // TODO: Implement streaming audio playback
-    // This requires using Web Audio API for buffering and playing chunks
-    console.log('[VoiceChat] Received audio chunk');
-  }, []);
-
-  // Reset error state
-  const resetError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  // Send text message (fallback mode)
-  const sendTextMessage = useCallback((text) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      setTranscription(text);
-      setIsProcessing(true);
-      requestTimestampRef.current = Date.now();
-
-      wsRef.current.send(JSON.stringify({
-        type: 'text_message',
-        text,
-        timestamp: Date.now()
-      }));
-    } else {
-      setError('Not connected to voice service');
-    }
-  }, []);
-
-  return {
-    // State
-    isConnected,
-    isListening,
-    isProcessing,
-    isSpeaking,
-    transcription,
-    aiResponse,
-    error,
-    latency,
-
-    // Actions
-    startListening,
-    stopListening,
-    sendTextMessage,
-    resetError,
-
-    // Refs (for advanced usage)
-    wsRef,
-    audioElementRef
-  };
+const getVoiceWsUrl = () => {
+  const envUrl = import.meta.env.VITE_VOICE_WS_URL;
+  if (envUrl) return envUrl;
+  const isLocal =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1';
+  if (isLocal) return 'ws://localhost:8000/api/voice';
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/api/voice`;
 };
 
-export default useVoiceChat;
+const detectSpeechLang = (text) => {
+  if (!text) return 'en-US';
+  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN';
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN';
+  if (/[\u0C00-\u0C7F]/.test(text)) return 'te-IN';
+  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN';
+  return 'en-US';
+};
+
+const pickBestVoice = (voices, lang) => {
+  if (!voices?.length) return null;
+  const exact = voices.find(
+    (v) => (v.lang || '').toLowerCase() === lang.toLowerCase()
+  );
+  if (exact) return exact;
+  const prefix = lang.split('-')[0].toLowerCase();
+  const partial = voices.find(
+    (v) => (v.lang || '').toLowerCase().startsWith(prefix)
+  );
+  if (partial) return partial;
+  const english = voices.find(
+    (v) => (v.lang || '').toLowerCase().startsWith('en')
+  );
+  return english || voices[0] || null;
+};
+
+export default function useVoiceChat(isOpen) {
+  const wsRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const voicesRef = useRef([]);
+  const mountedRef = useRef(false);
+
+  const [messages, setMessages] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [transcript, setTranscript] = useState('');
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      if (!window.speechSynthesis) return;
+      voicesRef.current = window.speechSynthesis.getVoices() || [];
+    };
+    loadVoices();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  const speakText = useCallback((text) => {
+    if (!window.speechSynthesis || !text) return;
+    const lang = detectSpeechLang(text);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    const voice = pickBestVoice(voicesRef.current, lang);
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang || lang;
+    }
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const connect = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+    if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) return;
+
+    const wsUrl = getVoiceWsUrl();
+    console.log('[VoiceChat] Connecting to', wsUrl);
+    setConnecting(true);
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      if (!mountedRef.current) return;
+      console.log('[VoiceChat] WebSocket opened');
+      setConnected(true);
+      setConnecting(false);
+    };
+
+    ws.onerror = (event) => {
+      if (!mountedRef.current) return;
+      console.error('[VoiceChat] WebSocket error:', event);
+      setConnected(false);
+      setConnecting(false);
+    };
+
+    ws.onclose = () => {
+      if (!mountedRef.current) return;
+      console.log('[VoiceChat] WebSocket closed');
+      setConnected(false);
+      setConnecting(false);
+    };
+
+    ws.onmessage = (event) => {
+      if (!mountedRef.current) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'connected') return;
+        if (data.type === 'pong') return;
+        if (data.type === 'thinking') {
+          setThinking(true);
+          return;
+        }
+        if (data.type === 'cleared') {
+          setMessages([]);
+          setThinking(false);
+          return;
+        }
+        if (data.type === 'response') {
+          setThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', text: data.text || '' },
+          ]);
+          speakText(data.text || '');
+          return;
+        }
+        if (data.type === 'error') {
+          setThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: 'system', text: data.message || 'Voice chat error' },
+          ]);
+        }
+      } catch (err) {
+        console.error('[VoiceChat] Failed to parse message', err);
+      }
+    };
+  }, [speakText]);
+
+  const disconnect = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+      } catch (_) {}
+      wsRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setConnected(false);
+    setListening(false);
+    setThinking(false);
+    setTranscript('');
+  }, []);
+
+  const sendMessage = useCallback((text) => {
+    const clean = (text || '').trim();
+    if (!clean) return false;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'system', text: 'Voice chat is not connected.' },
+      ]);
+      return false;
+    }
+    setMessages((prev) => [...prev, { role: 'user', text: clean }]);
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'message',
+        text: clean,
+      })
+    );
+    return true;
+  }, []);
+
+  const clearConversation = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'clear' }));
+    }
+    setMessages([]);
+    setTranscript('');
+    setThinking(false);
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (_) {}
+    }
+    setListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser');
+      return;
+    }
+    if (!connected) {
+      alert('Voice chat is not connected');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setListening(true);
+      setTranscript('');
+    };
+
+    recognition.onresult = (event) => {
+      let finalText = '';
+      let interimText = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const text = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText += text;
+        } else {
+          interimText += text;
+        }
+      }
+      setTranscript(finalText || interimText);
+      if (finalText.trim()) {
+        sendMessage(finalText.trim());
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('[VoiceChat] Speech recognition error:', event);
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [connected, sendMessage]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+    }
+    setListening(false);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      connect();
+    } else {
+      disconnect();
+    }
+    return () => {
+      disconnect();
+    };
+  }, [isOpen, connect, disconnect]);
+
+  return {
+    messages,
+    connected,
+    connecting,
+    listening,
+    thinking,
+    transcript,
+    sendMessage,
+    clearConversation,
+    startListening,
+    stopListening,
+  };
+}
