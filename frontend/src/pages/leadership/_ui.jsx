@@ -146,7 +146,8 @@ export function Toggle({ value, onChange }) {
   return (
     <button onClick={() => onChange(!value)}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${value ? 'bg-[#137fec]' : 'bg-slate-200'}`}>
-      <span className={`inline-block size-3.5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+      <span style={{ transform: value ? 'translateX(18px)' : 'translateX(2px)', transition: 'transform 0.2s' }}
+      className="inline-block size-3.5 rounded-full bg-white shadow" />
     </button>
   );
 }

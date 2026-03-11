@@ -110,13 +110,30 @@ export const adminExportApi = {
 
 // ─── Leadership ───────────────────────────────────────────────────────────────
 export const leadershipApi = {
-<<<<<<< HEAD
-  // existing
+  // Core
   getStats: () => apiClient.get('/api/v1/leadership/stats').then(r => r.data),
   getActivities: (limit = 8) => apiClient.get(`/api/v1/leadership/activities?limit=${limit}`).then(r => r.data),
   sendMessage: (payload) => apiClient.post('/api/v1/leadership/send-email', payload).then(r => r.data),
-
-  // management
+  getActivityChart: (days = 30) => apiClient.get(`/api/v1/leadership/activity-chart?days=${days}`).then(r => r.data),
+  getAiServices: () => apiClient.get('/api/v1/leadership/ai-services').then(r => r.data),
+  getSystemHealth: () => apiClient.get('/api/v1/leadership/system-health').then(r => r.data),
+  getDashboardAlerts: () => apiClient.get('/api/v1/leadership/dashboard-alerts').then(r => r.data),
+  // Students
+  getStudents: () => apiClient.get('/api/v1/leadership/students').then(r => r.data),
+  getStudentStats: () => apiClient.get('/api/v1/leadership/student-stats').then(r => r.data),
+  getStudentCourses: () => apiClient.get('/api/v1/leadership/student-courses').then(r => r.data),
+  intervene: (p) => apiClient.post('/api/v1/leadership/intervene', p).then(r => r.data),
+  getCertificate: (userId) => apiClient.get(`/api/v1/leadership/students/${userId}/certificate`, { responseType: 'blob' }),
+  exportStudents: () => apiClient.get('/api/v1/leadership/students/export', { responseType: 'blob' }),
+  // Curriculum
+  getCourses: () => apiClient.get('/api/v1/leadership/courses').then(r => r.data),
+  getCourseHealth: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/health`).then(r => r.data),
+  getProblemAreas: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/problem-areas`).then(r => r.data),
+  getCourseRetention: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/retention`).then(r => r.data),
+  getContentEffectiveness: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/content-effectiveness`).then(r => r.data),
+  getOptimizationPlan: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/optimization-plan`).then(r => r.data),
+  exportCourseReport: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/report`, { responseType: 'blob' }),
+  // Management
   getManagementStats: () => apiClient.get('/api/v1/leadership/management/stats').then(r => r.data),
   getTrainers: () => apiClient.get('/api/v1/leadership/trainers').then(r => r.data),
   inviteTrainer: (payload) => apiClient.post('/api/v1/leadership/trainers/invite', payload).then(r => r.data),
@@ -127,28 +144,3 @@ export const leadershipApi = {
   getProgramSettings: () => apiClient.get('/api/v1/leadership/program-settings').then(r => r.data),
   saveProgramSettings: (payload) => apiClient.put('/api/v1/leadership/program-settings', payload).then(r => r.data),
 }
-=======
-  getStats:         ()             => apiClient.get('/api/v1/leadership/stats').then(r => r.data),
-  getActivities:    (limit = 8)   => apiClient.get(`/api/v1/leadership/activities?limit=${limit}`).then(r => r.data),
-  sendMessage:      (payload)     => apiClient.post('/api/v1/leadership/send-email', payload).then(r => r.data),
-  getActivityChart: (days = 30)   => apiClient.get(`/api/v1/leadership/activity-chart?days=${days}`).then(r => r.data),
-  getAiServices:    ()             => apiClient.get('/api/v1/leadership/ai-services').then(r => r.data),
-  getSystemHealth:  ()             => apiClient.get('/api/v1/leadership/system-health').then(r => r.data),
-  getDashboardAlerts: ()           => apiClient.get('/api/v1/leadership/dashboard-alerts').then(r => r.data),
-  // Students
-  getStudents:       ()            => apiClient.get('/api/v1/leadership/students').then(r => r.data),
-  getStudentStats:   ()            => apiClient.get('/api/v1/leadership/student-stats').then(r => r.data),
-  getStudentCourses: ()            => apiClient.get('/api/v1/leadership/student-courses').then(r => r.data),
-  intervene:         (p)           => apiClient.post('/api/v1/leadership/intervene', p).then(r => r.data),
-  getCertificate:    (userId)      => apiClient.get(`/api/v1/leadership/students/${userId}/certificate`, { responseType: 'blob' }),
-  exportStudents:    ()            => apiClient.get('/api/v1/leadership/students/export', { responseType: 'blob' }),
-  // Curriculum
-  getCourses:              ()   => apiClient.get('/api/v1/leadership/courses').then(r => r.data),
-  getCourseHealth:         (id) => apiClient.get(`/api/v1/leadership/courses/${id}/health`).then(r => r.data),
-  getProblemAreas:         (id) => apiClient.get(`/api/v1/leadership/courses/${id}/problem-areas`).then(r => r.data),
-  getCourseRetention:      (id) => apiClient.get(`/api/v1/leadership/courses/${id}/retention`).then(r => r.data),
-  getContentEffectiveness: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/content-effectiveness`).then(r => r.data),
-  getOptimizationPlan:     (id) => apiClient.get(`/api/v1/leadership/courses/${id}/optimization-plan`).then(r => r.data),
-  exportCourseReport:      (id) => apiClient.get(`/api/v1/leadership/courses/${id}/report`, { responseType: 'blob' }),
-}
->>>>>>> origin/main

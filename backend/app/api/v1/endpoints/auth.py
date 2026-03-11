@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from itsdangerous import URLSafeTimedSerializer
 import smtplib
@@ -17,6 +18,7 @@ from app.core.security import (
     get_current_user,
 )
 from app.core.config import settings
+
 
 
 router = APIRouter()
@@ -96,8 +98,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 # ---------------- LOGIN ----------------
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -113,14 +116,52 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token({"sub": user.username})
+    # ── If 2FA is enabled, return temp token ─────────────────────────────
+    if getattr(user, 'totp_enabled', False):
+        import uuid
+        temp_token = create_access_token({
+            "sub": user.username,
+            "jti": str(uuid.uuid4()),
+            "2fa_pending": True,
+        })
+        return {
+            "requires_2fa": True,
+            "temp_token": temp_token,
+            "access_token": "",
+            "token_type": "bearer",
+        }
+
+    # ── Normal login ──────────────────────────────────────────────────────
+    import uuid
+    jti = str(uuid.uuid4())
+    access_token = create_access_token({"sub": user.username, "jti": jti})
+
+    try:
+        from app.models.user_session import UserSession
+        ua_string = request.headers.get("user-agent", "Unknown")
+        try:
+            from user_agents import parse
+            ua = parse(ua_string)
+            device = f"{ua.browser.family} · {ua.os.family}"
+        except Exception:
+            device = ua_string[:100] if ua_string else "Unknown Device"
+        ip = request.client.host if request.client else "Unknown"
+        session = UserSession(
+            user_id=user.id,
+            token_jti=jti,
+            device=device,
+            ip_address=ip,
+        )
+        db.add(session)
+        db.commit()
+    except Exception as e:
+        print(f"[SESSION] Could not save session: {e}")
 
     return {
+        "requires_2fa": False,
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
     }
-
-
 # ---------------- GET CURRENT USER (/me) ----------------
 
 @router.get("/me")
@@ -250,3 +291,183 @@ def reset_password(
     db.commit()
 
     return {"message": "Password reset successfully. You can now log in."}
+
+# ── CHANGE PASSWORD (Settings Page) ──────────────────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+def change_password_settings(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Settings page: change password using a JSON body."""
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    if len(payload.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters",
+        )
+    current_user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}
+
+# ── TWO FACTOR AUTHENTICATION ─────────────────────────────────────────────────
+import pyotp
+import qrcode
+import io
+import base64
+
+class Verify2FARequest(BaseModel):
+    code: str
+
+class Disable2FARequest(BaseModel):
+    code: str
+
+@router.post("/2fa/setup")
+def setup_2fa(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a TOTP secret and return QR code for scanning."""
+    secret = pyotp.random_base32()
+    current_user.totp_secret = secret
+    current_user.totp_enabled = False
+    db.commit()
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(
+        name=current_user.email,
+        issuer_name="AI LMS"
+    )
+
+    qr = qrcode.make(uri)
+    buf = io.BytesIO()
+    qr.save(buf, format="PNG")
+    buf.seek(0)
+    qr_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+    return {
+        "secret": secret,
+        "qr_code": f"data:image/png;base64,{qr_base64}",
+        "message": "Scan the QR code with Google Authenticator"
+    }
+
+
+@router.post("/2fa/verify")
+def verify_2fa(
+    payload: Verify2FARequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verify the TOTP code and enable 2FA."""
+    if not current_user.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA setup not started. Call /2fa/setup first.")
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(payload.code):
+        raise HTTPException(status_code=400, detail="Invalid code. Please try again.")
+
+    current_user.totp_enabled = True
+    db.commit()
+    return {"message": "2FA enabled successfully!"}
+
+
+@router.post("/2fa/disable")
+def disable_2fa(
+    payload: Disable2FARequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Disable 2FA after verifying code."""
+    if not current_user.totp_enabled:
+        raise HTTPException(status_code=400, detail="2FA is not enabled.")
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(payload.code):
+        raise HTTPException(status_code=400, detail="Invalid code. Please try again.")
+
+    current_user.totp_enabled = False
+    current_user.totp_secret = None
+    db.commit()
+    return {"message": "2FA disabled successfully!"}
+
+
+@router.get("/2fa/status")
+def get_2fa_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Check if 2FA is enabled for current user."""
+    return {
+        "totp_enabled": current_user.totp_enabled or False
+    }
+
+# ── 2FA LOGIN ─────────────────────────────────────────────────────────────────
+class TwoFALoginRequest(BaseModel):
+    temp_token: str
+    code: str
+
+@router.post("/2fa/login")
+def login_with_2fa(
+    request: Request,
+    payload: TwoFALoginRequest,
+    db: Session = Depends(get_db),
+):
+    """Complete login by verifying 2FA code after password check."""
+    from app.core.security import SECRET_KEY, ALGORITHM
+    from jose import jwt, JWTError
+
+    try:
+        data = jwt.decode(payload.temp_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = data.get("sub")
+        is_pending = data.get("2fa_pending", False)
+        if not username or not is_pending:
+            raise HTTPException(status_code=400, detail="Invalid temp token")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Temp token expired or invalid")
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    totp = pyotp.TOTP(user.totp_secret)
+    if not totp.verify(payload.code):
+        raise HTTPException(status_code=400, detail="Invalid 2FA code")
+
+    import uuid
+    jti = str(uuid.uuid4())
+    access_token = create_access_token({"sub": user.username, "jti": jti})
+
+    try:
+        from app.models.user_session import UserSession
+        ua_string = request.headers.get("user-agent", "Unknown")
+        try:
+            from user_agents import parse
+            ua = parse(ua_string)
+            device = f"{ua.browser.family} · {ua.os.family}"
+        except Exception:
+            device = ua_string[:100] if ua_string else "Unknown Device"
+        ip = request.client.host if request.client else "Unknown"
+        session = UserSession(
+            user_id=user.id,
+            token_jti=jti,
+            device=device,
+            ip_address=ip,
+        )
+        db.add(session)
+        db.commit()
+    except Exception as e:
+        print(f"[SESSION] Could not save session: {e}")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
