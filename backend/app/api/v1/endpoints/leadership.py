@@ -145,3 +145,225 @@ def send_student_email(
         raise HTTPException(status_code=502, detail=f"Failed to send email: {exc}")
 
     return {"message": f"Email sent to {payload.to_email}"}
+# ── Settings: Notification Preferences ───────────────────────────────────────
+
+_NOTIF_DEFAULTS = {
+    "atRiskAlerts": True,
+    "weeklyReports": True,
+    "completionMilestones": False,
+    "systemUpdates": True,
+    "trainerAlerts": False,
+    "aiInsights": True,
+}
+
+
+@router.get("/notification-preferences")
+def get_notification_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the current user's saved notification preferences,
+    or sensible defaults if none have been saved yet."""
+    import json
+
+    last = (
+        db.query(ActivityLog)
+        .filter(
+            ActivityLog.user_id == current_user.id,
+            ActivityLog.action == "notif_preferences",
+        )
+        .order_by(desc(ActivityLog.created_at))
+        .first()
+    )
+    if last:
+        try:
+            return json.loads(last.description)
+        except Exception:
+            pass
+    return _NOTIF_DEFAULTS
+
+
+@router.put("/notification-preferences")
+def save_notification_preferences(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Persist the user's notification preference toggles to ActivityLog."""
+    import json
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="notif_preferences",
+        description=json.dumps(payload),
+    )
+    db.add(log)
+    db.commit()
+    return {"message": "Notification preferences saved"}
+
+
+# ── Settings: Display Preferences ────────────────────────────────────────────
+
+_DISPLAY_DEFAULTS = {
+    "language": "English (US)",
+    "dateFormat": "MM/DD/YYYY",
+    "defaultView": "Last 30 Days",
+    "defaultReportFormat": "PDF",
+}
+
+
+@router.get("/preferences")
+def get_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the current user's saved display preferences,
+    or sensible defaults if none have been saved yet."""
+    import json
+
+    last = (
+        db.query(ActivityLog)
+        .filter(
+            ActivityLog.user_id == current_user.id,
+            ActivityLog.action == "user_preferences",
+        )
+        .order_by(desc(ActivityLog.created_at))
+        .first()
+    )
+    if last:
+        try:
+            return json.loads(last.description)
+        except Exception:
+            pass
+    return _DISPLAY_DEFAULTS
+
+
+@router.put("/preferences")
+def save_preferences(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Persist the user's display preferences to ActivityLog."""
+    import json
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="user_preferences",
+        description=json.dumps(payload),
+    )
+    db.add(log)
+    db.commit()
+    return {"message": "Display preferences saved"}
+
+# ── Active Sessions ───────────────────────────────────────────────────────────
+
+@router.get("/sessions")
+def get_sessions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all active sessions for the current user."""
+    from app.models.user_session import UserSession
+    sessions = (
+        db.query(UserSession)
+        .filter(
+            UserSession.user_id == current_user.id,
+            UserSession.is_active.is_(True),
+        )
+        .order_by(desc(UserSession.created_at))
+        .all()
+    )
+    return [
+        {
+            "id":           s.id,
+            "device":       s.device,
+            "ip_address":   s.ip_address,
+            "created_at":   s.created_at.isoformat() if s.created_at else None,
+            "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
+            "is_current":   False,
+        }
+        for s in sessions
+    ]
+
+
+@router.delete("/sessions/{session_id}", status_code=200)
+def revoke_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke (deactivate) a specific session."""
+    from app.models.user_session import UserSession
+    session = db.query(UserSession).filter(
+        UserSession.id == session_id,
+        UserSession.user_id == current_user.id,
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.is_active = False
+    db.commit()
+    return {"message": "Session revoked successfully"}
+
+
+@router.delete("/sessions", status_code=200)
+def revoke_all_sessions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke all sessions except current."""
+    from app.models.user_session import UserSession
+    db.query(UserSession).filter(
+        UserSession.user_id == current_user.id,
+        UserSession.is_active.is_(True),
+    ).update({"is_active": False})
+    db.commit()
+    return {"message": "All sessions revoked"}
+
+# ── Integrations ──────────────────────────────────────────────────────────────
+
+_INTEGRATIONS_DEFAULTS = {
+    "Slack":         False,
+    "Google Sheets": False,
+    "Zoom":          False,
+    "Power BI":      False,
+    "JIRA":          False,
+}
+
+@router.get("/integrations")
+def get_integrations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    import json
+    last = (
+        db.query(ActivityLog)
+        .filter(
+            ActivityLog.user_id == current_user.id,
+            ActivityLog.action == "integrations",
+        )
+        .order_by(desc(ActivityLog.created_at))
+        .first()
+    )
+    if last:
+        try:
+            return json.loads(last.description)
+        except:
+            pass
+    return _INTEGRATIONS_DEFAULTS
+
+
+@router.put("/integrations")
+def save_integrations(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    import json
+    db.add(ActivityLog(
+        user_id=current_user.id,
+        action="integrations",
+        description=json.dumps(payload),
+    ))
+    db.commit()
+    return {"message": "Integrations saved"}

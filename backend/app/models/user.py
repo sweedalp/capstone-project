@@ -22,6 +22,8 @@ class User(Base):
     full_name = Column(String)
     role = Column(Enum(UserRole), default=UserRole.LEARNER)
     is_active = Column(Boolean, default=True)
+    totp_secret = Column(String, nullable=True)
+    totp_enabled = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -36,6 +38,9 @@ class User(Base):
     )
     activity_logs = relationship(
         "ActivityLog", back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self):

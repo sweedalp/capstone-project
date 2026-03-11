@@ -14,6 +14,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [twoFAPending, setTwoFAPending] = useState(false);
+  const [tempToken, setTempToken]       = useState('');
+  const [twoFACode, setTwoFACode]       = useState('');
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -50,9 +53,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-
   if (!validateForm()) return;
-
   setIsLoading(true);
 
   try {
@@ -62,42 +63,19 @@ const Login = () => {
         username: formData.email,
         password: formData.password,
       }),
-      {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      }
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    const token = response.data.access_token;
-
-    if (formData.rememberMe) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("userEmail", formData.email);
-    } else {
-      sessionStorage.setItem("token", token);
-      sessionStorage.setItem("userEmail", formData.email);
-    }
-
-    let user;
-    try {
-      const userResponse = await apiClient.get("/api/v1/auth/me");
-      user = userResponse.data;
-    } catch {
-      setErrors({ submit: "Login succeeded but failed to load profile. Try again." });
+    // ── 2FA required ──────────────────────────────────────────────────
+    if (response.data.requires_2fa) {
+      setTempToken(response.data.temp_token);
+      setTwoFAPending(true);
       setIsLoading(false);
       return;
     }
 
-    localStorage.setItem("userRole", user.role);
-    localStorage.setItem("userName", user.full_name || user.username);
-
-    const dashboardRoutes = {
-      learner: "/dashboard/learner",
-      trainer: "/dashboard/trainer",
-      admin: "/dashboard/admin",
-      leadership: "/dashboard/leadership",
-    };
-
-    navigate(dashboardRoutes[user.role] || "/dashboard/learner");
+    // ── Normal login ──────────────────────────────────────────────────
+    await completeLogin(response.data.access_token);
 
   } catch (error) {
     if (error.response?.status === 401) {
@@ -111,6 +89,51 @@ const Login = () => {
     setIsLoading(false);
   }
 };
+
+const handleTwoFASubmit = async () => {
+  if (!twoFACode || twoFACode.length !== 6) {
+    setErrors({ submit: 'Enter the 6-digit code from your authenticator app' });
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const response = await apiClient.post('/api/v1/auth/2fa/login', {
+      temp_token: tempToken,
+      code: twoFACode,
+    });
+    await completeLogin(response.data.access_token);
+  } catch (error) {
+    setErrors({ submit: error.response?.data?.detail || 'Invalid 2FA code. Try again.' });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const completeLogin = async (token) => {
+  if (formData.rememberMe) {
+    localStorage.setItem("token", token);
+    localStorage.setItem("userEmail", formData.email);
+  } else {
+    sessionStorage.setItem("token", token);
+    sessionStorage.setItem("userEmail", formData.email);
+  }
+
+  const userResponse = await apiClient.get("/api/v1/auth/me");
+  const user = userResponse.data;
+
+  localStorage.setItem("userRole", user.role);
+  localStorage.setItem("userName", user.full_name || user.username);
+
+  const dashboardRoutes = {
+    learner:    "/dashboard/learner",
+    trainer:    "/dashboard/trainer",
+    admin:      "/dashboard/admin",
+    leadership: "/dashboard/leadership",
+  };
+
+  navigate(dashboardRoutes[user.role] || "/dashboard/learner");
+};
+
   const handleSSOLogin = (provider) => {
     // TODO: Implement actual SSO authentication
     console.log(`${provider} SSO login clicked`);
@@ -123,6 +146,49 @@ const Login = () => {
 
   return (
     <main className="w-full h-screen flex flex-col md:flex-row bg-slate-50 overflow-hidden">
+        {/* ── 2FA Screen ── */}
+{twoFAPending && (
+  <div className="fixed inset-0 bg-white z-50 flex items-center justify-center p-6">
+    <div className="w-full max-w-sm space-y-6">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+          <span className="material-symbols-outlined text-blue-600 text-[32px]">security</span>
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Two-Factor Authentication</h2>
+        <p className="text-sm text-slate-500 mt-1">Enter the 6-digit code from your authenticator app</p>
+      </div>
+
+      <input
+        className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-slate-200 rounded-xl outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+        type="text"
+        maxLength={6}
+        placeholder="000000"
+        value={twoFACode}
+        onChange={e => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        autoFocus
+      />
+
+      {errors.submit && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600">{errors.submit}</p>
+        </div>
+      )}
+
+      <button
+        onClick={handleTwoFASubmit}
+        disabled={isLoading}
+        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50">
+        {isLoading ? 'Verifying...' : 'Verify & Login'}
+      </button>
+
+      <button
+        onClick={() => { setTwoFAPending(false); setTwoFACode(''); setErrors({}); }}
+        className="w-full text-sm text-slate-500 hover:text-slate-700 hover:underline">
+        ← Back to login
+      </button>
+    </div>
+  </div>
+)}
       {/* Left Section:  Knowledge Intelligence Branding */}
       <section className="hidden md:flex md:w-1/2 lg:w-3/5 relative overflow-hidden bg-white border-r border-slate-100">
         {/* Background Image with Overlay */}
