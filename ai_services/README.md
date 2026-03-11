@@ -88,3 +88,6 @@ Service runs on `http://localhost:8001`
 - Member 1: Knowledge Extraction & NLP
 - Member 2: Content Generation & Media AI
 - Member 3: Q&A System & Vector Search
+
+
+pip install fastapi uvicorn python-multipart PyPDF2

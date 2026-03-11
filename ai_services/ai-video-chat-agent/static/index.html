@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 AI Video Chat Agent</title>
+    <style>
+        :root {
+            --bg: #06060f; --card: #0d0d1f; --card2: #111128;
+            --primary: #00d4ff; --sec: #7c3aed; --accent: #10b981;
+            --success: #22c55e; --text: #e2e8f0; --muted: #64748b;
+            --border: #1a1a3a; --danger: #ef4444; --warn: #f59e0b;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+        .header { padding:10px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--card); flex-shrink:0; }
+        .header h1 { font-size:1.15em; background:linear-gradient(135deg,var(--primary),var(--sec)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .header-right { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .hdr-select { padding:5px 8px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12px; cursor:pointer; }
+        .hdr-select:focus { outline:none; border-color:var(--primary); }
+        .diff-btn { padding:4px 10px; border-radius:12px; border:2px solid var(--border); background:transparent; color:var(--muted); font-size:11px; cursor:pointer; transition:all 0.2s; font-weight:600; }
+        .diff-btn:hover { border-color:var(--primary); color:var(--primary); }
+        .diff-btn.active-beginner { border-color:var(--success); color:var(--success); background:rgba(34,197,94,0.1); }
+        .diff-btn.active-intermediate { border-color:var(--warn); color:var(--warn); background:rgba(245,158,11,0.1); }
+        .diff-btn.active-advanced { border-color:var(--danger); color:var(--danger); background:rgba(239,68,68,0.1); }
+        .icon-btn { padding:5px 10px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .icon-btn:hover { border-color:var(--primary); color:var(--primary); }
+
+        .chat-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; scroll-behavior:smooth; }
+        .chat-area::-webkit-scrollbar { width:6px; }
+        .chat-area::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+        .msg { max-width:88%; display:flex; gap:10px; animation:fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .msg.user { align-self:flex-end; flex-direction:row-reverse; }
+        .msg.ai { align-self:flex-start; }
+        .avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+        .user .avatar { background:var(--sec); }
+        .ai .avatar { background:linear-gradient(135deg,var(--primary),var(--sec)); }
+        .msg-content { display:flex; flex-direction:column; gap:6px; }
+        .msg-bubble { padding:10px 14px; border-radius:16px; font-size:13px; line-height:1.6; }
+        .user .msg-bubble { background:#1a1a3a; border-bottom-right-radius:4px; }
+        .ai .msg-bubble { background:#0d1a2d; border-bottom-left-radius:4px; border:1px solid var(--border); }
+
+        .video-wrap { border-radius:12px; overflow:hidden; background:#000; border:1px solid var(--border); max-width:640px; position:relative; }
+        .video-wrap video { width:100%; display:block; cursor:pointer; }
+        .video-controls { padding:8px 12px; background:var(--card); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .vc-btn { padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:12px; transition:all 0.15s; }
+        .vc-btn:hover { border-color:var(--primary); color:var(--primary); background:rgba(0,212,255,0.05); }
+        .vc-title { color:var(--primary); font-weight:600; font-size:12px; flex:1; }
+        .vc-time { color:var(--muted); font-size:11px; font-family:monospace; }
+        .vc-progress { width:100%; height:4px; background:var(--border); border-radius:2px; cursor:pointer; margin-top:4px; }
+        .vc-progress-fill { height:100%; background:var(--primary); border-radius:2px; transition:width 0.1s; }
+        .scene-nav { display:flex; gap:4px; padding:6px 12px; background:var(--card); border-top:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+        .scene-dot { width:28px; height:28px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; transition:all 0.2s; font-weight:600; }
+        .scene-dot:hover { border-color:var(--primary); transform:scale(1.1); }
+        .scene-dot.active { border-color:var(--primary); background:rgba(0,212,255,0.15); color:var(--primary); }
+        .scene-dot.ready { border-color:var(--accent); color:var(--accent); }
+        .scene-dot.loading { border-color:var(--warn); color:var(--warn); animation:blink 1s infinite; }
+        @keyframes blink { 50%{opacity:0.3} }
+
+        .msg-status { font-size:11px; color:var(--muted); padding:3px 10px; display:flex; align-items:center; gap:6px; }
+        .spinner { width:12px; height:12px; border:2px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .download-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:8px; background:linear-gradient(135deg,var(--accent),#059669); color:#fff; font-size:12px; text-decoration:none; font-weight:600; transition:all 0.2s; }
+        .download-btn:hover { transform:translateY(-1px); }
+        .typing-dots span { animation:dotPulse 1.4s infinite; opacity:0; font-size:18px; }
+        .typing-dots span:nth-child(2){animation-delay:0.2s} .typing-dots span:nth-child(3){animation-delay:0.4s}
+        @keyframes dotPulse { 40%{opacity:1} }
+
+        .suggestions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 16px; flex-shrink:0; }
+        .suggest-btn { padding:5px 12px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:11px; cursor:pointer; transition:all 0.2s; }
+        .suggest-btn:hover { border-color:var(--primary); color:var(--primary); }
+        .input-area { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:flex-end; background:var(--card); flex-shrink:0; }
+        .input-wrap { flex:1; }
+        .chat-input { width:100%; padding:10px 14px; border-radius:12px; border:2px solid var(--border); background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; resize:none; min-height:42px; max-height:120px; }
+        .chat-input:focus { outline:none; border-color:var(--primary); }
+        .chat-input::placeholder { color:var(--muted); }
+        .send-btn { padding:10px 22px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--primary),var(--sec)); color:#fff; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; }
+        .send-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        .practice-card { background:var(--card2); border:1px solid var(--warn); border-radius:12px; padding:14px; max-width:500px; margin-top:6px; }
+        .practice-header { font-size:13px; font-weight:700; color:var(--warn); margin-bottom:8px; }
+        .practice-question { font-size:13px; color:var(--text); margin-bottom:10px; line-height:1.5; }
+        .practice-option { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12px; cursor:pointer; margin-bottom:4px; transition:all 0.2s; display:block; width:100%; text-align:left; }
+        .practice-option:hover { border-color:var(--primary); }
+        .practice-option.correct { border-color:var(--success); background:rgba(34,197,94,0.1); color:var(--success); }
+        .practice-option.wrong { border-color:var(--danger); background:rgba(239,68,68,0.1); color:var(--danger); }
+        .practice-explain { font-size:12px; color:var(--accent); margin-top:8px; padding:8px; background:rgba(16,185,129,0.08); border-radius:8px; display:none; line-height:1.5; }
+
+        .fullscreen-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
+        .fullscreen-overlay.show { display:flex; }
+        .fullscreen-overlay video { max-width:95vw; max-height:80vh; border-radius:8px; }
+        .fullscreen-close { position:absolute; top:15px; right:25px; color:#fff; font-size:28px; cursor:pointer; background:rgba(0,0,0,0.5); border:none; padding:5px 15px; border-radius:8px; z-index:10000; }
+        .fullscreen-controls { margin-top:12px; display:flex; gap:10px; align-items:center; }
+
+        .lang-label { font-size:10px; color:var(--muted); margin-right:2px; }
+
+        @media (max-width:768px) {
+            .header-right { gap:4px; }
+            .diff-btn { font-size:10px; padding:3px 6px; }
+            .msg { max-width:95%; }
+            .video-wrap { max-width:100%; }
+            .lang-label { display:none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Fullscreen Overlay -->
+<div class="fullscreen-overlay" id="fsOverlay">
+    <button class="fullscreen-close" onclick="exitFullscreen()">✕</button>
+    <video id="fsVideo" controls playsinline></video>
+    <div class="fullscreen-controls">
+        <button class="vc-btn" onclick="fsPrev()">⏮ Prev</button>
+        <button class="vc-btn" onclick="fsPlayPause()">⏯ Play/Pause</button>
+        <button class="vc-btn" onclick="fsNext()">⏭ Next</button>
+        <span class="vc-title" id="fsTitle" style="color:#fff;text-align:center;"></span>
+    </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+    <h1>🎬 AI Video Chat</h1>
+    <div class="header-right">
+        <button class="diff-btn" id="diffBeginner" onclick="setDifficulty('beginner')" title="Simple explanations">🟢</button>
+        <button class="diff-btn active-intermediate" id="diffIntermediate" onclick="setDifficulty('intermediate')" title="Standard">🟡</button>
+        <button class="diff-btn" id="diffAdvanced" onclick="setDifficulty('advanced')" title="Expert level">🔴</button>
+
+        <span class="lang-label">Voice:</span>
+        <select class="hdr-select" id="langSelect" title="Voice language (text stays English)">
+            <option value="en" selected>🇮🇳 English</option>
+            <option value="hi">🇮🇳 हिन्दी Hindi</option>
+            <option value="ta">🇮🇳 தமிழ் Tamil</option>
+            <option value="te">🇮🇳 తెలుగు Telugu</option>
+            <option value="kn">🇮🇳 ಕನ್ನಡ Kannada</option>
+            <option value="ml">🇮🇳 മലയാളം Malayalam</option>
+            <option value="bn">🇮🇳 বাংলা Bengali</option>
+            <option value="mr">🇮🇳 मराठी Marathi</option>
+            <option value="gu">🇮🇳 ગુજરાતી Gujarati</option>
+            <option value="pa">🇮🇳 ਪੰਜਾਬੀ Punjabi</option>
+            <option value="or">🇮🇳 ଓଡ଼ିଆ Odia</option>
+            <option value="as">🇮🇳 অসমীয়া Assamese</option>
+            <option value="ur">🇮🇳 اردو Urdu</option>
+        </select>
+
+        <button class="icon-btn" onclick="clearChat()" title="Clear chat">🗑️</button>
+    </div>
+</div>
+
+<!-- Chat Area -->
+<div class="chat-area" id="chatArea">
+    <div class="msg ai">
+        <div class="avatar">🤖</div>
+        <div class="msg-content">
+            <div class="msg-bubble">
+                Namaste! 🙏 I'm your AI video tutor. Ask me anything and I'll create animated explainer videos! 🎬
+                <br><br>
+                <b>Features:</b><br>
+                • Follow-up questions work — I remember context<br>
+                • 🇮🇳 Voice in 13 Indian languages (text stays English)<br>
+                • ⏯ Play, Pause, ⛶ Fullscreen video controls<br>
+                • 🎯 Practice quizzes auto-generated<br>
+                • Difficulty: 🟢 Beginner  🟡 Intermediate  🔴 Advanced
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Suggestions -->
+<div class="suggestions" id="suggestions">
+    <button class="suggest-btn" onclick="sendMsg('What is MCP and how do AI agents use it?')">What is MCP?</button>
+    <button class="suggest-btn" onclick="sendMsg('Show me how to code an AI agent in Python')">Code an AI agent</button>
+    <button class="suggest-btn" onclick="sendMsg('How does blockchain work?')">Blockchain</button>
+    <button class="suggest-btn" onclick="sendMsg('Explain neural networks simply')">Neural Networks</button>
+    <button class="suggest-btn" onclick="sendMsg('Compare REST vs GraphQL')">REST vs GraphQL</button>
+    <button class="suggest-btn" onclick="sendMsg('What is Docker and why use it?')">Docker</button>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+    <div class="input-wrap">
+        <textarea class="chat-input" id="chatInput" rows="1" placeholder="Ask anything... follow-ups work too! Try 'practice' for quizzes." onkeydown="handleKey(event)"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn" onclick="sendFromInput()">Send ▶</button>
+</div>
+
+<script>
+let ws=null, busy=false, currentMsgId=null, sceneClips={};
+let currentDifficulty='intermediate', fsMsgId=null, fsIdx=0;
+const $=id=>document.getElementById(id);
+const esc=t=>{const d=document.createElement('div');d.textContent=t;return d.innerHTML};
+function scrollBottom(){const c=$('chatArea');setTimeout(()=>c.scrollTop=c.scrollHeight,80)}
+
+function connectWS(){
+    return new Promise((res,rej)=>{
+        const p=location.protocol==='https:'?'wss':'ws';
+        ws=new WebSocket(`${p}://${location.host}/ws/chat`);
+        ws.onopen=()=>res(ws);
+        ws.onmessage=e=>handleMessage(JSON.parse(e.data));
+        ws.onerror=e=>rej(e);
+        ws.onclose=()=>{busy=false;$('sendBtn').disabled=false};
+    });
+}
+
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendFromInput()}}
+
+async function sendFromInput(){
+    const t=$('chatInput').value.trim();
+    if(!t||busy)return;
+    $('chatInput').value='';$('chatInput').style.height='42px';
+    await sendMsg(t);
+}
+
+async function sendMsg(text){
+    if(busy)return;busy=true;$('sendBtn').disabled=true;$('suggestions').style.display='none';
+    addUserMsg(text);
+    const mid='m_'+Date.now();currentMsgId=mid;sceneClips[mid]=[];
+    addAIMsg(mid);
+    if(!ws||ws.readyState!==1){try{await connectWS()}catch(e){updMsg(mid,'text','❌ Connection failed. Please refresh.');busy=false;$('sendBtn').disabled=false;return}}
+    ws.send(JSON.stringify({action:'message',text,language:$('langSelect').value,difficulty:currentDifficulty}));
+}
+
+function handleMessage(d){
+    const mid=currentMsgId;
+    if(d.type==='text') updMsg(mid,'text',d.content);
+    else if(d.type==='status') updMsg(mid,'status',d.message);
+    else if(d.type==='scene') addScene(mid,d);
+    else if(d.type==='complete') handleComplete(mid,d);
+    else if(d.type==='error'){updMsg(mid,'text','❌ '+d.message);busy=false;$('sendBtn').disabled=false}
+    else if(d.type==='cleared') resetChat();
+    else if(d.type==='difficulty_changed') updateDiffUI(d.difficulty);
+}
+
+function addUserMsg(t){
+    const c=$('chatArea'),d=document.createElement('div');d.className='msg user';
+    d.innerHTML=`<div class="avatar">👤</div><div class="msg-content"><div class="msg-bubble">${esc(t)}</div></div>`;
+    c.appendChild(d);scrollBottom();
+}
+
+function addAIMsg(mid){
+    const c=$('chatArea'),d=document.createElement('div');d.className='msg ai';d.id=mid;
+    d.innerHTML=`<div class="avatar">🤖</div><div class="msg-content">
+        <div class="msg-bubble ai-text"><span class="typing-dots"><span>●</span><span>●</span><span>●</span></span> Thinking...</div>
+        <div class="video-wrap" style="display:none">
+            <video id="v_${mid}" playsinline onclick="togglePlay(this)"></video>
+            <div class="video-controls">
+                <button class="vc-btn" onclick="togglePlayById('${mid}')" title="Play/Pause">⏯</button>
+                <button class="vc-btn" onclick="prevScene('${mid}')" title="Previous scene">⏮</button>
+                <button class="vc-btn" onclick="nextScene('${mid}')" title="Next scene">⏭</button>
+                <span class="vc-title" id="vt_${mid}"></span>
+                <span class="vc-time" id="tm_${mid}">0:00</span>
+                <button class="vc-btn" onclick="openFullscreen('${mid}')" title="Fullscreen">⛶</button>
+                <div class="vc-progress" onclick="seekVideo(event,'${mid}')">
+                    <div class="vc-progress-fill" id="pb_${mid}" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="scene-nav" id="nav_${mid}"></div>
+        </div>
+        <div class="msg-status" id="st_${mid}"><div class="spinner"></div><span>Preparing...</span></div>
+        <a class="download-btn" style="display:none" id="dl_${mid}" href="#" download>⬇ Download</a>
+        <div id="practice_${mid}"></div>
+    </div>`;
+    c.appendChild(d);scrollBottom();
+}
+
+function updMsg(mid,type,content){
+    const el=$(mid);if(!el)return;
+    if(type==='text'){const t=el.querySelector('.ai-text');if(t)t.innerHTML=esc(content)}
+    else if(type==='status'){const s=$('st_'+mid);if(s)s.innerHTML=`<div class="spinner"></div><span>${esc(content)}</span>`}
+    scrollBottom();
+}
+
+function addScene(mid,d){
+    const bin=atob(d.video_base64),bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    const blob=new Blob([bytes],{type:'video/mp4'}),url=URL.createObjectURL(blob);
+    sceneClips[mid].push({sn:d.scene_number,url,title:d.title||'',narration:d.narration||'',duration:d.duration||0,total:d.total_scenes||1});
+    const el=$(mid);if(!el)return;
+    el.querySelector('.video-wrap').style.display='block';
+    const nav=$('nav_'+mid);nav.innerHTML='';
+    sceneClips[mid].forEach((c,i)=>{
+        const dot=document.createElement('div');dot.className='scene-dot ready';
+        dot.textContent=c.sn;dot.title=c.title;dot.onclick=()=>playScene(mid,i);nav.appendChild(dot);
+    });
+    const lbl=document.createElement('span');lbl.style.cssText='font-size:10px;color:var(--muted);margin-left:8px';
+    lbl.textContent=`${sceneClips[mid].length}/${d.total_scenes} scenes`;nav.appendChild(lbl);
+    if(d.scene_number===1)playScene(mid,0);
+    scrollBottom();
+}
+
+function playScene(mid,idx){
+    const clips=sceneClips[mid];if(!clips||idx>=clips.length)return;
+    const clip=clips[idx],video=$('v_'+mid),title=$('vt_'+mid);
+    video.src=clip.url;video.play().catch(()=>{});
+    if(title)title.textContent=`Scene ${clip.sn}: ${clip.title}`;
+    const nav=$('nav_'+mid);if(nav)nav.querySelectorAll('.scene-dot').forEach((d,i)=>{if(i<clips.length)d.classList.toggle('active',i===idx)});
+    video.ontimeupdate=()=>{
+        const tm=$('tm_'+mid),pb=$('pb_'+mid);
+        if(tm)tm.textContent=formatTime(video.currentTime)+'/'+formatTime(video.duration||0);
+        if(pb&&video.duration)pb.style.width=(video.currentTime/video.duration*100)+'%';
+    };
+    video.onended=()=>{if(idx+1<clips.length)playScene(mid,idx+1)};
+    video.dataset.idx=idx;video.dataset.mid=mid;
+    scrollBottom();
+}
+
+function togglePlay(v){if(v.paused)v.play().catch(()=>{});else v.pause()}
+function togglePlayById(mid){const v=$('v_'+mid);if(v)togglePlay(v)}
+function prevScene(mid){const v=$('v_'+mid);if(v){const idx=parseInt(v.dataset.idx||0);if(idx>0)playScene(mid,idx-1)}}
+function nextScene(mid){const v=$('v_'+mid);if(v){const idx=parseInt(v.dataset.idx||0);const clips=sceneClips[mid];if(clips&&idx+1<clips.length)playScene(mid,idx+1)}}
+function seekVideo(e,mid){const v=$('v_'+mid);if(!v||!v.duration)return;const rect=e.currentTarget.getBoundingClientRect();v.currentTime=((e.clientX-rect.left)/rect.width)*v.duration}
+function formatTime(s){const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0')}
+
+// Fullscreen
+function openFullscreen(mid){
+    fsMsgId=mid;fsIdx=parseInt($('v_'+mid)?.dataset?.idx||0);
+    const clips=sceneClips[mid];if(!clips||!clips.length)return;
+    $('fsOverlay').classList.add('show');
+    const v=$('fsVideo');v.src=clips[fsIdx].url;v.play().catch(()=>{});
+    $('fsTitle').textContent=`Scene ${clips[fsIdx].sn}: ${clips[fsIdx].title}`;
+    v.onended=()=>fsNext();
+    document.addEventListener('keydown',fsKeyHandler);
+}
+function exitFullscreen(){$('fsOverlay').classList.remove('show');$('fsVideo').pause();document.removeEventListener('keydown',fsKeyHandler)}
+function fsPlayPause(){const v=$('fsVideo');if(v.paused)v.play().catch(()=>{});else v.pause()}
+function fsPrev(){if(!fsMsgId)return;const clips=sceneClips[fsMsgId];if(fsIdx>0){fsIdx--;$('fsVideo').src=clips[fsIdx].url;$('fsVideo').play().catch(()=>{});$('fsTitle').textContent=`Scene ${clips[fsIdx].sn}: ${clips[fsIdx].title}`}}
+function fsNext(){if(!fsMsgId)return;const clips=sceneClips[fsMsgId];if(fsIdx+1<clips.length){fsIdx++;$('fsVideo').src=clips[fsIdx].url;$('fsVideo').play().catch(()=>{});$('fsTitle').textContent=`Scene ${clips[fsIdx].sn}: ${clips[fsIdx].title}`}else exitFullscreen()}
+function fsKeyHandler(e){if(e.key==='Escape')exitFullscreen();else if(e.key===' '){e.preventDefault();fsPlayPause()}else if(e.key==='ArrowLeft')fsPrev();else if(e.key==='ArrowRight')fsNext()}
+
+function handleComplete(mid,d){
+    busy=false;$('sendBtn').disabled=false;
+    const st=$('st_'+mid);if(st)st.innerHTML=`<span>✅ ${d.total_scenes} scenes, ${d.total_duration?.toFixed(0)||'?'}s video (${d.processing_time?.toFixed(0)||'?'}s)</span>`;
+    const dl=$('dl_'+mid);if(dl&&d.download_url){dl.href=d.download_url;dl.style.display='inline-flex';dl.textContent=`⬇ Download (${d.total_duration?.toFixed(0)||'?'}s)`}
+    if(d.practice)showPractice(mid,d.practice);
+    showFollowUps(d.response_type);scrollBottom();
+}
+
+function showPractice(mid,p){
+    const c=$('practice_'+mid);if(!c||!p)return;
+    const q=p.question||'',opts=p.options||[],correct=p.correct_answer||'',expl=p.explanation||'',hint=p.hint||'';
+    c.innerHTML=`<div class="practice-card"><div class="practice-header">🎯 Practice Time!</div>
+        <div class="practice-question">${esc(q)}</div>
+        ${opts.map(o=>`<button class="practice-option" onclick="checkAns(this,'${o.substring(0,1)}','${correct.substring(0,1)}','${mid}')">${esc(o)}</button>`).join('')}
+        <div class="practice-explain" id="expl_${mid}">✅ ${esc(expl)}</div>
+        <button class="suggest-btn" onclick="this.nextElementSibling.style.display='block'" style="margin-top:6px">💡 Show Hint</button>
+        <div style="display:none;font-size:11px;color:var(--muted);padding:6px 0">💡 ${esc(hint)}</div></div>`;
+    scrollBottom();
+}
+
+function checkAns(btn,sel,correct,mid){
+    btn.closest('.practice-card').querySelectorAll('.practice-option').forEach(b=>{b.disabled=true;if(b.textContent.substring(0,1)===correct)b.classList.add('correct')});
+    if(sel!==correct)btn.classList.add('wrong');
+    const e=$('expl_'+mid);if(e)e.style.display='block';scrollBottom();
+}
+
+function showFollowUps(rt){
+    const map={
+        full_explainer:['Show me the code','Why this approach?','Compare alternatives','Give a real example','Practice this topic'],
+        code_walkthrough:['Explain line by line','Why that library?','Show different approach','What are edge cases?','Practice coding'],
+        concept_detail:['Practical example?','Common mistakes?','Compare with similar concepts','Deep dive'],
+        comparison_video:['Which should I use?','Code for both','Trade-offs?','Real-world use cases'],
+        quick_answer:['Tell me more','Show code','Why?','Give an example'],
+        metaphor_explain:['Now show technical details','Give me code','Limitations?','Compare alternatives'],
+        practice_exercise:['Explain the answer','Harder one please','Show code for this','Next topic'],
+    };
+    const opts=map[rt]||map.full_explainer;
+    const s=$('suggestions');s.style.display='flex';
+    s.innerHTML=opts.map(o=>`<button class="suggest-btn" onclick="sendMsg('${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
+}
+
+function setDifficulty(level){
+    currentDifficulty=level;updateDiffUI(level);
+    if(ws&&ws.readyState===1)ws.send(JSON.stringify({action:'set_difficulty',level}));
+}
+function updateDiffUI(level){
+    currentDifficulty=level;
+    ['beginner','intermediate','advanced'].forEach(k=>{
+        const b=$('diff'+k.charAt(0).toUpperCase()+k.slice(1));
+        if(b)b.className='diff-btn'+(k===level?` active-${k}`:'');
+    });
+}
+
+function clearChat(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({action:'clear'}))}
+function resetChat(){
+    sceneClips={};
+    $('chatArea').innerHTML=`<div class="msg ai"><div class="avatar">🤖</div><div class="msg-content"><div class="msg-bubble">Chat cleared! Ask a new question 🎬</div></div></div>`;
+    $('suggestions').style.display='flex';
+    $('suggestions').innerHTML=`
+        <button class="suggest-btn" onclick="sendMsg('What is MCP?')">What is MCP?</button>
+        <button class="suggest-btn" onclick="sendMsg('Code an AI agent')">Code AI agent</button>
+        <button class="suggest-btn" onclick="sendMsg('Explain neural networks')">Neural Networks</button>
+        <button class="suggest-btn" onclick="sendMsg('How does blockchain work?')">Blockchain</button>
+        <button class="suggest-btn" onclick="sendMsg('What is Docker?')">Docker</button>`;
+}
+
+$('chatInput').addEventListener('input',function(){this.style.height='42px';this.style.height=Math.min(this.scrollHeight,120)+'px'});
+updateDiffUI('intermediate');
+</script>
+</body>
+</html>
