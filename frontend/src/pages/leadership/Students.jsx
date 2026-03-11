@@ -1,5 +1,5 @@
 // ─── Students.jsx ──────────────────────────────────────────────────────────
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import LeadershipShell from './LeadershipShell';
@@ -22,14 +22,26 @@ export default function Students() {
     studentFilter, studentSearch, studentCourse,
     setStudentFilter, setStudentSearch, setStudentCourse,
     getFilteredStudents, courses, setSelectedCourse,
+    fetchStudents, studentsLoading,
   } = useLeadershipData();
 
   const [expandedId, setExpandedId] = useState(null);
   const [interventionModal, setInterventionModal] = useState(null);
+  const [interventionType, setInterventionType] = useState('Assign Mentor');
+  const [interventionMsg, setInterventionMsg] = useState('');
+  const [intervening, setIntervening] = useState(false);
   const [messageModal, setMessageModal] = useState(null);
   const [msgFields, setMsgFields] = useState({ subject: '', body: '' });
   const [msgSending, setMsgSending] = useState(false);
   const [page, setPage] = useState(1);
+  const [studentStats, setStudentStats] = useState(null);
+  const [courseOptions, setCourseOptions] = useState([]);
+
+  useEffect(() => {
+    fetchStudents();
+    leadershipApi.getStudentStats().then(setStudentStats).catch(() => {});
+    leadershipApi.getStudentCourses().then(setCourseOptions).catch(() => {});
+  }, []);
 
   const handleSendMessage = async () => {
     if (!msgFields.subject.trim() || !msgFields.body.trim()) {
@@ -53,6 +65,49 @@ export default function Students() {
       setMsgSending(false);
     }
   };
+
+  const handleIntervene = async () => {
+    setIntervening(true);
+    try {
+      await leadershipApi.intervene({
+        student_user_id: interventionModal.user_id,
+        intervention_type: interventionType,
+        message: interventionMsg,
+      });
+      toast.success(`Intervention sent to ${interventionModal.name}`);
+      setInterventionModal(null);
+      setInterventionMsg('');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to send intervention.');
+    } finally {
+      setIntervening(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await leadershipApi.exportStudents();
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'students_progress.csv'; a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Export failed.');
+    }
+  };
+
+  const handleCertificate = async (s) => {
+    try {
+      const res = await leadershipApi.getCertificate(s.user_id);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = `certificate_${s.user_id}.html`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Certificate not available.');
+    }
+  };
+
   const PER_PAGE = 8;
 
   const filtered = getFilteredStudents();
@@ -74,7 +129,7 @@ export default function Students() {
               <span className="material-symbols-outlined text-[16px]">description</span>
               Progress Report
             </Btn>
-            <Btn onClick={() => toast.success('CSV exported!')}>
+            <Btn onClick={handleExport}>
               <span className="material-symbols-outlined text-[16px]">download</span>
               Export CSV
             </Btn>
@@ -84,17 +139,17 @@ export default function Students() {
         {/* ── Summary cards ── */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Avg. Progress', value: '67.4%', delta: '+2.1%', icon: 'trending_up', bg: 'bg-emerald-50', ico: 'text-emerald-600' },
-            { label: 'At Risk',       value: '12',    delta: '-3',    icon: 'warning',     bg: 'bg-red-50',     ico: 'text-red-500'     },
-            { label: 'Certifications',value: '142',   delta: '+18',   icon: 'school',      bg: 'bg-blue-50',    ico: 'text-[#137fec]'   },
-          ].map(({ label, value, delta, icon, bg, ico }) => (
+            { label: 'Avg. Progress', value: studentStats ? `${studentStats.avg_progress}%` : '—', icon: 'trending_up', bg: 'bg-emerald-50', ico: 'text-emerald-600' },
+            { label: 'At Risk',       value: studentStats ? String(studentStats.at_risk_count) : '—', icon: 'warning',     bg: 'bg-red-50',     ico: 'text-red-500'     },
+            { label: 'Certifications',value: studentStats ? String(studentStats.certifications) : '—', icon: 'school',      bg: 'bg-blue-50',    ico: 'text-[#137fec]'   },
+          ].map(({ label, value, icon, bg, ico }) => (
             <Card key={label} className="p-4 flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${bg}`}>
                 <span className={`material-symbols-outlined ${ico} text-[22px]`}>{icon}</span>
               </div>
               <div>
                 <p className="text-[22px] font-bold leading-none">{value}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{label} <span className="text-emerald-600 font-semibold">{delta}</span></p>
+                <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
               </div>
             </Card>
           ))}
@@ -113,7 +168,7 @@ export default function Students() {
             <select value={studentCourse} onChange={(e) => { setStudentCourse(e.target.value); setPage(1); }}
               className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 bg-white">
               <option value="all">All Courses</option>
-              {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              {(courseOptions.length > 0 ? courseOptions : courses).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
             <select value={studentFilter} onChange={(e) => { setStudentFilter(e.target.value); setPage(1); }}
               className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 bg-white">
@@ -145,7 +200,15 @@ export default function Students() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {paged.length === 0 && (
+                {studentsLoading && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-14 text-slate-400">
+                      <span className="material-symbols-outlined text-[36px] block mb-2 animate-spin">progress_activity</span>
+                      Loading students…
+                    </td>
+                  </tr>
+                )}
+                {!studentsLoading && paged.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center py-14 text-slate-400">
                       <span className="material-symbols-outlined text-[44px] block mb-2">search_off</span>
@@ -201,12 +264,12 @@ export default function Students() {
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             {(s.status === 'at-risk' || s.status === 'behind') ? (
                               <button className="px-3 py-1 bg-red-500 text-white text-[11px] font-bold rounded-lg hover:bg-red-600 transition-colors"
-                                onClick={() => setInterventionModal(s)}>
+                                onClick={() => { setInterventionModal(s); setInterventionType('Assign Mentor'); setInterventionMsg(''); }}>
                                 Intervene
                               </button>
                             ) : s.status === 'completed' ? (
                               <button className="text-[12px] text-[#137fec] font-semibold hover:underline"
-                                onClick={() => toast.success('Certificate downloaded!')}>Certificate</button>
+                                onClick={() => handleCertificate(s)}>Certificate</button>
                             ) : (
                               <button className="text-[12px] text-[#137fec] font-semibold hover:underline"
                                 onClick={() => setExpandedId(isExpanded ? null : s.id)}>Details</button>
@@ -318,8 +381,9 @@ export default function Students() {
         title={`Intervene – ${interventionModal?.name}`}
         footer={<>
           <Btn variant="secondary" onClick={() => setInterventionModal(null)}>Cancel</Btn>
-          <Btn onClick={() => { toast.success(`Intervention sent to ${interventionModal?.name}`); setInterventionModal(null); }}>
-            <span className="material-symbols-outlined text-[16px]">send</span> Send Intervention
+          <Btn onClick={handleIntervene} disabled={intervening}>
+            <span className="material-symbols-outlined text-[16px]">send</span>
+            {intervening ? 'Sending…' : 'Send Intervention'}
           </Btn>
         </>}>
         {interventionModal && (
@@ -330,7 +394,8 @@ export default function Students() {
             </div>
             <div>
               <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Intervention Type</label>
-              <select className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 bg-white">
+              <select value={interventionType} onChange={e => setInterventionType(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 bg-white">
                 <option>Assign Mentor</option>
                 <option>Send Encouragement Message</option>
                 <option>Schedule 1-on-1 Session</option>
@@ -339,7 +404,8 @@ export default function Students() {
             </div>
             <div>
               <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Message (optional)</label>
-              <textarea rows={3} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 resize-none"
+              <textarea rows={3} value={interventionMsg} onChange={e => setInterventionMsg(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 resize-none"
                 placeholder="Write a personal note…" />
             </div>
             <div>

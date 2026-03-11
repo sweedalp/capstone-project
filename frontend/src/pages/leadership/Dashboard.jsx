@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import LeadershipShell from './LeadershipShell'
 import { leadershipApi } from '../../services/adminApi'
 
-
 const Icon = ({ name, className = '' }) => (
   <span className={`material-symbols-outlined select-none leading-none ${className}`}>{name}</span>
 )
@@ -20,17 +19,17 @@ const Badge = ({ children, color = 'blue' }) => {
 const RAW = [38,52,41,67,59,80,70,88,63,75,85,92,71,58,80,68,85,90,65,72,82,88,75,62,85,70,93,83,76,90]
 const LABELS = ['Apr 1','Apr 8','Apr 15','Apr 22','Apr 30']
 
-function ActivityChart() {
+function ActivityChart({ data = RAW, labels: customLabels }) {
   const W = 800, H = 180, PAD = { t:16, r:20, b:32, l:40 }
   const chartW = W - PAD.l - PAD.r
   const chartH = H - PAD.t - PAD.b
-  const min = Math.min(...RAW) - 8
-  const max = Math.max(...RAW) + 4
-  const x = (i) => PAD.l + (i / (RAW.length - 1)) * chartW
+  const min = Math.min(...data) - 8
+  const max = Math.max(...data) + 4
+  const x = (i) => PAD.l + (i / (data.length - 1)) * chartW
   const y = (v) => PAD.t + chartH - ((v - min) / (max - min)) * chartH
-  const area = `M${x(0)},${y(RAW[0])} ` + RAW.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ') +
-    ` L${x(RAW.length-1)},${PAD.t+chartH} L${x(0)},${PAD.t+chartH} Z`
-  const line = `M${x(0)},${y(RAW[0])} ` + RAW.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ')
+  const area = `M${x(0)},${y(data[0])} ` + data.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ') +
+    ` L${x(data.length-1)},${PAD.t+chartH} L${x(0)},${PAD.t+chartH} Z`
+  const line = `M${x(0)},${y(data[0])} ` + data.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ')
   const ticks = [0,1,2,3].map(i => Math.round(min + (i/3) * (max-min)))
   return (
     <div className="w-full overflow-x-auto">
@@ -52,7 +51,7 @@ function ActivityChart() {
         })}
         <path d={area} fill="url(#areaGrad)" />
         <path d={line} fill="none" stroke="#137fec" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {RAW.map((v, i) => i % 5 === 0 && (
+        {data.map((v, i) => i % 5 === 0 && (
           <circle key={i} cx={x(i)} cy={y(v)} r="4" fill="#137fec" stroke="white" strokeWidth="2" />
         ))}
         {LABELS.map((label, i) => {
@@ -86,6 +85,9 @@ export default function Dashboard() {
   const [stats, setStats]           = useState(null)
   const [activities, setActivities] = useState([])
   const [loading, setLoading]       = useState(true)
+  const [chartData, setChartData]   = useState(null)
+  const [aiServices, setAiServices] = useState([])
+  const [health, setHealth] = useState(null)
   const [toastMsg, setToastMsg]     = useState(null)
   const userName = localStorage.getItem('userName') || 'Admin'
 
@@ -107,14 +109,25 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       leadershipApi.getStats(),
       leadershipApi.getActivities(8),
-    ]).then(([statsData, activitiesData]) => {
-      setStats(statsData)
-      setActivities(activitiesData || [])
+      leadershipApi.getActivityChart(30),
+      leadershipApi.getAiServices(),
+      leadershipApi.getSystemHealth(),
+    ]).then(([statsRes, activitiesRes, chartRes, aiRes, healthRes]) => {
+      if (statsRes.status === 'fulfilled')      setStats(statsRes.value)
+      else                                       console.error('stats failed:', statsRes.reason)
+      if (activitiesRes.status === 'fulfilled') setActivities(activitiesRes.value || [])
+      else                                       console.error('activities failed:', activitiesRes.reason)
+      if (chartRes.status === 'fulfilled')      setChartData(chartRes.value)
+      else                                       console.error('chart failed:', chartRes.reason)
+      if (aiRes.status === 'fulfilled')         setAiServices(aiRes.value?.services || [])
+      else                                       console.error('ai-services failed:', aiRes.reason)
+      if (healthRes.status === 'fulfilled')     setHealth(healthRes.value)
+      else                                       console.error('system-health failed:', healthRes.reason)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })
   }, [])
 
   const STATS = stats ? [
@@ -229,9 +242,9 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
-              { label:'Peak Day',  value:'93',  icon:'trending_up', color:'text-green-500'  },
-              { label:'Daily Avg', value:'74',  icon:'show_chart',  color:'text-blue-600'   },
-              { label:'This Week', value:'+8%', icon:'insights',    color:'text-purple-500' },
+              { label:'Peak Day',  value: chartData?.peak_day   ?? '—',  icon:'trending_up', color:'text-green-500'  },
+              { label:'Daily Avg', value: chartData?.daily_avg  ?? '—',  icon:'show_chart',  color:'text-blue-600'   },
+              { label:'This Week', value: chartData?.wow_change ?? '—', icon:'insights',    color:'text-purple-500' },
             ].map(s => (
               <div key={s.label} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
                 <Icon name={s.icon} className={`text-2xl ${s.color}`} />
@@ -242,7 +255,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <ActivityChart />
+          <ActivityChart data={chartData?.data ?? RAW} labels={chartData?.labels} />
         </div>
 
         <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -255,7 +268,7 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="space-y-3">
-            {AI_SERVICES_SUMMARY.map(s => (
+            {aiServices.map(s => (
               <div key={s.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-amber-400'}`} />
@@ -325,11 +338,31 @@ export default function Dashboard() {
         <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h3 className="font-bold text-slate-900 mb-4">System Health</h3>
           {[
-            ['CPU Usage', '42%', 'bg-green-500', 'text-green-500'],
-            ['Memory',    '68%', 'bg-amber-500', 'text-amber-500'],
-            ['Storage',   '74%', 'bg-amber-500', 'text-amber-500'],
-            ['API Health','99%', 'bg-green-500', 'text-green-500'],
-          ].map(([label, val, barColor, textColor]) => (
+  [
+    'CPU Usage',
+    `${health?.cpu ?? 0}%`,
+    health?.cpu < 60 ? 'bg-green-500' : health?.cpu < 85 ? 'bg-amber-500' : 'bg-red-500',
+    health?.cpu < 60 ? 'text-green-500' : health?.cpu < 85 ? 'text-amber-500' : 'text-red-500'
+  ],
+  [
+    'Memory',
+    `${health?.memory ?? 0}%`,
+    health?.memory < 60 ? 'bg-green-500' : health?.memory < 85 ? 'bg-amber-500' : 'bg-red-500',
+    health?.memory < 60 ? 'text-green-500' : 'text-amber-500'
+  ],
+  [
+    'Storage',
+    `${health?.storage ?? 0}%`,
+    health?.storage < 70 ? 'bg-green-500' : 'bg-amber-500',
+    health?.storage < 70 ? 'text-green-500' : 'text-amber-500'
+  ],
+  [
+    'API Health',
+    `${health?.api_health ?? 0}%`,
+    'bg-green-500',
+    'text-green-500'
+  ],
+].map(([label, val, barColor, textColor]) => (
             <div key={label} className="mb-4 last:mb-0">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-500 font-semibold">{label}</span>

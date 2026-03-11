@@ -43,3 +43,4 @@ email-validator==2.1.0
 pyotp
 qrcode[pil]
 user-agents
+psutil==5.0.0
