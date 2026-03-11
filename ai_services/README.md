@@ -77,8 +77,20 @@ Generate AI-enhanced learning materials:
 cd ai_services
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
+# **Note:** Install `requirements.txt` wherever it is present in each service folder before running.
 pip install -r requirements.txt
-python main.py
+
+### Start All Backend Services (from project root)
+```bash
+python start_all.py
+```
+
+### Start Frontend (open a new terminal)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 ```
 
 Service runs on `http://localhost:8001`

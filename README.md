@@ -134,10 +134,18 @@ pip install -r requirements.txt
 cd ../frontend
 npm install
 
-# Setup AI services
-cd ../ai_services
+# Setup AI services (install video agent dependencies)
+cd ai_services/ai-video-chat-agent
 pip install -r requirements.txt
+
+# Run all backend services (from project root)
+cd ../../
+python start_all.py
 ```
+
+# Run frontend (in a separate terminal)
+cd frontend
+npm run dev
 
 ### Environment Variables
 Copy `.env.example` to `.env` and configure your API keys and database credentials.
