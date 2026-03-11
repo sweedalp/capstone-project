@@ -93,8 +93,6 @@ npm run dev
 ```
 ```
 
-Service runs on `http://localhost:8001`
-
 ## Team Assignment
 **AI/Data/Intelligence Team (2-3 members)**
 - Member 1: Knowledge Extraction & NLP

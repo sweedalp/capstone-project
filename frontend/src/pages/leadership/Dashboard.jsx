@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-
+import LeadershipShell from './LeadershipShell'
+import { leadershipApi } from '../../services/adminApi'
 
 const Icon = ({ name, className = '' }) => (
   <span className={`material-symbols-outlined select-none leading-none ${className}`}>{name}</span>
@@ -18,17 +19,17 @@ const Badge = ({ children, color = 'blue' }) => {
 const RAW = [38,52,41,67,59,80,70,88,63,75,85,92,71,58,80,68,85,90,65,72,82,88,75,62,85,70,93,83,76,90]
 const LABELS = ['Apr 1','Apr 8','Apr 15','Apr 22','Apr 30']
 
-function ActivityChart() {
+function ActivityChart({ data = RAW, labels: customLabels }) {
   const W = 800, H = 180, PAD = { t:16, r:20, b:32, l:40 }
   const chartW = W - PAD.l - PAD.r
   const chartH = H - PAD.t - PAD.b
-  const min = Math.min(...RAW) - 8
-  const max = Math.max(...RAW) + 4
-  const x = (i) => PAD.l + (i / (RAW.length - 1)) * chartW
+  const min = Math.min(...data) - 8
+  const max = Math.max(...data) + 4
+  const x = (i) => PAD.l + (i / (data.length - 1)) * chartW
   const y = (v) => PAD.t + chartH - ((v - min) / (max - min)) * chartH
-  const area = `M${x(0)},${y(RAW[0])} ` + RAW.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ') +
-    ` L${x(RAW.length-1)},${PAD.t+chartH} L${x(0)},${PAD.t+chartH} Z`
-  const line = `M${x(0)},${y(RAW[0])} ` + RAW.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ')
+  const area = `M${x(0)},${y(data[0])} ` + data.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ') +
+    ` L${x(data.length-1)},${PAD.t+chartH} L${x(0)},${PAD.t+chartH} Z`
+  const line = `M${x(0)},${y(data[0])} ` + data.slice(1).map((v,i) => `L${x(i+1)},${y(v)}`).join(' ')
   const ticks = [0,1,2,3].map(i => Math.round(min + (i/3) * (max-min)))
   return (
     <div className="w-full overflow-x-auto">
@@ -50,7 +51,7 @@ function ActivityChart() {
         })}
         <path d={area} fill="url(#areaGrad)" />
         <path d={line} fill="none" stroke="#137fec" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {RAW.map((v, i) => i % 5 === 0 && (
+        {data.map((v, i) => i % 5 === 0 && (
           <circle key={i} cx={x(i)} cy={y(v)} r="4" fill="#137fec" stroke="white" strokeWidth="2" />
         ))}
         {LABELS.map((label, i) => {
@@ -63,14 +64,13 @@ function ActivityChart() {
   )
 }
 
-// ✅ Matches App.jsx route: <Route path="/dashboard/admin" element={<AdminLayout />}>
-const BASE = '/dashboard/admin'
+const BASE = '/leadership'
 
 const QUICK_ACTIONS = [
-  { label:'Add New User',    icon:'person_add',  path:`${BASE}/users`,     color:'bg-blue-500'   },
-  { label:'Upload Content',  icon:'upload_file', path:`${BASE}/knowledge`, color:'bg-purple-500' },
-  { label:'Run AI Job',      icon:'play_circle', path:`${BASE}/ai`,        color:'bg-green-500'  },
-  { label:'Generate Report', icon:'summarize',   path:`${BASE}/reports`,   color:'bg-blue-600'   },
+  { label:'View Students',   icon:'group',       path:`${BASE}/students`,   color:'bg-blue-500'   },
+  { label:'Curriculum',      icon:'auto_stories',path:`${BASE}/curriculum`, color:'bg-purple-500' },
+  { label:'Analytics',       icon:'bar_chart',   path:`${BASE}/analytics`,  color:'bg-green-500'  },
+  { label:'Management',      icon:'manage_accounts', path:`${BASE}/management`, color:'bg-blue-600' },
 ]
 
 const AI_SERVICES_SUMMARY = [
@@ -85,6 +85,9 @@ export default function Dashboard() {
   const [stats, setStats]           = useState(null)
   const [activities, setActivities] = useState([])
   const [loading, setLoading]       = useState(true)
+  const [chartData, setChartData]   = useState(null)
+  const [aiServices, setAiServices] = useState([])
+  const [health, setHealth] = useState(null)
   const [toastMsg, setToastMsg]     = useState(null)
   const userName = localStorage.getItem('userName') || 'Admin'
 
@@ -106,26 +109,37 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    Promise.all([
-      adminDashboardApi.getStats(),
-      adminDashboardApi.getActivities(8),
-    ]).then(([statsData, activitiesData]) => {
-      setStats(statsData)
-      setActivities(activitiesData || [])
+    Promise.allSettled([
+      leadershipApi.getStats(),
+      leadershipApi.getActivities(8),
+      leadershipApi.getActivityChart(30),
+      leadershipApi.getAiServices(),
+      leadershipApi.getSystemHealth(),
+    ]).then(([statsRes, activitiesRes, chartRes, aiRes, healthRes]) => {
+      if (statsRes.status === 'fulfilled')      setStats(statsRes.value)
+      else                                       console.error('stats failed:', statsRes.reason)
+      if (activitiesRes.status === 'fulfilled') setActivities(activitiesRes.value || [])
+      else                                       console.error('activities failed:', activitiesRes.reason)
+      if (chartRes.status === 'fulfilled')      setChartData(chartRes.value)
+      else                                       console.error('chart failed:', chartRes.reason)
+      if (aiRes.status === 'fulfilled')         setAiServices(aiRes.value?.services || [])
+      else                                       console.error('ai-services failed:', aiRes.reason)
+      if (healthRes.status === 'fulfilled')     setHealth(healthRes.value)
+      else                                       console.error('system-health failed:', healthRes.reason)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })
   }, [])
 
   const STATS = stats ? [
-    { label:'Total Users',     value: stats.total_users?.toLocaleString()    || '0', sub:`${stats.total_trainers || 0} trainers · ${stats.total_learners || 0} learners`, icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/users`    },
-    { label:'Active Learners', value: stats.active_learners?.toLocaleString() || '0', sub:`${stats.total_enrollments || 0} total enrollments`,                              icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/users`    },
-    { label:'Content Items',   value: stats.total_lessons?.toLocaleString()  || '0', sub:`Across ${stats.total_courses || 0} courses`,                                     icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/knowledge`},
-    { label:'Total Courses',   value: stats.total_courses?.toLocaleString()  || '0', sub:`${stats.published_courses || 0} published · ${stats.draft_courses || 0} drafts`, icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/courses`  },
+    { label:'Total Users',     value: stats.total_users?.toLocaleString()    || '0', sub:`${stats.total_trainers || 0} trainers · ${stats.total_learners || 0} learners`, icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/students`   },
+    { label:'Active Learners', value: stats.active_learners?.toLocaleString() || '0', sub:`${stats.total_enrollments || 0} total enrollments`,                              icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/students`   },
+    { label:'Content Items',   value: stats.total_lessons?.toLocaleString()  || '0', sub:`Across ${stats.total_courses || 0} courses`,                                     icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/curriculum` },
+    { label:'Total Courses',   value: stats.total_courses?.toLocaleString()  || '0', sub:`${stats.published_courses || 0} published · ${stats.draft_courses || 0} drafts`, icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/curriculum` },
   ] : [
-    { label:'Total Users',     value:'—', sub:'Loading...', icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/users`    },
-    { label:'Active Learners', value:'—', sub:'Loading...', icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/users`    },
-    { label:'Content Items',   value:'—', sub:'Loading...', icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/knowledge`},
-    { label:'Total Courses',   value:'—', sub:'Loading...', icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/courses`  },
+    { label:'Total Users',     value:'—', sub:'Loading...', icon:'group',       color:'text-blue-500',   bg:'bg-blue-50',   path:`${BASE}/students`   },
+    { label:'Active Learners', value:'—', sub:'Loading...', icon:'school',      color:'text-green-500',  bg:'bg-green-50',  path:`${BASE}/students`   },
+    { label:'Content Items',   value:'—', sub:'Loading...', icon:'folder_open', color:'text-purple-500', bg:'bg-purple-50', path:`${BASE}/curriculum` },
+    { label:'Total Courses',   value:'—', sub:'Loading...', icon:'smart_toy',   color:'text-blue-600',   bg:'bg-blue-50',   path:`${BASE}/curriculum` },
   ]
 
   const actionIcon = (action) => {
@@ -152,6 +166,7 @@ export default function Dashboard() {
   }
 
   return (
+    <LeadershipShell>
     <div>
       {toastMsg && (
         <div className={`fixed top-6 right-6 z-[999] px-5 py-3 rounded-xl shadow-xl text-sm font-bold flex items-center gap-3 ${toastMsg.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
@@ -166,13 +181,9 @@ export default function Dashboard() {
           <p className="text-slate-500 mt-1">Welcome back, {userName}. Here's what's happening today.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => navigate(`${BASE}/reports`)}
+          <button onClick={() => navigate('/leadership/analytics')}
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
             <Icon name="bar_chart" className="text-lg" />View Reports
-          </button>
-          <button onClick={() => { setLoading(true); window.location.reload() }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all">
-            <Icon name="refresh" className="text-lg" />Refresh
           </button>
         </div>
       </div>
@@ -231,9 +242,9 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
-              { label:'Peak Day',  value:'93',  icon:'trending_up', color:'text-green-500'  },
-              { label:'Daily Avg', value:'74',  icon:'show_chart',  color:'text-blue-600'   },
-              { label:'This Week', value:'+8%', icon:'insights',    color:'text-purple-500' },
+              { label:'Peak Day',  value: chartData?.peak_day   ?? '—',  icon:'trending_up', color:'text-green-500'  },
+              { label:'Daily Avg', value: chartData?.daily_avg  ?? '—',  icon:'show_chart',  color:'text-blue-600'   },
+              { label:'This Week', value: chartData?.wow_change ?? '—', icon:'insights',    color:'text-purple-500' },
             ].map(s => (
               <div key={s.label} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
                 <Icon name={s.icon} className={`text-2xl ${s.color}`} />
@@ -244,7 +255,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <ActivityChart />
+          <ActivityChart data={chartData?.data ?? RAW} labels={chartData?.labels} />
         </div>
 
         <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -252,12 +263,12 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Icon name="smart_toy" className="text-blue-600 text-xl" />AI Services
             </h3>
-            <button onClick={() => navigate(`${BASE}/ai`)} className="text-xs text-blue-600 font-semibold hover:underline">
-              Configure →
+            <button onClick={() => navigate(`${BASE}/analytics`)} className="text-xs text-blue-600 font-semibold hover:underline">
+              View Analytics →
             </button>
           </div>
           <div className="space-y-3">
-            {AI_SERVICES_SUMMARY.map(s => (
+            {aiServices.map(s => (
               <div key={s.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-amber-400'}`} />
@@ -327,11 +338,31 @@ export default function Dashboard() {
         <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h3 className="font-bold text-slate-900 mb-4">System Health</h3>
           {[
-            ['CPU Usage', '42%', 'bg-green-500', 'text-green-500'],
-            ['Memory',    '68%', 'bg-amber-500', 'text-amber-500'],
-            ['Storage',   '74%', 'bg-amber-500', 'text-amber-500'],
-            ['API Health','99%', 'bg-green-500', 'text-green-500'],
-          ].map(([label, val, barColor, textColor]) => (
+  [
+    'CPU Usage',
+    `${health?.cpu ?? 0}%`,
+    health?.cpu < 60 ? 'bg-green-500' : health?.cpu < 85 ? 'bg-amber-500' : 'bg-red-500',
+    health?.cpu < 60 ? 'text-green-500' : health?.cpu < 85 ? 'text-amber-500' : 'text-red-500'
+  ],
+  [
+    'Memory',
+    `${health?.memory ?? 0}%`,
+    health?.memory < 60 ? 'bg-green-500' : health?.memory < 85 ? 'bg-amber-500' : 'bg-red-500',
+    health?.memory < 60 ? 'text-green-500' : 'text-amber-500'
+  ],
+  [
+    'Storage',
+    `${health?.storage ?? 0}%`,
+    health?.storage < 70 ? 'bg-green-500' : 'bg-amber-500',
+    health?.storage < 70 ? 'text-green-500' : 'text-amber-500'
+  ],
+  [
+    'API Health',
+    `${health?.api_health ?? 0}%`,
+    'bg-green-500',
+    'text-green-500'
+  ],
+].map(([label, val, barColor, textColor]) => (
             <div key={label} className="mb-4 last:mb-0">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-500 font-semibold">{label}</span>
@@ -346,5 +377,6 @@ export default function Dashboard() {
 
       </div>
     </div>
+    </LeadershipShell>
   )
 }

@@ -2,6 +2,7 @@
 // Single file export – import what you need from '_store.js'
 import { create } from 'zustand';
 import { STUDENTS, COURSES, REPORTS, PROBLEM_AREAS, TRAINERS, CURRICULUM } from './_mockData';
+import { leadershipApi } from '../../services/adminApi';
 
 // ── UI Store ──────────────────────────────────────────────────────────────
 export const useLeadershipUI = create((set) => ({
@@ -14,7 +15,9 @@ export const useLeadershipUI = create((set) => ({
 
 // ── Data Store ────────────────────────────────────────────────────────────
 export const useLeadershipData = create((set, get) => ({
-  students:     STUDENTS,
+  students:     [],
+  studentsLoaded: false,
+  studentsLoading: false,
   courses:      COURSES,
   reports:      REPORTS,
   problemAreas: PROBLEM_AREAS,
@@ -32,6 +35,17 @@ export const useLeadershipData = create((set, get) => ({
   setStudentCourse:  (c)  => set({ studentCourse: c }),
   setSelectedCourse: (id) => set({ selectedCourse: id }),
 
+  fetchStudents: async () => {
+    set({ studentsLoading: true });
+    try {
+      const data = await leadershipApi.getStudents();
+      set({ students: data, studentsLoaded: true, studentsLoading: false });
+    } catch (e) {
+      console.error('fetchStudents failed:', e);
+      set({ studentsLoading: false });
+    }
+  },
+
   getFilteredStudents: () => {
     const { students, studentFilter, studentSearch, studentCourse } = get();
     return students.filter((s) => {
@@ -44,3 +58,4 @@ export const useLeadershipData = create((set, get) => ({
     });
   },
 }));
+
