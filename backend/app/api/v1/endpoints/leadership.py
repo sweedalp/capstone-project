@@ -1062,14 +1062,15 @@ def get_sessions(
         .order_by(desc(UserSession.created_at))
         .all()
     )
+    latest_id = max((s.id for s in sessions), default=None)
     return [
         {
-            "id":           s.id,
-            "device":       s.device,
-            "ip_address":   s.ip_address,
-            "created_at":   s.created_at.isoformat() if s.created_at else None,
+            "id": s.id,
+            "device": s.device,
+            "ip_address": s.ip_address,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
             "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
-            "is_current":   False,
+            "is_current": s.id == latest_id,
         }
         for s in sessions
     ]
