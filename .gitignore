@@ -1,10 +1,12 @@
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
 .Python
 env/
+.venv/
 venv/
 ENV/
 build/
@@ -95,6 +97,12 @@ backend/static/uploads/*
 ai_services/ai-video-chat-agent/output/
 ai_services/ai-video-chat-agent/venv/
 ai_services/video_learning_whispher/venv/
+output/videos/
+output/frames/
 
 ai_services/Voice-Live-Api-main/.venv/
 ai_services/Voice-Live-Api-main/Voice_agent/
+
+# MacOS junk files
+__MACOSX/
+.DS_Store
