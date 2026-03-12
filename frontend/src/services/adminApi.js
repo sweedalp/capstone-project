@@ -5,7 +5,7 @@ import apiClient from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const adminDashboardApi = {
-  getStats:      () => apiClient.get('/api/v1/admin/stats').then(r => r.data),
+  getStats: () => apiClient.get('/api/v1/admin/stats').then(r => r.data),
   getActivities: (limit = 8) => apiClient.get(`/api/v1/admin/activities?limit=${limit}`).then(r => r.data),
 }
 
@@ -14,31 +14,31 @@ export const adminUsersApi = {
   getAll: ({ page = 1, pageSize = 20, role, search } = {}) => {
     const params = new URLSearchParams({ page, page_size: pageSize })
     if (role && role !== 'all') params.set('role', role)
-    if (search)                 params.set('search', search)
+    if (search) params.set('search', search)
     return apiClient.get(`/api/v1/admin/users?${params}`).then(r => r.data)
   },
-  toggleActive:  (userId)         => apiClient.post(`/api/v1/admin/users/${userId}/toggle-active`).then(r => r.data),
-  changeRole:    (userId, role)   => apiClient.post(`/api/v1/admin/users/${userId}/change-role`, { role }).then(r => r.data),
+  toggleActive: (userId) => apiClient.post(`/api/v1/admin/users/${userId}/toggle-active`).then(r => r.data),
+  changeRole: (userId, role) => apiClient.post(`/api/v1/admin/users/${userId}/change-role`, { role }).then(r => r.data),
   resetPassword: (userId, newPwd) => apiClient.post(`/api/v1/admin/users/${userId}/reset-password`, { new_password: newPwd }).then(r => r.data),
-  delete:        (userId)         => apiClient.delete(`/api/v1/admin/users/${userId}`),
+  delete: (userId) => apiClient.delete(`/api/v1/admin/users/${userId}`),
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const adminCategoriesApi = {
-  getAll:  ()                           => apiClient.get('/api/v1/admin/categories').then(r => r.data),
-  create:  (name, description = '')     => apiClient.post('/api/v1/admin/categories', { name, description }).then(r => r.data),
-  update:  (id, name, description = '') => apiClient.put(`/api/v1/admin/categories/${id}`, { name, description }).then(r => r.data),
-  delete:  (id)                         => apiClient.delete(`/api/v1/admin/categories/${id}`),
+  getAll: () => apiClient.get('/api/v1/admin/categories').then(r => r.data),
+  create: (name, description = '') => apiClient.post('/api/v1/admin/categories', { name, description }).then(r => r.data),
+  update: (id, name, description = '') => apiClient.put(`/api/v1/admin/categories/${id}`, { name, description }).then(r => r.data),
+  delete: (id) => apiClient.delete(`/api/v1/admin/categories/${id}`),
 }
 
 // ─── Courses ──────────────────────────────────────────────────────────────────
 export const adminCoursesApi = {
-  getAll:    ()         => apiClient.get('/api/v1/admin/courses').then(r => r.data),
-  getById:   (id)       => apiClient.get(`/api/v1/admin/courses/${id}`).then(r => r.data),
-  create:    (payload)  => apiClient.post('/api/v1/admin/courses', payload).then(r => r.data),
-  delete:    (id)       => apiClient.delete(`/api/v1/admin/courses/${id}`).then(r => r.data),
-  publish:   (id)       => apiClient.post(`/api/v1/admin/courses/${id}/publish`).then(r => r.data),
-  unpublish: (id)       => apiClient.post(`/api/v1/admin/courses/${id}/unpublish`).then(r => r.data),
+  getAll: () => apiClient.get('/api/v1/admin/courses').then(r => r.data),
+  getById: (id) => apiClient.get(`/api/v1/admin/courses/${id}`).then(r => r.data),
+  create: (payload) => apiClient.post('/api/v1/admin/courses', payload).then(r => r.data),
+  delete: (id) => apiClient.delete(`/api/v1/admin/courses/${id}`).then(r => r.data),
+  publish: (id) => apiClient.post(`/api/v1/admin/courses/${id}/publish`).then(r => r.data),
+  unpublish: (id) => apiClient.post(`/api/v1/admin/courses/${id}/unpublish`).then(r => r.data),
 }
 
 // ─── Knowledge Base ───────────────────────────────────────────────────────────
@@ -61,8 +61,8 @@ export const adminKnowledgeApi = {
     }).then(r => r.data)
   },
 
-  delete:      (id)  => apiClient.delete(`/api/v1/knowledge/${id}`),
-  recordView:  (id)  => apiClient.post(`/api/v1/knowledge/${id}/view`).then(r => r.data),
+  delete: (id) => apiClient.delete(`/api/v1/knowledge/${id}`),
+  recordView: (id) => apiClient.post(`/api/v1/knowledge/${id}/view`).then(r => r.data),
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
@@ -75,12 +75,12 @@ export const adminReportsApi = {
       report_type: reportType,
       format,
       date_from: dateFrom,
-      date_to:   dateTo,
+      date_to: dateTo,
     }, { responseType: 'blob' })
-    const url  = URL.createObjectURL(new Blob([response.data]))
+    const url = URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
-    const ext  = format.toLowerCase() === 'csv' ? 'csv' : 'pdf'
-    link.href  = url
+    const ext = format.toLowerCase() === 'csv' ? 'csv' : 'pdf'
+    link.href = url
     link.setAttribute('download', `${reportType}_report.${ext}`)
     document.body.appendChild(link)
     link.click()
@@ -88,18 +88,18 @@ export const adminReportsApi = {
     URL.revokeObjectURL(url)
   },
 
-  getScheduled:    ()        => apiClient.get('/api/v1/reports/scheduled').then(r => r.data),
+  getScheduled: () => apiClient.get('/api/v1/reports/scheduled').then(r => r.data),
   createScheduled: (payload) => apiClient.post('/api/v1/reports/scheduled', payload).then(r => r.data),
-  deleteScheduled: (id)      => apiClient.delete(`/api/v1/reports/scheduled/${id}`),
+  deleteScheduled: (id) => apiClient.delete(`/api/v1/reports/scheduled/${id}`),
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 export const adminExportApi = {
   download: async (type) => {
     const response = await apiClient.get(`/api/v1/admin/export/${type}`, { responseType: 'blob' })
-    const url  = URL.createObjectURL(new Blob([response.data]))
+    const url = URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
-    link.href  = url
+    link.href = url
     link.setAttribute('download', `${type}_report.csv`)
     document.body.appendChild(link)
     link.click()
@@ -110,26 +110,39 @@ export const adminExportApi = {
 
 // ─── Leadership ───────────────────────────────────────────────────────────────
 export const leadershipApi = {
-  getStats:         ()             => apiClient.get('/api/v1/leadership/stats').then(r => r.data),
-  getActivities:    (limit = 8)   => apiClient.get(`/api/v1/leadership/activities?limit=${limit}`).then(r => r.data),
-  sendMessage:      (payload)     => apiClient.post('/api/v1/leadership/send-email', payload).then(r => r.data),
-  getActivityChart: (days = 30)   => apiClient.get(`/api/v1/leadership/activity-chart?days=${days}`).then(r => r.data),
-  getAiServices:    ()             => apiClient.get('/api/v1/leadership/ai-services').then(r => r.data),
-  getSystemHealth:  ()             => apiClient.get('/api/v1/leadership/system-health').then(r => r.data),
-  getDashboardAlerts: ()           => apiClient.get('/api/v1/leadership/dashboard-alerts').then(r => r.data),
+  // Core
+  getStats: () => apiClient.get('/api/v1/leadership/stats').then(r => r.data),
+  getActivities: (limit = 8) => apiClient.get(`/api/v1/leadership/activities?limit=${limit}`).then(r => r.data),
+  sendMessage: (payload) => apiClient.post('/api/v1/leadership/send-email', payload).then(r => r.data),
+  getActivityChart: (days = 30) => apiClient.get(`/api/v1/leadership/activity-chart?days=${days}`).then(r => r.data),
+  getAiServices: () => apiClient.get('/api/v1/leadership/ai-services').then(r => r.data),
+  getSystemHealth: () => apiClient.get('/api/v1/leadership/system-health').then(r => r.data),
+  getDashboardAlerts: () => apiClient.get('/api/v1/leadership/dashboard-alerts').then(r => r.data),
   // Students
-  getStudents:       ()            => apiClient.get('/api/v1/leadership/students').then(r => r.data),
-  getStudentStats:   ()            => apiClient.get('/api/v1/leadership/student-stats').then(r => r.data),
-  getStudentCourses: ()            => apiClient.get('/api/v1/leadership/student-courses').then(r => r.data),
-  intervene:         (p)           => apiClient.post('/api/v1/leadership/intervene', p).then(r => r.data),
-  getCertificate:    (userId)      => apiClient.get(`/api/v1/leadership/students/${userId}/certificate`, { responseType: 'blob' }),
-  exportStudents:    ()            => apiClient.get('/api/v1/leadership/students/export', { responseType: 'blob' }),
+  getStudents: () => apiClient.get('/api/v1/leadership/students').then(r => r.data),
+  getStudentStats: () => apiClient.get('/api/v1/leadership/student-stats').then(r => r.data),
+  getStudentCourses: () => apiClient.get('/api/v1/leadership/student-courses').then(r => r.data),
+  intervene: (p) => apiClient.post('/api/v1/leadership/intervene', p).then(r => r.data),
+  getCertificate: (userId) => apiClient.get(`/api/v1/leadership/students/${userId}/certificate`, { responseType: 'blob' }),
+  exportStudents: () => apiClient.get('/api/v1/leadership/students/export', { responseType: 'blob' }),
   // Curriculum
-  getCourses:              ()   => apiClient.get('/api/v1/leadership/courses').then(r => r.data),
-  getCourseHealth:         (id) => apiClient.get(`/api/v1/leadership/courses/${id}/health`).then(r => r.data),
-  getProblemAreas:         (id) => apiClient.get(`/api/v1/leadership/courses/${id}/problem-areas`).then(r => r.data),
-  getCourseRetention:      (id) => apiClient.get(`/api/v1/leadership/courses/${id}/retention`).then(r => r.data),
+  getCourses: () => apiClient.get('/api/v1/leadership/courses').then(r => r.data),
+  getCourseHealth: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/health`).then(r => r.data),
+  getProblemAreas: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/problem-areas`).then(r => r.data),
+  getCourseRetention: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/retention`).then(r => r.data),
   getContentEffectiveness: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/content-effectiveness`).then(r => r.data),
+  getOptimizationPlan: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/optimization-plan`).then(r => r.data),
+  exportCourseReport: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/report`, { responseType: 'blob' }),
+  // Management
+  getManagementStats: () => apiClient.get('/api/v1/leadership/management/stats').then(r => r.data),
+  getTrainers: () => apiClient.get('/api/v1/leadership/trainers').then(r => r.data),
+  inviteTrainer: (payload) => apiClient.post('/api/v1/leadership/trainers/invite', payload).then(r => r.data),
+  messageTrainer: (payload) => apiClient.post('/api/v1/leadership/trainers/message', payload).then(r => r.data),
+  getAnnouncements: () => apiClient.get('/api/v1/leadership/announcements').then(r => r.data),
+  createAnnouncement: (payload) => apiClient.post('/api/v1/leadership/announcements', payload).then(r => r.data),
+  deleteAnnouncement: (id) => apiClient.delete(`/api/v1/leadership/announcements/${id}`),
+  getProgramSettings: () => apiClient.get('/api/v1/leadership/program-settings').then(r => r.data),
+  saveProgramSettings: (payload) => apiClient.put('/api/v1/leadership/program-settings', payload).then(r => r.data),
   getOptimizationPlan:     (id) => apiClient.get(`/api/v1/leadership/courses/${id}/optimization-plan`).then(r => r.data),
   exportCourseReport:      (id) => apiClient.get(`/api/v1/leadership/courses/${id}/report`, { responseType: 'blob' }),
   // Analytics / Reports

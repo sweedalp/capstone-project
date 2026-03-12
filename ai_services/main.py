@@ -10,7 +10,9 @@ app = FastAPI(
     description="AI/ML services for knowledge extraction and content generation",
     version="1.0.0"
 )
+from ai_content_router import router as ai_content_router
 
+app.include_router(ai_content_router)
 # CORS
 app.add_middleware(
     CORSMiddleware,

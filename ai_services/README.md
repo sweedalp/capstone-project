@@ -77,14 +77,27 @@ Generate AI-enhanced learning materials:
 cd ai_services
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
+# **Note:** Install `requirements.txt` wherever it is present in each service folder before running.
 pip install -r requirements.txt
-python main.py
+
+### Start All Backend Services (from project root)
+```bash
+python start_all.py
 ```
 
-Service runs on `http://localhost:8001`
+### Start Frontend (open a new terminal)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+```
 
 ## Team Assignment
 **AI/Data/Intelligence Team (2-3 members)**
 - Member 1: Knowledge Extraction & NLP
 - Member 2: Content Generation & Media AI
 - Member 3: Q&A System & Vector Search
+
+
+pip install fastapi uvicorn python-multipart PyPDF2

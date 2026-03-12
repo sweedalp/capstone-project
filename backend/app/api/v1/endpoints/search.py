@@ -152,13 +152,15 @@ def ask_question(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    import os
+    from openai import AzureOpenAI
+
     question = payload.get("question", "").strip()
     course_id = payload.get("course_id")
 
     if not question:
         return {"answer": None, "sources": [], "error": "Question is required"}
 
-    # Tokenize to improve matching (same logic as search)
     stop_words = {"what", "is", "a", "an", "the", "how", "do", "does", "why",
                   "when", "where", "explain", "tell", "me", "about", "to", "of"}
     tokens = [
@@ -185,13 +187,13 @@ def ask_question(
             ),
         )
     )
-
     if course_id:
         lesson_query = lesson_query.filter(Course.id == course_id)
 
     relevant = lesson_query.limit(3).all()
 
     sources = []
+    context_text = ""
     for lesson, module, course in relevant:
         sources.append({
             "lesson_id": lesson.id,
@@ -201,15 +203,39 @@ def ask_question(
             "module_title": module.title,
             "url": f"/learner/courses/{course.id}/lessons/{lesson.id}",
         })
+        context_text += f"- {lesson.title} (Course: {course.title}, Module: {module.title})\n"
 
-    if sources:
-        answer = f"Here are the most relevant lessons for: \"{question}\""
-    else:
-        answer = "No relevant content found for your question."
+    try:
+        client = AzureOpenAI(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+        )
+        system_prompt = (
+            "You are a helpful AI tutor for an online learning platform. "
+            "Answer any question clearly and concisely. "
+            "If the question relates to course content provided below, use it. "
+            "Otherwise answer from your general knowledge.\n\n"
+        )
+        if context_text:
+            system_prompt += f"Related course content:\n{context_text}"
+
+        response = client.chat.completions.create(
+            model=os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4o"),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ],
+            temperature=0.5,
+            max_tokens=500,
+        )
+        answer = response.choices[0].message.content.strip()
+    except Exception as e:
+        answer = f"AI service unavailable: {str(e)}"
 
     return {
         "question": question,
         "answer": answer,
         "sources": sources,
-        "ai_generated": False,
+        "ai_generated": True,
     }

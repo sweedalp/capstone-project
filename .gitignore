@@ -91,3 +91,10 @@ tmp/
 
 backend/static/uploads/
 backend/static/uploads/*
+# AI Video Agent outputs
+ai_services/ai-video-chat-agent/output/
+ai_services/ai-video-chat-agent/venv/
+ai_services/video_learning_whispher/venv/
+
+ai_services/Voice-Live-Api-main/.venv/
+ai_services/Voice-Live-Api-main/Voice_agent/

@@ -9,6 +9,7 @@ import io
 from io import BytesIO, StringIO
 import csv
 import re
+import json
 import smtplib
 from datetime import datetime, date, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -24,11 +25,13 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role
-from app.models.user import User, UserRole
+from app.core.notifications import create_notification
+from app.models.activity import ActivityLog
 from app.models.course import Course
 from app.models.enrollment import Enrollment, Progress
 from app.models.module import Lesson, Module, LessonContent
-from app.models.activity import ActivityLog
+from app.models.notification import Notification
+from app.models.user import User, UserRole
 
 
 router = APIRouter()
@@ -89,6 +92,7 @@ def leadership_activities(
         }
         for a in activities
     ]
+
 
 # Basic email pattern to prevent header injection
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$")
@@ -153,6 +157,8 @@ def send_student_email(
         raise HTTPException(status_code=502, detail=f"Failed to send email: {exc}")
 
     return {"message": f"Email sent to {payload.to_email}"}
+
+
 # ── Settings: Notification Preferences ───────────────────────────────────────
 
 _NOTIF_DEFAULTS = {
@@ -170,10 +176,6 @@ def get_notification_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return the current user's saved notification preferences,
-    or sensible defaults if none have been saved yet."""
-    import json
-
     last = (
         db.query(ActivityLog)
         .filter(
@@ -197,9 +199,6 @@ def save_notification_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Persist the user's notification preference toggles to ActivityLog."""
-    import json
-
     log = ActivityLog(
         user_id=current_user.id,
         action="notif_preferences",
@@ -225,10 +224,6 @@ def get_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return the current user's saved display preferences,
-    or sensible defaults if none have been saved yet."""
-    import json
-
     last = (
         db.query(ActivityLog)
         .filter(
@@ -252,9 +247,6 @@ def save_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Persist the user's display preferences to ActivityLog."""
-    import json
-
     log = ActivityLog(
         user_id=current_user.id,
         action="user_preferences",
@@ -265,19 +257,18 @@ def save_preferences(
     return {"message": "Display preferences saved"}
 
 
-
-
 @router.get("/activity-chart")
 def activity_chart(
     days: int = Query(30, ge=7, le=90),
     db: Session = Depends(get_db),
     _user: User = Depends(require_role(["admin", "leadership"])),
 ):
+    from datetime import time
+    from sqlalchemy import cast, Date as SADate
+
     end_date = datetime.utcnow().date()
     start_date = end_date - timedelta(days=days - 1)
 
-    # Count distinct active users per day
-    from sqlalchemy import cast, Date as SADate
     daily_counts = (
         db.query(
             cast(ActivityLog.created_at, SADate).label("day"),
@@ -289,7 +280,6 @@ def activity_chart(
         .all()
     )
 
-    # Build a complete date range (fill 0 for days with no activity)
     count_map = {row.day: row.count for row in daily_counts}
     chart_data = []
     labels = []
@@ -299,11 +289,9 @@ def activity_chart(
         labels.append(current.strftime("%b %d"))
         current += timedelta(days=1)
 
-    # Summary stats
     peak = max(chart_data) if chart_data else 0
     avg = round(sum(chart_data) / len(chart_data)) if chart_data else 0
 
-    # Week-over-week change
     this_week = sum(chart_data[-7:])
     last_week = sum(chart_data[-14:-7]) if len(chart_data) >= 14 else 0
     if last_week > 0:
@@ -313,15 +301,13 @@ def activity_chart(
         wow = "+0%"
 
     return {
-        "data":       chart_data,     # array of 30 integers (replaces RAW)
-        "labels":     labels,         # array of date strings for x-axis
+        "data":       chart_data,
+        "labels":     labels,
         "peak_day":   peak,
         "daily_avg":  avg,
-        "wow_change": wow,            # week-over-week e.g. "+8%"
+        "wow_change": wow,
         "days":       days,
     }
-
-
 
 
 @router.get("/ai-services")
@@ -331,50 +317,46 @@ def ai_services_status(
 ):
     from app.models.ai_cache import AICache
 
-    # Count calls per service_type
     counts = (
         db.query(AICache.service_type, func.count(AICache.id).label("calls"))
         .group_by(AICache.service_type)
         .all()
     )
     count_map = {row.service_type: row.calls for row in counts}
-
-    # Total AI cache entries (as a proxy for overall API calls)
     total_calls = sum(count_map.values())
 
     services = [
         {
-            "name":    "OpenAI GPT-4",
-            "status":  "active",
-            "calls":   count_map.get("summary", 0) + count_map.get("quiz_suggestions", 0),
-            "uptime":  "99.9%",
-            "type":    "text",
+            "name":   "OpenAI GPT-4",
+            "status": "active",
+            "calls":  count_map.get("summary", 0) + count_map.get("quiz_suggestions", 0),
+            "uptime": "99.9%",
+            "type":   "text",
         },
         {
-            "name":    "Whisper STT",
-            "status":  "active" if count_map.get("transcript", 0) > 0 else "idle",
-            "calls":   count_map.get("transcript", 0),
-            "uptime":  "99.7%",
-            "type":    "audio",
+            "name":   "Whisper STT",
+            "status": "active" if count_map.get("transcript", 0) > 0 else "idle",
+            "calls":  count_map.get("transcript", 0),
+            "uptime": "99.7%",
+            "type":   "audio",
         },
         {
-            "name":    "ElevenLabs TTS",
-            "status":  "idle",
-            "calls":   0,        # No separate cache type yet
-            "uptime":  "98.2%",
-            "type":    "audio",
+            "name":   "ElevenLabs TTS",
+            "status": "idle",
+            "calls":  0,
+            "uptime": "98.2%",
+            "type":   "audio",
         },
         {
-            "name":    "Stable Diffusion",
-            "status":  "idle",
-            "calls":   0,
-            "uptime":  "95.1%",
-            "type":    "image",
+            "name":   "Stable Diffusion",
+            "status": "idle",
+            "calls":  0,
+            "uptime": "95.1%",
+            "type":   "image",
         },
     ]
 
     return {"services": services, "total_calls": total_calls}
-
 
 
 @router.get("/system-health")
@@ -384,17 +366,9 @@ def system_health(
 ):
     import psutil
 
-    cpu_pct     = psutil.cpu_percent(interval=0.5)
-    memory      = psutil.virtual_memory()
-    disk        = psutil.disk_usage("/")
-
-    # API Health: check recent error rate from activity_logs
-    # (or just return 99% if no error tracking yet)
-    recent_total = db.query(func.count(ActivityLog.id)).filter(
-        ActivityLog.created_at >= datetime.utcnow() - timedelta(hours=1)
-    ).scalar() or 1
-
-    # Simple heuristic: API health = 100% unless DB queries are slow
+    cpu_pct = psutil.cpu_percent(interval=0.5)
+    memory  = psutil.virtual_memory()
+    disk    = psutil.disk_usage("/")
     api_health = 99
 
     return {
@@ -419,7 +393,6 @@ def dashboard_alerts(
     if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Fetch unread notifications for this user as alerts
     alerts = (
         db.query(Notification)
         .filter(
@@ -492,7 +465,6 @@ def list_students(
             .scalar()
         )
         last_active = last_progress or enr.enrolled_at
-
         days_inactive = (datetime.utcnow() - last_active).days if last_active else 999
 
         if progress_pct >= 100:
@@ -516,18 +488,18 @@ def list_students(
             last_active_str = last_active.strftime("%b %d, %Y") if last_active else "Unknown"
 
         results.append({
-            "id":        f"AI-{learner.id:05d}",
-            "user_id":   learner.id,
-            "name":      learner.full_name or learner.username,
-            "email":     learner.email,
-            "course":    course.title,
-            "course_id": course.id,
-            "progress":  progress_pct,
-            "module":    f"{completed_lessons}/{total_lessons}",
-            "status":    status,
+            "id":         f"AI-{learner.id:05d}",
+            "user_id":    learner.id,
+            "name":       learner.full_name or learner.username,
+            "email":      learner.email,
+            "course":     course.title,
+            "course_id":  course.id,
+            "progress":   progress_pct,
+            "module":     f"{completed_lessons}/{total_lessons}",
+            "status":     status,
             "lastActive": last_active_str,
-            "score":     avg_score,
-            "jobReady":  progress_pct >= 80 and avg_score >= 75,
+            "score":      avg_score,
+            "jobReady":   progress_pct >= 80 and avg_score >= 75,
         })
 
     return results
@@ -605,7 +577,6 @@ def create_intervention(
         description=f"Intervention '{payload.intervention_type}' sent for user #{payload.student_user_id}",
     )
     db.add(log)
-    from app.core.notifications import create_notification
     create_notification(
         db=db,
         user_id=payload.student_user_id,
@@ -760,14 +731,12 @@ def course_health(
         .scalar() or 1
     )
 
-    # Clarity — avg quiz score
     avg_score = float(
         db.query(func.avg(Progress.score))
         .filter(Progress.enrollment_id.in_(enr_ids), Progress.score.isnot(None))
         .scalar() or 0
     )
 
-    # Alignment — % of lessons that have content attached
     lessons_with_content = (
         db.query(func.count(func.distinct(LessonContent.lesson_id)))
         .join(Lesson, LessonContent.lesson_id == Lesson.id)
@@ -777,7 +746,6 @@ def course_health(
     )
     alignment = round(lessons_with_content / total_lessons * 100)
 
-    # Engagement — % of enrolled learners with at least 1 completed lesson
     engaged = sum(
         1 for eid in enr_ids
         if db.query(func.count(Progress.id))
@@ -786,7 +754,6 @@ def course_health(
     )
     engagement = round(engaged / len(enr_ids) * 100) if enr_ids else 0
 
-    # ROI — avg progress % across all enrollments
     progress_vals = []
     for eid in enr_ids:
         done = db.query(func.count(Progress.id)).filter(
@@ -925,7 +892,6 @@ def content_effectiveness(
             continue
 
         if lesson_type == "quiz":
-            # Use avg quiz score as the performance metric
             score_rows = db.query(Progress.score).filter(
                 Progress.lesson_id.in_(lesson_ids),
                 Progress.score.isnot(None),
@@ -935,12 +901,10 @@ def content_effectiveness(
             else:
                 satisfaction = round(sum(s[0] for s in score_rows) / len(score_rows))
         else:
-            # Use completed / total_enrolled as the engagement metric
             completed = db.query(func.count(Progress.id)).filter(
                 Progress.lesson_id.in_(lesson_ids),
                 Progress.is_completed.is_(True),
             ).scalar() or 0
-            # total possible = total_enrolled * number of lessons of this type
             possible = total_enrolled * len(lesson_ids)
             satisfaction = round(completed / possible * 100)
 
@@ -1001,7 +965,6 @@ def optimization_plan(
                 "lesson_id": lesson.id,
             })
 
-    # Check first-lesson completion rate for prerequisite gap detection
     first_module = (
         db.query(Module)
         .filter(Module.course_id == course_id)
@@ -1092,7 +1055,6 @@ def get_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return all active sessions for the current user."""
     from app.models.user_session import UserSession
     sessions = (
         db.query(UserSession)
@@ -1123,7 +1085,6 @@ def revoke_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Revoke (deactivate) a specific session."""
     from app.models.user_session import UserSession
     session = db.query(UserSession).filter(
         UserSession.id == session_id,
@@ -1141,7 +1102,6 @@ def revoke_all_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Revoke all sessions except current."""
     from app.models.user_session import UserSession
     db.query(UserSession).filter(
         UserSession.user_id == current_user.id,
@@ -1149,6 +1109,7 @@ def revoke_all_sessions(
     ).update({"is_active": False})
     db.commit()
     return {"message": "All sessions revoked"}
+
 
 # ── Integrations ──────────────────────────────────────────────────────────────
 
@@ -1160,12 +1121,12 @@ _INTEGRATIONS_DEFAULTS = {
     "JIRA":          False,
 }
 
+
 @router.get("/integrations")
 def get_integrations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    import json
     last = (
         db.query(ActivityLog)
         .filter(
@@ -1178,7 +1139,7 @@ def get_integrations(
     if last:
         try:
             return json.loads(last.description)
-        except:
+        except Exception:
             pass
     return _INTEGRATIONS_DEFAULTS
 
@@ -1189,7 +1150,6 @@ def save_integrations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    import json
     db.add(ActivityLog(
         user_id=current_user.id,
         action="integrations",
@@ -1197,6 +1157,282 @@ def save_integrations(
     ))
     db.commit()
     return {"message": "Integrations saved"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Management APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/management/stats")
+def management_stats(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    active_trainers = db.query(func.count(User.id)).filter(
+        User.role == UserRole.TRAINER, User.is_active.is_(True)
+    ).scalar() or 0
+
+    total_programs = db.query(func.count(Course.id)).filter(
+        Course.is_published.is_(True)
+    ).scalar() or 0
+
+    total_announcements = db.query(func.count(Notification.id)).filter(
+        Notification.type == "announcement"
+    ).scalar() or 0
+
+    return {
+        "active_trainers":      active_trainers,
+        "total_programs":       total_programs,
+        "pending_reviews":      0,        # extend when review table exists
+        "announcements_sent":   total_announcements,
+    }
+
+@router.get("/trainers")
+def list_trainers(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    trainers = db.query(User).filter(User.role == UserRole.TRAINER).all()
+    result = []
+    for t in trainers:
+        course_count = db.query(func.count(Course.id)).filter(Course.trainer_id == t.id).scalar() or 0
+        student_count = (
+            db.query(func.count(Enrollment.id))
+            .join(Course, Enrollment.course_id == Course.id)
+            .filter(Course.trainer_id == t.id)
+            .scalar() or 0
+        )
+        result.append({
+            "id":       t.id,
+            "name":     t.full_name or t.username,
+            "email":    t.email,
+            "role":     "Trainer",
+            "courses":  course_count,
+            "students": student_count,
+            "rating":   4.5,       # static for now; extend when ratings table exists
+            "status":   "active" if t.is_active else "inactive",
+        })
+    return result
+
+class InviteTrainerRequest(BaseModel):
+    email: str
+    name: str = ""
+
+@router.post("/trainers/invite", status_code=200)
+def invite_trainer(
+    payload: InviteTrainerRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    sender_name = current_user.full_name or current_user.username
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
+      <h2>You're invited to join AI LMS as a Trainer</h2>
+      <p>Hi {payload.name or 'there'},</p>
+      <p>{sender_name} has invited you to join the AI LMS platform as a Trainer.</p>
+      <a href="http://localhost:3000/signup" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
+        Accept Invitation & Sign Up
+      </a>
+      <p style="color:#94a3b8;font-size:12px;">AI LMS Knowledge Intelligence Platform</p>
+    </div>
+    """
+    if not all([settings.MAIL_FROM, settings.MAIL_USERNAME, settings.MAIL_PASSWORD]):
+        raise HTTPException(status_code=502, detail="Email not configured on server")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "You're invited to join AI LMS as a Trainer"
+        msg["From"] = settings.MAIL_FROM
+        msg["To"] = payload.email
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+            server.sendmail(settings.MAIL_FROM, payload.email, msg.as_string())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Email failed: {exc}")
+
+    return {"message": f"Invitation sent to {payload.email}"}
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    audience: str   # "All Students", "At-Risk Students", etc.
+    message: str
+
+@router.get("/announcements")
+def list_announcements(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    items = db.query(Notification).filter(
+        Notification.type == "announcement"
+    ).order_by(desc(Notification.created_at)).all()
+    return [
+        {
+            "id":       n.id,
+            "title":    n.title,
+            "audience": n.message.split("||")[0] if "||" in n.message else "All Students",
+            "body":     n.message.split("||")[1] if "||" in n.message else n.message,
+            "date":     n.created_at.strftime("%b %d, %Y") if n.created_at else "—",
+            "status":   "sent",
+        }
+        for n in items
+    ]
+
+@router.post("/announcements", status_code=201)
+def create_announcement(
+    payload: AnnouncementCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Store audience and message together, separated by ||
+    combined_message = f"{payload.audience}||{payload.message}"
+
+    # Find target users
+    if payload.audience == "All Trainers":
+        target_users = db.query(User).filter(User.role == UserRole.TRAINER).all()
+    elif payload.audience == "All Students":
+        target_users = db.query(User).filter(User.role == UserRole.LEARNER).all()
+    else:
+        target_users = db.query(User).filter(User.role == UserRole.LEARNER).all()
+
+    # Create a notification record for each target user
+    from app.core.notifications import create_notification
+    for u in target_users:
+        create_notification(
+            db=db,
+            user_id=u.id,
+            title=payload.title,
+            message=payload.message,
+            icon="campaign",
+            icon_color="text-blue-600",
+            icon_bg="bg-blue-100",
+            notif_type="announcement",
+        )
+
+    # Also save one "master" record for the leadership list view
+    master = Notification(
+        user_id=current_user.id,
+        title=payload.title,
+        message=combined_message,
+        icon="campaign",
+        icon_color="text-blue-600",
+        icon_bg="bg-blue-100",
+        type="announcement",
+    )
+    db.add(master)
+    db.commit()
+    db.refresh(master)
+
+    return {"id": master.id, "message": f"Announcement sent to {len(target_users)} users"}
+
+@router.delete("/announcements/{announcement_id}", status_code=204)
+def delete_announcement(
+    announcement_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    item = db.query(Notification).filter(Notification.id == announcement_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(item)
+    db.commit()
+
+@router.get("/program-settings")
+def get_program_settings(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    # Default settings
+    defaults = {
+        "aiCoach": True, "peerReview": False,
+        "liveSession": True, "autoNudge": True
+    }
+    # Look for last saved settings in activity_logs
+    last_save = db.query(ActivityLog).filter(
+        ActivityLog.action == "program_settings"
+    ).order_by(desc(ActivityLog.created_at)).first()
+
+    if last_save:
+        import json
+        try:
+            return json.loads(last_save.description)
+        except Exception:
+            pass
+    return defaults
+
+@router.put("/program-settings")
+def save_program_settings(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    import json
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="program_settings",
+        description=json.dumps(payload),
+    )
+    db.add(log)
+    db.commit()
+    return {"message": "Settings saved"}
+
+class TrainerMessageRequest(BaseModel):
+    trainer_user_id: int
+    subject: str
+    body: str
+
+@router.post("/trainers/message")
+def message_trainer(
+    payload: TrainerMessageRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    trainer = db.query(User).filter(
+        User.id == payload.trainer_user_id, User.role == UserRole.TRAINER
+    ).first()
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+
+    sender_name = current_user.full_name or current_user.username
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
+      <h2>{payload.subject}</h2>
+      <p>Hi {trainer.full_name or trainer.username},</p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0;">{payload.body}</div>
+      <p style="color:#94a3b8;font-size:12px;">Sent by {sender_name} via AI LMS Leadership Portal</p>
+    </div>
+    """
+    if not all([settings.MAIL_FROM, settings.MAIL_USERNAME, settings.MAIL_PASSWORD]):
+        raise HTTPException(status_code=502, detail="Email not configured on server")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = payload.subject
+        msg["From"] = settings.MAIL_FROM
+        msg["To"] = trainer.email
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+            server.sendmail(settings.MAIL_FROM, trainer.email, msg.as_string())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Email failed: {exc}")
+
+    return {"message": f"Message sent to {trainer.full_name or trainer.username}"}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ANALYTICS & REPORTS SECTION
 # Appended below — do not modify teammate code above this line.
