@@ -132,4 +132,14 @@ export const leadershipApi = {
   getContentEffectiveness: (id) => apiClient.get(`/api/v1/leadership/courses/${id}/content-effectiveness`).then(r => r.data),
   getOptimizationPlan:     (id) => apiClient.get(`/api/v1/leadership/courses/${id}/optimization-plan`).then(r => r.data),
   exportCourseReport:      (id) => apiClient.get(`/api/v1/leadership/courses/${id}/report`, { responseType: 'blob' }),
+  // Analytics / Reports
+  getReports:            ()        => apiClient.get('/api/v1/leadership/reports').then(r => r.data),
+  generateReport:        (payload) => apiClient.post('/api/v1/leadership/reports/generate', payload, { responseType: 'blob' }).then(r => r.data),
+  downloadReport:        (id)      => apiClient.get(`/api/v1/leadership/reports/${id}/download`, { responseType: 'blob' }).then(r => r.data),
+  deleteReport:          (id)      => apiClient.delete(`/api/v1/leadership/reports/${id}`),
+  emailReport:           (payload) => apiClient.post('/api/v1/leadership/reports/email', payload).then(r => r.data),
+  getAiInsights:         ()        => apiClient.get('/api/v1/leadership/ai-insights').then(r => r.data),
+  getScheduledReports:   ()        => apiClient.get('/api/v1/leadership/scheduled-reports').then(r => r.data),
+  createScheduledReport: (payload) => apiClient.post('/api/v1/leadership/scheduled-reports', payload).then(r => r.data),
+  deleteScheduledReport: (id)      => apiClient.delete(`/api/v1/leadership/scheduled-reports/${id}`),
 }

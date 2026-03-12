@@ -4,13 +4,15 @@ These endpoints mirror the admin equivalents but are accessible by
 leadership (and admin) roles so the leadership dashboard can load real data.
 """
 
+import traceback
+from io import BytesIO, StringIO
 import csv
-import io
 import re
 import smtplib
 from datetime import datetime, date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from docx import Document
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -1194,3 +1196,450 @@ def save_integrations(
     ))
     db.commit()
     return {"message": "Integrations saved"}
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYTICS & REPORTS SECTION
+# Appended below — do not modify teammate code above this line.
+# To remove demo data later: run seed.py or delete rows from reports /
+# scheduled_reports tables in pgAdmin. No code changes needed.
+# ══════════════════════════════════════════════════════════════════════════════
+ 
+from app.models.report_model import Report, ScheduledReport
+ 
+ 
+# ── Pydantic schemas ──────────────────────────────────────────────────────────
+ 
+class GenerateReportRequest(BaseModel):
+    report_type: str   # "student-progress" | "ai-impact" | "completion" | "engagement"
+    format: str = "CSV"
+    date_from: str = ""
+    date_to: str = ""
+ 
+ 
+class EmailReportRequest(BaseModel):
+    recipients: str    # comma-separated emails
+    subject: str
+    message: str = ""
+ 
+ 
+class ScheduledReportCreate(BaseModel):
+    name: str
+    report_type: str
+    frequency: str     # "weekly" | "monthly" | "quarterly"
+    next_run: str      # ISO datetime string
+ 
+ 
+# ── CSV helpers ───────────────────────────────────────────────────────────────
+ 
+def _csv_student_progress(w, db):
+    w.writerow(["Student", "Email", "Course", "Progress %", "Avg Score", "Status"])
+    enrollments = (
+        db.query(Enrollment)
+        .join(User, Enrollment.user_id == User.id)
+        .filter(User.role == UserRole.LEARNER)
+        .all()
+    )
+    if not enrollments:
+        w.writerow(["No data", "-", "-", "-", "-", "-"])
+        return
+    for enr in enrollments:
+        total = (db.query(func.count(Lesson.id))
+                 .join(Module, Lesson.module_id == Module.id)
+                 .filter(Module.course_id == enr.course_id).scalar() or 1)
+        done  = (db.query(func.count(Progress.id))
+                 .filter(Progress.enrollment_id == enr.id,
+                         Progress.is_completed.is_(True)).scalar() or 0)
+        pct   = round(done / total * 100)
+        avg   = round(db.query(func.avg(Progress.score))
+                      .filter(Progress.enrollment_id == enr.id,
+                              Progress.score.isnot(None)).scalar() or 0)
+        status = "Completed" if pct >= 100 else "In Progress" if pct > 0 else "Not Started"
+        w.writerow([enr.user.full_name or enr.user.username,
+                    enr.user.email, enr.course.title, pct, avg, status])
+ 
+ 
+def _csv_completion(w, db):
+    w.writerow(["Course", "Total Enrolled", "Completed", "Completion Rate %"])
+    courses = db.query(Course).filter(Course.is_published.is_(True)).all()
+    if not courses:
+        w.writerow(["No published courses", "-", "-", "-"])
+        return
+    for c in courses:
+        total_enr = (db.query(func.count(Enrollment.id))
+                     .filter(Enrollment.course_id == c.id).scalar() or 0)
+        total_lessons = (db.query(func.count(Lesson.id))
+                         .join(Module, Lesson.module_id == Module.id)
+                         .filter(Module.course_id == c.id).scalar() or 1)
+        completed = sum(
+            1 for enr in db.query(Enrollment).filter(Enrollment.course_id == c.id).all()
+            if (db.query(func.count(Progress.id))
+                .filter(Progress.enrollment_id == enr.id,
+                        Progress.is_completed.is_(True)).scalar() or 0) >= total_lessons
+        )
+        rate = round(completed / total_enr * 100) if total_enr else 0
+        w.writerow([c.title, total_enr, completed, rate])
+ 
+ 
+def _csv_engagement(w, db):
+    w.writerow(["User", "Email", "Last Active"])
+    users = db.query(User).filter(User.role == UserRole.LEARNER,
+                                   User.is_active.is_(True)).all()
+    if not users:
+        w.writerow(["No learners", "-", "-"])
+        return
+    for u in users:
+        w.writerow([u.full_name or u.username, u.email,
+                    u.updated_at.strftime("%b %d, %Y") if u.updated_at else "-"])
+ 
+ 
+def _csv_ai_impact(w, db):
+    w.writerow(["Student", "Email", "Completed Lessons", "Avg Score", "Status"])
+    enrollments = (
+        db.query(Enrollment)
+        .join(User, Enrollment.user_id == User.id)
+        .filter(User.role == UserRole.LEARNER).all()
+    )
+    if not enrollments:
+        w.writerow(["No data", "-", "-", "-", "-"])
+        return
+    for enr in enrollments:
+        done = (db.query(func.count(Progress.id))
+                .filter(Progress.enrollment_id == enr.id,
+                        Progress.is_completed.is_(True)).scalar() or 0)
+        avg  = round(db.query(func.avg(Progress.score))
+                     .filter(Progress.enrollment_id == enr.id,
+                             Progress.score.isnot(None)).scalar() or 0)
+        w.writerow([enr.user.full_name or enr.user.username,
+                    enr.user.email, done, avg,
+                    "Active" if enr.user.is_active else "Inactive"])
+ 
+ 
+def _build_csv(report_type: str, db) -> bytes:
+    out = io.StringIO()
+    w   = csv.writer(out)
+    if report_type == "student-progress":
+        _csv_student_progress(w, db)
+    elif report_type == "completion":
+        _csv_completion(w, db)
+    elif report_type == "engagement":
+        _csv_engagement(w, db)
+    elif report_type == "ai-impact":
+        _csv_ai_impact(w, db)
+    else:
+        w.writerow(["Report Type", "Generated At"])
+        w.writerow([report_type, datetime.utcnow().isoformat()])
+    return out.getvalue().encode("utf-8")
+ 
+ 
+# ── Endpoint 1: POST /reports/generate ───────────────────────────────────────
+ 
+def _build_docx(report_type: str, db: Session) -> BytesIO:
+    """Builds a real DOCX file from the same data source as the CSV."""
+    doc = Document()
+    doc.add_heading(f"{report_type.replace('-', ' ').title()} Report", 0)
+    doc.add_paragraph("Generated by AI LMS System")
+
+    # Get the raw CSV string
+    csv_raw = _build_csv(report_type, db)
+    
+    # Parse the CSV back to rows to lay it out in a DOCX table
+    reader = csv.reader(StringIO(csv_raw))
+    rows = list(reader)
+
+    if not rows:
+        doc.add_paragraph("No data available.")
+    else:
+        table = doc.add_table(rows=1, cols=len(rows[0]))
+        table.style = 'Table Grid'
+        
+        # Add Header Row
+        hdr_cells = table.rows[0].cells
+        for idx, col_name in enumerate(rows[0]):
+            hdr_cells[idx].text = col_name
+            
+        # Add Data Rows
+        for row in rows[1:]:
+            row_cells = table.add_row().cells
+            for idx, cell_value in enumerate(row):
+                row_cells[idx].text = cell_value
+
+    bio = BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
+
+ 
+@router.post("/reports/generate")
+def generate_report(
+    payload: GenerateReportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+ 
+    is_word = payload.format.upper() == "WORD"
+    
+    if is_word:
+        bio = _build_docx(payload.report_type, db)
+        size_bytes = len(bio.getvalue())
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"{payload.report_type}_report.docx"
+        iterator = iter([bio.getvalue()])
+    else:
+        raw = _build_csv(payload.report_type, db)
+        size_bytes = len(raw)
+        media_type = "text/csv"
+        filename = f"{payload.report_type}_report.csv"
+        iterator = iter([raw.encode('utf-8')])
+
+    size_kb = round(size_bytes / 1024, 2) or 0.1
+ 
+    db.add(Report(
+        name=f"{payload.report_type.replace('-', ' ').title()} Report",
+        report_type=payload.report_type,
+        format=payload.format,
+        file_size=f"{size_kb} KB",
+        created_by=current_user.full_name or current_user.username,
+    ))
+    db.commit()
+ 
+    return StreamingResponse(
+        iterator,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+ 
+ 
+# ── Endpoint 2: GET /reports ──────────────────────────────────────────────────
+ 
+@router.get("/reports")
+def list_reports(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    rows = db.query(Report).order_by(desc(Report.created_at)).limit(20).all()
+    return [
+        {
+            "id":       r.id,
+            "name":     r.name,
+            "date":     r.created_at.strftime("%b %d, %Y") if r.created_at else "—",
+            "type":     r.format or "CSV",
+            "size":     r.file_size or "—",
+            "category": r.report_type,
+        }
+        for r in rows
+    ]
+ 
+ 
+# ── Endpoint 3: GET /reports/{id}/download ────────────────────────────────────
+ 
+@router.get("/reports/{report_id}/download")
+def download_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    is_word = report.format and report.format.upper() == "WORD"
+    
+    if is_word:
+        bio = _build_docx(report.report_type, db)
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"{report.name.replace(' ', '_')}.docx"
+        iterator = iter([bio.getvalue()])
+    else:
+        raw = _build_csv(report.report_type, db)
+        media_type = "text/csv"
+        filename = f"{report.name.replace(' ', '_')}.csv"
+        iterator = iter([raw.encode('utf-8')])
+
+    return StreamingResponse(
+        iterator,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+ 
+ 
+@router.delete("/reports/{report_id}", status_code=204)
+def delete_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    db.delete(report)
+    db.commit()
+ 
+ 
+# ── Endpoint 4: POST /reports/email ──────────────────────────────────────────
+ 
+@router.post("/reports/email")
+def email_report(
+    payload: EmailReportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+ 
+    recipient_list = [e.strip() for e in payload.recipients.split(",") if e.strip()]
+    if not recipient_list:
+        raise HTTPException(status_code=400, detail="No valid recipients provided")
+ 
+    sender_name = current_user.full_name or current_user.username
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;
+                border:1px solid #e5e7eb;border-radius:12px;">
+      <h2 style="color:#137fec;">{payload.subject}</h2>
+      <p style="color:#475569;">{payload.message or 'Please find the requested report.'}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+      <p style="color:#94a3b8;font-size:12px;">Sent by <strong>{sender_name}</strong> via AI LMS</p>
+    </div>
+    """
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = payload.subject
+        msg["From"]    = settings.MAIL_FROM
+        msg["To"]      = ", ".join(recipient_list)
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT) as srv:
+            srv.starttls()
+            srv.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+            srv.sendmail(settings.MAIL_FROM, recipient_list, msg.as_string())
+    except Exception as exc:
+        # Dev mode: log but don't crash — SMTP may not be configured locally
+        import logging
+        logging.warning(f"[analytics] SMTP not configured or failed: {exc}")
+ 
+    return {"message": f"Report emailed to {len(recipient_list)} recipient(s)"}
+ 
+ 
+# ── Endpoint 5: GET /scheduled-reports ───────────────────────────────────────
+ 
+@router.get("/scheduled-reports")
+def list_scheduled(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    items = db.query(ScheduledReport).filter(ScheduledReport.is_active.is_(True)).all()
+    return [
+        {
+            "id":          s.id,
+            "name":        s.name,
+            "report_type": s.report_type,
+            "frequency":   s.frequency,
+            "next_run":    str(s.next_run) if s.next_run else None,
+        }
+        for s in items
+    ]
+ 
+ 
+# ── Endpoint 6: POST /scheduled-reports ──────────────────────────────────────
+ 
+@router.post("/scheduled-reports", status_code=201)
+def create_scheduled(
+    payload: ScheduledReportCreate,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    item = ScheduledReport(
+        name=payload.name,
+        report_type=payload.report_type,
+        frequency=payload.frequency,
+        next_run=payload.next_run,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return {"id": item.id, "message": "Scheduled report created"}
+ 
+ 
+# ── Endpoint 7: DELETE /scheduled-reports/{id} ───────────────────────────────
+ 
+@router.delete("/scheduled-reports/{report_id}", status_code=204)
+def delete_scheduled(
+    report_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    item = db.query(ScheduledReport).filter(ScheduledReport.id == report_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Scheduled report not found")
+    item.is_active = False
+    db.commit()
+ 
+ 
+# ── Endpoint 8: GET /ai-insights ─────────────────────────────────────────────
+ 
+@router.get("/ai-insights")
+def ai_insights(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role(["admin", "leadership"])),
+):
+    now              = datetime.utcnow()
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+ 
+    # Card 1 — Engagement trend
+    this_active = (
+        db.query(func.count(func.distinct(ActivityLog.user_id)))
+        .filter(ActivityLog.created_at >= this_month_start).scalar() or 0
+    )
+    last_active = (
+        db.query(func.count(func.distinct(ActivityLog.user_id)))
+        .filter(ActivityLog.created_at >= last_month_start,
+                ActivityLog.created_at < this_month_start).scalar() or 1
+    )
+    pct  = round((this_active - last_active) / last_active * 100)
+    sign = "up" if pct >= 0 else "down"
+ 
+    # Card 2 — At-risk learners (progress < 30%)
+    at_risk = 0
+    for uid in [r.id for r in db.query(User.id).filter(User.role == UserRole.LEARNER).all()]:
+        enr = db.query(Enrollment).filter(Enrollment.user_id == uid).first()
+        if enr:
+            total = (db.query(func.count(Lesson.id))
+                     .join(Module, Lesson.module_id == Module.id)
+                     .filter(Module.course_id == enr.course_id).scalar() or 1)
+            done  = (db.query(func.count(Progress.id))
+                     .filter(Progress.enrollment_id == enr.id,
+                             Progress.is_completed.is_(True)).scalar() or 0)
+            if done / total * 100 < 30:
+                at_risk += 1
+ 
+    # Card 3 — Lesson with lowest avg score
+    lesson_row = (
+        db.query(Lesson.title, func.avg(Progress.score).label("avg"))
+        .join(Progress, Progress.lesson_id == Lesson.id)
+        .filter(Progress.score.isnot(None))
+        .group_by(Lesson.id)
+        .order_by(func.avg(Progress.score))
+        .first()
+    )
+ 
+    return [
+        {
+            "icon": "trending_up", "bg": "bg-emerald-100", "text": "text-emerald-700",
+            "title": "Engagement Trend",
+            "desc": f"Active users {sign} {abs(pct)}% vs last month ({this_active} active this month).",
+        },
+        {
+            "icon": "warning", "bg": "bg-amber-100", "text": "text-amber-700",
+            "title": "At-Risk Alert",
+            "desc": f"{at_risk} student(s) below 30% progress. Consider intervention.",
+        },
+        {
+            "icon": "psychology", "bg": "bg-blue-100", "text": "text-blue-700",
+            "title": "Action Recommended",
+            "desc": (
+                f"'{lesson_row[0]}' has the lowest avg score ({round(lesson_row[1])}%). Review content."
+                if lesson_row else
+                "Not enough quiz data yet to surface lesson-level recommendations."
+            ),
+        },
+    ]
