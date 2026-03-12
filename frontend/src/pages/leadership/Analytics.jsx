@@ -236,7 +236,16 @@ export default function Analytics() {
       // Refresh the Recent Reports table
       leadershipApi.getReports().then(setReports).catch(() => {});
     } catch (err) {
-      const msg = err?.response?.data?.detail || "Report generation failed";
+      let msg = "Report generation failed";
+      // If the backend returned a 400/500 as a Blob, we must parse it to read the JSON .detail
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          msg = JSON.parse(text).detail || msg;
+        } catch (_) {}
+      } else if (err?.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
       toast(msg, "error");
     } finally {
       setGenerating(false);
@@ -251,8 +260,17 @@ export default function Analytics() {
       const res = await leadershipApi.downloadReport(r.id);
       triggerDownload(res.data, `${r.name.replace(/\s+/g, "_")}.${extFor(r.type)}`);
       toast("Download started!");
-    } catch {
-      toast("Download failed", "error");
+    } catch (err) {
+      let msg = "Download failed";
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          msg = JSON.parse(text).detail || msg;
+        } catch (_) {}
+      } else if (err?.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      toast(msg, "error");
     } finally {
       setDlSet(p => { const s = new Set(p); s.delete(r.id); return s; });
     }

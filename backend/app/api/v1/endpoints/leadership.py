@@ -1392,7 +1392,7 @@ def generate_report(
         size_bytes = len(raw)
         media_type = "text/csv"
         filename = f"{payload.report_type}_report.csv"
-        iterator = iter([raw.encode('utf-8')])
+        iterator = iter([raw])
 
     size_kb = round(size_bytes / 1024, 2) or 0.1
  
@@ -1456,7 +1456,7 @@ def download_report(
         raw = _build_csv(report.report_type, db)
         media_type = "text/csv"
         filename = f"{report.name.replace(' ', '_')}.csv"
-        iterator = iter([raw.encode('utf-8')])
+        iterator = iter([raw])
 
     return StreamingResponse(
         iterator,
