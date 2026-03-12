@@ -1,50 +1,146 @@
 // ─── Management.jsx ────────────────────────────────────────────────────────
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import LeadershipShell from './LeadershipShell';
 import { Card, Btn, Tabs, Modal, Input, Select, Toggle } from './_ui';
-import { useLeadershipData } from './_store';
-
+import { leadershipApi } from "../../services/adminApi";
 const TABS = [
-  { id: 'trainers',     label: 'Trainers',    icon: 'school'              },
-  { id: 'announce',     label: 'Announcements', icon: 'campaign'           },
-  { id: 'programs',     label: 'Programs',    icon: 'menu_book'           },
-  { id: 'permissions',  label: 'Permissions', icon: 'admin_panel_settings'},
-];
-
-const INIT_ANNOUNCEMENTS = [
-  { id: 1, title: 'Q1 2026 Progress Review',         date: 'Feb 15, 2026', audience: 'All Students',      status: 'sent'      },
-  { id: 2, title: 'New Python Module Launch',         date: 'Feb 10, 2026', audience: 'Python Mastery',    status: 'sent'      },
-  { id: 3, title: 'Upcoming Mentorship Sessions',     date: 'Feb 20, 2026', audience: 'At-Risk Students',  status: 'scheduled' },
+  { id: 'trainers', label: 'Trainers', icon: 'school' },
+  { id: 'announce', label: 'Announcements', icon: 'campaign' },
+  { id: 'programs', label: 'Programs', icon: 'menu_book' },
+  { id: 'permissions', label: 'Permissions', icon: 'admin_panel_settings' },
 ];
 
 export default function Management() {
-  const { trainers } = useLeadershipData();
   const [activeTab, setActiveTab] = useState('trainers');
-  const [announcements, setAnnouncements] = useState(INIT_ANNOUNCEMENTS);
+
+  // ── Stats ──
+  const [stats, setStats] = useState({
+    active_trainers: 0, total_programs: 0, pending_reviews: 0, announcements_sent: 0,
+  });
+
+  // ── Trainers ──
+  const [trainers, setTrainers] = useState([]);
+
+  // ── Announcements ──
+  const [announcements, setAnnouncements] = useState([]);
   const [announceModal, setAnnounceModal] = useState(false);
   const [form, setForm] = useState({ title: '', audience: 'All Students', message: '' });
   const [formErr, setFormErr] = useState({});
-  const [programSettings, setProgramSettings] = useState({ aiCoach: true, peerReview: false, liveSession: true, autoNudge: true });
 
+  // ── Program Settings ──
+  const [programSettings, setProgramSettings] = useState({
+    aiCoach: true, peerReview: false, liveSession: true, autoNudge: true,
+  });
+
+  // ── Invite Trainer Modal ──
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: '', name: '' });
+
+  // ── Message Trainer Modal ──
+  const [msgModal, setMsgModal] = useState(false);
+  const [msgTarget, setMsgTarget] = useState(null);
+  const [msgForm, setMsgForm] = useState({ subject: '', body: '' });
+
+  // ── Load on mount ──
+  useEffect(() => {
+    leadershipApi.getManagementStats()
+      .then(setStats)
+      .catch(() => { });
+
+    leadershipApi.getTrainers()
+      .then(setTrainers)
+      .catch(() => { });
+
+    leadershipApi.getAnnouncements()
+      .then(setAnnouncements)
+      .catch(() => { });
+
+    leadershipApi.getProgramSettings()
+      .then(setProgramSettings)
+      .catch(() => { });
+  }, []);
+
+  // ── Announcement submit ──
   const validateAnnounce = () => {
     const errs = {};
-    if (!form.title.trim())   errs.title   = 'Title is required';
+    if (!form.title.trim()) errs.title = 'Title is required';
     if (!form.message.trim()) errs.message = 'Message is required';
     setFormErr(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const submitAnnounce = () => {
+  const submitAnnounce = async () => {
     if (!validateAnnounce()) return;
-    setAnnouncements(prev => [{ id: Date.now(), title: form.title, date: 'Feb 19, 2026', audience: form.audience, status: 'scheduled' }, ...prev]);
-    toast.success('Announcement scheduled!');
+    try {
+      const res = await leadershipApi.createAnnouncement(form);
+      toast.success(res.message || 'Announcement sent!');
+      const updated = await leadershipApi.getAnnouncements();
+      setAnnouncements(updated);
+      const s = await leadershipApi.getManagementStats();
+      setStats(s);
+    } catch {
+      toast.error('Failed to send announcement');
+    }
     setAnnounceModal(false);
     setForm({ title: '', audience: 'All Students', message: '' });
     setFormErr({});
   };
 
-  const deleteAnnounce = (id) => { setAnnouncements(prev => prev.filter(a => a.id !== id)); toast.success('Removed!'); };
+  const deleteAnnounce = async (id) => {
+    try {
+      await leadershipApi.deleteAnnouncement(id);
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
+      toast.success('Removed!');
+      const s = await leadershipApi.getManagementStats();
+      setStats(s);
+    } catch {
+      toast.error('Failed to delete');
+    }
+  };
+
+  // ── Program settings save ──
+  const saveSettings = async () => {
+    try {
+      await leadershipApi.saveProgramSettings(programSettings);
+      toast.success('Program settings saved!');
+    } catch {
+      toast.error('Failed to save settings');
+    }
+  };
+
+  // ── Invite trainer submit ──
+  const submitInvite = async () => {
+    if (!inviteForm.email.trim()) { toast.error('Email is required'); return; }
+    try {
+      const res = await leadershipApi.inviteTrainer(inviteForm);
+      toast.success(res.message || 'Invitation sent!');
+      setInviteModal(false);
+      setInviteForm({ email: '', name: '' });
+    } catch {
+      toast.error('Failed to send invitation');
+    }
+  };
+
+  // ── Message trainer submit ──
+  const submitMessage = async () => {
+    if (!msgForm.subject.trim() || !msgForm.body.trim()) {
+      toast.error('Subject and message are required');
+      return;
+    }
+    try {
+      const res = await leadershipApi.messageTrainer({
+        trainer_user_id: msgTarget.id,
+        subject: msgForm.subject,
+        body: msgForm.body,
+      });
+      toast.success(res.message || 'Message sent!');
+      setMsgModal(false);
+      setMsgForm({ subject: '', body: '' });
+    } catch {
+      toast.error('Failed to send message');
+    }
+  };
 
   return (
     <LeadershipShell title="Program Management">
@@ -62,13 +158,13 @@ export default function Management() {
           </Btn>
         </div>
 
-        {/* Summary */}
+        {/* Summary — live from API */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Active Trainers',      value: '8',  icon: 'school',         bg: 'bg-blue-50',   text: 'text-[#137fec]'   },
-            { label: 'Total Programs',       value: '5',  icon: 'menu_book',      bg: 'bg-purple-50', text: 'text-purple-600'  },
-            { label: 'Pending Reviews',      value: '3',  icon: 'rate_review',    bg: 'bg-amber-50',  text: 'text-amber-600'   },
-            { label: 'Announcements Sent',   value: '24', icon: 'campaign',       bg: 'bg-emerald-50',text: 'text-emerald-600' },
+            { label: 'Active Trainers', value: stats.active_trainers, icon: 'school', bg: 'bg-blue-50', text: 'text-[#137fec]' },
+            { label: 'Total Programs', value: stats.total_programs, icon: 'menu_book', bg: 'bg-purple-50', text: 'text-purple-600' },
+            { label: 'Pending Reviews', value: stats.pending_reviews, icon: 'rate_review', bg: 'bg-amber-50', text: 'text-amber-600' },
+            { label: 'Announcements Sent', value: stats.announcements_sent, icon: 'campaign', bg: 'bg-emerald-50', text: 'text-emerald-600' },
           ].map(({ label, value, icon, bg, text }) => (
             <Card key={label} className="p-4 flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${bg}`}>
@@ -90,7 +186,7 @@ export default function Management() {
           <Card className="overflow-hidden p-0">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h3 className="text-[15px] font-bold">Trainer Roster</h3>
-              <Btn className="text-[12px] py-1.5" onClick={() => toast.success('Invite sent!')}>
+              <Btn className="text-[12px] py-1.5" onClick={() => setInviteModal(true)}>
                 <span className="material-symbols-outlined text-[14px]">person_add</span> Invite Trainer
               </Btn>
             </div>
@@ -98,7 +194,7 @@ export default function Management() {
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    {['Trainer','Courses','Students','Rating','Status','Actions'].map(h => (
+                    {['Trainer', 'Courses', 'Students', 'Rating', 'Status', 'Actions'].map(h => (
                       <th key={h} className={`text-[11px] font-bold uppercase tracking-wider text-slate-400 px-4 py-3 ${h === 'Actions' ? 'text-right' : 'text-left'}`}>{h}</th>
                     ))}
                   </tr>
@@ -133,7 +229,7 @@ export default function Management() {
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => toast.success(`Message sent to ${t.name}`)}
+                          <button onClick={() => { setMsgTarget(t); setMsgModal(true); }}
                             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#137fec] transition-colors">
                             <span className="material-symbols-outlined text-[16px]">mail</span>
                           </button>
@@ -200,10 +296,10 @@ export default function Management() {
             <h3 className="text-[15px] font-bold mb-5">Program Feature Settings</h3>
             <div className="divide-y divide-slate-50">
               {[
-                { key: 'aiCoach',     label: 'AI Coaching Assistant',  desc: 'Enable AI-powered real-time coaching for all students' },
-                { key: 'peerReview',  label: 'Peer Review System',      desc: 'Allow students to review each other\'s assignments'    },
-                { key: 'liveSession', label: 'Live Q&A Sessions',       desc: 'Enable scheduled live sessions with trainers'          },
-                { key: 'autoNudge',   label: 'Automated Nudges',        desc: 'Send automated reminders to inactive students'         },
+                { key: 'aiCoach', label: 'AI Coaching Assistant', desc: 'Enable AI-powered real-time coaching for all students' },
+                { key: 'peerReview', label: 'Peer Review System', desc: "Allow students to review each other's assignments" },
+                { key: 'liveSession', label: 'Live Q&A Sessions', desc: 'Enable scheduled live sessions with trainers' },
+                { key: 'autoNudge', label: 'Automated Nudges', desc: 'Send automated reminders to inactive students' },
               ].map(({ key, label, desc }) => (
                 <div key={key} className="flex items-center justify-between py-4">
                   <div>
@@ -211,15 +307,12 @@ export default function Management() {
                     <p className="text-[11px] text-slate-400">{desc}</p>
                   </div>
                   <Toggle value={programSettings[key]}
-                    onChange={(v) => {
-                      setProgramSettings(prev => ({ ...prev, [key]: v }));
-                      toast.success(`${label} ${v ? 'enabled' : 'disabled'}`);
-                    }} />
+                    onChange={(v) => setProgramSettings(prev => ({ ...prev, [key]: v }))} />
                 </div>
               ))}
             </div>
             <div className="mt-5 pt-4 border-t border-slate-100 flex justify-end">
-              <Btn onClick={() => toast.success('Program settings saved!')}>
+              <Btn onClick={saveSettings}>
                 <span className="material-symbols-outlined text-[16px]">save</span> Save Settings
               </Btn>
             </div>
@@ -232,10 +325,10 @@ export default function Management() {
             <h3 className="text-[15px] font-bold mb-5">Role-Based Access Control</h3>
             <div className="space-y-4">
               {[
-                { role: 'Leadership',  permissions: ['View all dashboards', 'Generate reports', 'Manage programs', 'View AI analytics'],       color: 'bg-purple-100 text-purple-700' },
-                { role: 'Trainer',     permissions: ['View assigned students', 'Manage course content', 'View course analytics'],               color: 'bg-blue-100 text-blue-700'   },
-                { role: 'Learner',     permissions: ['View personal progress', 'Access course content', 'Use AI tutor'],                        color: 'bg-green-100 text-green-700' },
-                { role: 'Admin',       permissions: ['Full system access', 'Manage users & roles', 'System configuration', 'Billing & plans'], color: 'bg-red-100 text-red-700'     },
+                { role: 'Leadership', permissions: ['View all dashboards', 'Generate reports', 'Manage programs', 'View AI analytics'], color: 'bg-purple-100 text-purple-700' },
+                { role: 'Trainer', permissions: ['View assigned students', 'Manage course content', 'View course analytics'], color: 'bg-blue-100 text-blue-700' },
+                { role: 'Learner', permissions: ['View personal progress', 'Access course content', 'Use AI tutor'], color: 'bg-green-100 text-green-700' },
+                { role: 'Admin', permissions: ['Full system access', 'Manage users & roles', 'System configuration', 'Billing & plans'], color: 'bg-red-100 text-red-700' },
               ].map(({ role, permissions, color }) => (
                 <div key={role} className="border border-slate-100 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -257,7 +350,7 @@ export default function Management() {
         )}
       </div>
 
-      {/* Announcement Modal */}
+      {/* ── Announcement Modal ── */}
       <Modal open={announceModal} onClose={() => { setAnnounceModal(false); setFormErr({}); }}
         title="Create Announcement"
         footer={<>
@@ -273,7 +366,7 @@ export default function Management() {
             {formErr.title && <p className="text-[11px] text-red-500 mt-1">{formErr.title}</p>}
           </div>
           <Select label="Audience" value={form.audience} onChange={e => setForm(p => ({ ...p, audience: e.target.value }))}>
-            {['All Students','At-Risk Students','Python Mastery','Data Science & AI','All Trainers'].map(o => <option key={o}>{o}</option>)}
+            {['All Students', 'At-Risk Students', 'Python Mastery', 'Data Science & AI', 'All Trainers'].map(o => <option key={o}>{o}</option>)}
           </Select>
           <div>
             <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Message</label>
@@ -286,6 +379,44 @@ export default function Management() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Invite Trainer Modal ── */}
+      <Modal open={inviteModal} onClose={() => setInviteModal(false)}
+        title="Invite Trainer"
+        footer={<>
+          <Btn variant="secondary" onClick={() => setInviteModal(false)}>Cancel</Btn>
+          <Btn onClick={submitInvite}>
+            <span className="material-symbols-outlined text-[16px]">send</span> Send Invite
+          </Btn>
+        </>}>
+        <div className="space-y-4">
+          <Input label="Name" value={inviteForm.name} onChange={e => setInviteForm(p => ({ ...p, name: e.target.value }))} placeholder="Trainer name" />
+          <Input label="Email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))} placeholder="trainer@email.com" type="email" />
+        </div>
+      </Modal>
+
+      {/* ── Message Trainer Modal ── */}
+      <Modal open={msgModal} onClose={() => setMsgModal(false)}
+        title={`Message ${msgTarget?.name || 'Trainer'}`}
+        footer={<>
+          <Btn variant="secondary" onClick={() => setMsgModal(false)}>Cancel</Btn>
+          <Btn onClick={submitMessage}>
+            <span className="material-symbols-outlined text-[16px]">send</span> Send Message
+          </Btn>
+        </>}>
+        <div className="space-y-4">
+          <Input label="Subject" value={msgForm.subject} onChange={e => setMsgForm(p => ({ ...p, subject: e.target.value }))} placeholder="Subject…" />
+          <div>
+            <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Message</label>
+            <textarea rows={4}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#137fec]/20 resize-none"
+              placeholder="Write your message…"
+              value={msgForm.body}
+              onChange={e => setMsgForm(p => ({ ...p, body: e.target.value }))} />
+          </div>
+        </div>
+      </Modal>
+
     </LeadershipShell>
   );
 }
