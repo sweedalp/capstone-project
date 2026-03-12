@@ -1160,57 +1160,30 @@ def save_integrations(
 # Management APIs
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class InviteTrainerRequest(BaseModel):
-    email: str
-    name: str = ""
-
-
-class AnnouncementCreate(BaseModel):
-    title: str
-    audience: str
-    message: str
-
-
-class TrainerMessageRequest(BaseModel):
-    trainer_user_id: int
-    subject: str
-    body: str
-
-
-class ProgramSettingsSchema(BaseModel):
-    aiCoach: bool = True
-    peerReview: bool = False
-    liveSession: bool = True
-    autoNudge: bool = True
-
 
 @router.get("/management/stats")
 def management_stats(
     db: Session = Depends(get_db),
     _user: User = Depends(require_role(["admin", "leadership"])),
 ):
-    active_trainers = (
-        db.query(func.count(User.id))
-        .filter(User.role == UserRole.TRAINER, User.is_active.is_(True))
-        .scalar() or 0
-    )
-    total_programs = (
-        db.query(func.count(Course.id))
-        .filter(Course.is_published.is_(True))
-        .scalar() or 0
-    )
-    announcements_sent = (
-        db.query(func.count(Notification.id))
-        .filter(Notification.type == "announcement")
-        .scalar() or 0
-    )
-    return {
-        "active_trainers":    active_trainers,
-        "total_programs":     total_programs,
-        "pending_reviews":    0,
-        "announcements_sent": announcements_sent,
-    }
+    active_trainers = db.query(func.count(User.id)).filter(
+        User.role == UserRole.TRAINER, User.is_active.is_(True)
+    ).scalar() or 0
 
+    total_programs = db.query(func.count(Course.id)).filter(
+        Course.is_published.is_(True)
+    ).scalar() or 0
+
+    total_announcements = db.query(func.count(Notification.id)).filter(
+        Notification.type == "announcement"
+    ).scalar() or 0
+
+    return {
+        "active_trainers":      active_trainers,
+        "total_programs":       total_programs,
+        "pending_reviews":      0,        # extend when review table exists
+        "announcements_sent":   total_announcements,
+    }
 
 @router.get("/trainers")
 def list_trainers(
@@ -1220,11 +1193,7 @@ def list_trainers(
     trainers = db.query(User).filter(User.role == UserRole.TRAINER).all()
     result = []
     for t in trainers:
-        course_count = (
-            db.query(func.count(Course.id))
-            .filter(Course.trainer_id == t.id)
-            .scalar() or 0
-        )
+        course_count = db.query(func.count(Course.id)).filter(Course.trainer_id == t.id).scalar() or 0
         student_count = (
             db.query(func.count(Enrollment.id))
             .join(Course, Enrollment.course_id == Course.id)
@@ -1238,11 +1207,14 @@ def list_trainers(
             "role":     "Trainer",
             "courses":  course_count,
             "students": student_count,
-            "rating":   4.5,
+            "rating":   4.5,       # static for now; extend when ratings table exists
             "status":   "active" if t.is_active else "inactive",
         })
     return result
 
+class InviteTrainerRequest(BaseModel):
+    email: str
+    name: str = ""
 
 @router.post("/trainers/invite", status_code=200)
 def invite_trainer(
@@ -1255,26 +1227,26 @@ def invite_trainer(
 
     sender_name = current_user.full_name or current_user.username
     html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;
-                border:1px solid #e5e7eb;border-radius:12px;">
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
       <h2>You're invited to join AI LMS as a Trainer</h2>
       <p>Hi {payload.name or 'there'},</p>
       <p>{sender_name} has invited you to join the AI LMS platform as a Trainer.</p>
-      <a href="http://localhost:3000/signup"
-         style="display:inline-block;margin:24px 0;padding:12px 28px;background:#2563eb;
-                color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
-        Accept Invitation &amp; Sign Up
+      <a href="http://localhost:3000/signup" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
+        Accept Invitation & Sign Up
       </a>
       <p style="color:#94a3b8;font-size:12px;">AI LMS Knowledge Intelligence Platform</p>
     </div>
     """
+    if not all([settings.MAIL_FROM, settings.MAIL_USERNAME, settings.MAIL_PASSWORD]):
+        raise HTTPException(status_code=502, detail="Email not configured on server")
+
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = "You're invited to join AI LMS as a Trainer"
         msg["From"] = settings.MAIL_FROM
         msg["To"] = payload.email
         msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT) as server:
+        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10) as server:
             server.starttls()
             server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
             server.sendmail(settings.MAIL_FROM, payload.email, msg.as_string())
@@ -1283,66 +1255,19 @@ def invite_trainer(
 
     return {"message": f"Invitation sent to {payload.email}"}
 
-
-@router.post("/trainers/message")
-def message_trainer(
-    payload: TrainerMessageRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    trainer = db.query(User).filter(
-        User.id == payload.trainer_user_id,
-        User.role == UserRole.TRAINER,
-    ).first()
-    if not trainer:
-        raise HTTPException(status_code=404, detail="Trainer not found")
-
-    sender_name = current_user.full_name or current_user.username
-    trainer_name = trainer.full_name or trainer.username
-
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;
-                border:1px solid #e5e7eb;border-radius:12px;">
-      <h2>{payload.subject}</h2>
-      <p>Hi {trainer_name},</p>
-      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0;">
-        {payload.body}
-      </div>
-      <p style="color:#94a3b8;font-size:12px;">
-        Sent by {sender_name} via AI LMS Leadership Portal
-      </p>
-    </div>
-    """
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = payload.subject
-        msg["From"] = settings.MAIL_FROM
-        msg["To"] = trainer.email
-        msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT) as server:
-            server.starttls()
-            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
-            server.sendmail(settings.MAIL_FROM, trainer.email, msg.as_string())
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Email failed: {exc}")
-
-    return {"message": f"Message sent to {trainer_name}"}
-
+class AnnouncementCreate(BaseModel):
+    title: str
+    audience: str   # "All Students", "At-Risk Students", etc.
+    message: str
 
 @router.get("/announcements")
 def list_announcements(
     db: Session = Depends(get_db),
     _user: User = Depends(require_role(["admin", "leadership"])),
 ):
-    items = (
-        db.query(Notification)
-        .filter(Notification.type == "announcement")
-        .order_by(desc(Notification.created_at))
-        .all()
-    )
+    items = db.query(Notification).filter(
+        Notification.type == "announcement"
+    ).order_by(desc(Notification.created_at)).all()
     return [
         {
             "id":       n.id,
@@ -1355,7 +1280,6 @@ def list_announcements(
         for n in items
     ]
 
-
 @router.post("/announcements", status_code=201)
 def create_announcement(
     payload: AnnouncementCreate,
@@ -1365,13 +1289,19 @@ def create_announcement(
     if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    # Store audience and message together, separated by ||
     combined_message = f"{payload.audience}||{payload.message}"
 
+    # Find target users
     if payload.audience == "All Trainers":
         target_users = db.query(User).filter(User.role == UserRole.TRAINER).all()
+    elif payload.audience == "All Students":
+        target_users = db.query(User).filter(User.role == UserRole.LEARNER).all()
     else:
         target_users = db.query(User).filter(User.role == UserRole.LEARNER).all()
 
+    # Create a notification record for each target user
+    from app.core.notifications import create_notification
     for u in target_users:
         create_notification(
             db=db,
@@ -1384,6 +1314,7 @@ def create_announcement(
             notif_type="announcement",
         )
 
+    # Also save one "master" record for the leadership list view
     master = Notification(
         user_id=current_user.id,
         title=payload.title,
@@ -1399,7 +1330,6 @@ def create_announcement(
 
     return {"id": master.id, "message": f"Announcement sent to {len(target_users)} users"}
 
-
 @router.delete("/announcements/{announcement_id}", status_code=204)
 def delete_announcement(
     announcement_id: int,
@@ -1412,48 +1342,90 @@ def delete_announcement(
     db.delete(item)
     db.commit()
 
-
-_PROGRAM_SETTINGS_DEFAULTS = {
-    "aiCoach":     True,
-    "peerReview":  False,
-    "liveSession": True,
-    "autoNudge":   True,
-}
-
-
 @router.get("/program-settings")
 def get_program_settings(
     db: Session = Depends(get_db),
     _user: User = Depends(require_role(["admin", "leadership"])),
 ):
-    last_save = (
-        db.query(ActivityLog)
-        .filter(ActivityLog.action == "program_settings")
-        .order_by(desc(ActivityLog.created_at))
-        .first()
-    )
-    if last_save and last_save.description:
+    # Default settings
+    defaults = {
+        "aiCoach": True, "peerReview": False,
+        "liveSession": True, "autoNudge": True
+    }
+    # Look for last saved settings in activity_logs
+    last_save = db.query(ActivityLog).filter(
+        ActivityLog.action == "program_settings"
+    ).order_by(desc(ActivityLog.created_at)).first()
+
+    if last_save:
+        import json
         try:
             return json.loads(last_save.description)
         except Exception:
             pass
-    return _PROGRAM_SETTINGS_DEFAULTS
-
+    return defaults
 
 @router.put("/program-settings")
 def save_program_settings(
-    payload: ProgramSettingsSchema,
+    payload: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
         raise HTTPException(status_code=403, detail="Not authorized")
+    import json
     log = ActivityLog(
         user_id=current_user.id,
         action="program_settings",
-        description=json.dumps(payload.dict()),
-        created_at=datetime.utcnow(),
+        description=json.dumps(payload),
     )
     db.add(log)
     db.commit()
     return {"message": "Settings saved"}
+
+class TrainerMessageRequest(BaseModel):
+    trainer_user_id: int
+    subject: str
+    body: str
+
+@router.post("/trainers/message")
+def message_trainer(
+    payload: TrainerMessageRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in (UserRole.LEADERSHIP, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    trainer = db.query(User).filter(
+        User.id == payload.trainer_user_id, User.role == UserRole.TRAINER
+    ).first()
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+
+    sender_name = current_user.full_name or current_user.username
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
+      <h2>{payload.subject}</h2>
+      <p>Hi {trainer.full_name or trainer.username},</p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0;">{payload.body}</div>
+      <p style="color:#94a3b8;font-size:12px;">Sent by {sender_name} via AI LMS Leadership Portal</p>
+    </div>
+    """
+    if not all([settings.MAIL_FROM, settings.MAIL_USERNAME, settings.MAIL_PASSWORD]):
+        raise HTTPException(status_code=502, detail="Email not configured on server")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = payload.subject
+        msg["From"] = settings.MAIL_FROM
+        msg["To"] = trainer.email
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+            server.sendmail(settings.MAIL_FROM, trainer.email, msg.as_string())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Email failed: {exc}")
+
+    return {"message": f"Message sent to {trainer.full_name or trainer.username}"}

@@ -23,6 +23,7 @@ from app.api.v1.endpoints import (
     meetings,
     messaging,
     notifications,
+    leadership,
     admin_knowledge,
     admin_reports,
     ai_content,
@@ -55,4 +56,5 @@ api_router.include_router(messaging.router, prefix="/messaging", tags=["Messagin
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(admin_knowledge.router, prefix="/admin/knowledge", tags=["Admin Knowledge"])
 api_router.include_router(admin_reports.router, prefix="/admin/reports", tags=["Admin Reports"])
+api_router.include_router(leadership.router, prefix="/leadership", tags=["Leadership"])
 api_router.include_router(ai_content.router, tags=["AI Content"])
