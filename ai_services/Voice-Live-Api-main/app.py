@@ -2,7 +2,10 @@ from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
-import PyPDF2
+try:
+    import PyPDF2
+except ImportError:
+    import pypdf as PyPDF2
 import io
 
 app = FastAPI(
@@ -30,6 +33,11 @@ class ContextItem(BaseModel):
 @app.get("/")
 def root():
     return {"message": "Voice Live Context API running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "voice-live-context-api"}
 
 
 # =====================

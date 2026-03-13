@@ -592,53 +592,7 @@ const AILearningHub = () => {
             </div>
           </div>
 
-          <div className="mb-12">
-            <h2 className="text-slate-900 text-xl font-bold mb-5 flex items-center gap-2">
-              <span className="material-symbols-outlined text-blue-600">psychology</span>
-              Personalized Revision Assistant
-            </h2>
-            {loading ? (
-              <div className="h-48 bg-white rounded-xl border border-slate-200 animate-pulse"></div>
-            ) : revision?.has_data ? (
-              <div className="relative overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
-                <div className="flex flex-col md:flex-row items-stretch bg-gradient-to-r from-white to-blue-600/5 rounded-lg overflow-hidden">
-                  <div className="flex-[1.5] p-8 flex flex-col justify-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 text-blue-600 text-xs font-bold mb-4 w-fit">
-                      <span className="material-symbols-outlined text-xs">bolt</span>
-                      AI RECOMMENDATION
-                    </div>
-                    <h3 className="text-3xl font-bold text-slate-900 mb-3">Mastering {revision.topic}</h3>
-                    <p className="text-slate-600 text-lg mb-6 leading-relaxed">
-                      Based on your recent quiz score ({Math.round(revision.score)}%), we've identified gaps. Let's fix that.
-                    </p>
-                    <div className="flex gap-4 flex-wrap">
-                      <button
-                        onClick={handleStartReviewSession}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-blue-600/20 hover:scale-[1.02] transition-all"
-                      >
-                        <span className="material-symbols-outlined">auto_fix_high</span>
-                        Start Review Session
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex-1 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center min-h-[200px]">
-                    <span className="material-symbols-outlined text-blue-300 text-[100px]">psychology</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-                <span className="material-symbols-outlined text-slate-300 text-5xl mb-3 block">quiz</span>
-                <p className="text-slate-500 font-medium">Complete a quiz to get personalized revision recommendations.</p>
-                <button
-                  onClick={() => navigate('/learner/courses')}
-                  className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-                >
-                  Browse Courses
-                </button>
-              </div>
-            )}
-          </div>
+
 
           <section className="mb-12">
             <div className="flex items-center justify-between mb-6">

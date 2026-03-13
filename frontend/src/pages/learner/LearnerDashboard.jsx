@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerNotifications from '../../components/LearnerNotifications';
 import LearnerSidebar from '../../components/LearnerSidebar';
 import VoiceAIDrawer from '../../components/VoiceAIDrawer';
 import apiClient from '../../services/api';
@@ -14,22 +15,15 @@ const LearnerDashboard = () => {
   const firstName = userName.split(' ')[0];
 
   const [dashboardData, setDashboardData] = useState(null);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
-  const notificationsRef = useRef(null);
   const refreshTimerRef = useRef(null);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [dashRes, notifRes] = await Promise.all([
-        apiClient.get('/api/v1/dashboard/'),
-        apiClient.get('/api/v1/notifications/'),
-      ]);
+      const dashRes = await apiClient.get('/api/v1/dashboard/');
       setDashboardData(dashRes.data);
-      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -50,16 +44,6 @@ const LearnerDashboard = () => {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [fetchDashboard]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
-    };
-    if (showNotifications) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications]);
 
   const stats = dashboardData ? [
     {
@@ -104,7 +88,6 @@ const LearnerDashboard = () => {
     },
   ] : [];
 
-  const unreadCount = notifications.filter(n => n.unread).length;
   const recentCourses = dashboardData?.recent_courses || [];
   const upcomingLessons = dashboardData?.upcoming_lessons || [];
   const recentActivity = dashboardData?.recent_activity || [];
@@ -176,49 +159,7 @@ const LearnerDashboard = () => {
               <span className="material-symbols-outlined text-[18px]">graphic_eq</span>
               <span>Voice AI</span>
             </button> */}
-            <div className="relative" ref={notificationsRef}>
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full"
-              >
-                <span className="material-symbols-outlined">notifications</span>
-                {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                )}
-              </button>
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-[9999] max-h-[500px] flex flex-col">
-                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold">Notifications</h3>
-                      {unreadCount > 0 && <p className="text-xs text-slate-500">{unreadCount} unread</p>}
-                    </div>
-                    <button onClick={() => setShowNotifications(false)}>
-                      <span className="material-symbols-outlined text-lg text-slate-400">close</span>
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto flex-1">
-                    {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-slate-400 text-sm">No notifications</div>
-                    ) : notifications.map((n, idx) => (
-                      <div key={n.id || idx} className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 ${n.unread ? 'bg-blue-50/50' : ''}`}>
-                        <div className="flex gap-3">
-                          <div className={`flex-shrink-0 w-10 h-10 ${n.icon_bg || 'bg-blue-100'} rounded-full flex items-center justify-center`}>
-                            <span className={`material-symbols-outlined text-lg ${n.icon_color || 'text-blue-600'}`}>{n.icon || 'notifications'}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold line-clamp-1">{n.title}</p>
-                            <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{formatTime(n.created_at)}</p>
-                          </div>
-                          {n.unread && <span className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <LearnerNotifications />
             <div className="h-8 w-px bg-slate-200"></div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">

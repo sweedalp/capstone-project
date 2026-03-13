@@ -22,7 +22,6 @@ import LearnerSavedResources from './pages/learner/LearnerSavedResources'
 import TrainerDashboard from './pages/trainer/TrainerDashboard'
 import TrainerCourseManagement from './pages/trainer/TrainerCourseManagement'
 import TrainerUploadContent from './pages/trainer/TrainerUploadContent'
-import TrainerAIContentStudio from './pages/trainer/TrainerAIContentStudio'
 import TrainerStudentAnalytics from './pages/trainer/TrainerStudentAnalytics'
 import TrainerContentLibrary from './pages/trainer/TrainerContentLibrary'
 import TrainerMessages from './pages/trainer/TrainerMessages'
@@ -80,7 +79,6 @@ function App() {
         <Route path="/trainer/courses" element={<TrainerCourseManagement />} />
         <Route path="/trainer/courses/:courseId" element={<TrainerCourseManagement />} />
         <Route path="/trainer/courses/:courseId/upload" element={<TrainerUploadContent />} />
-        <Route path="/trainer/ai-studio" element={<TrainerAIContentStudio />} />
         <Route path="/trainer/courses/:courseId/analytics" element={<TrainerStudentAnalytics />} />
         <Route path="/trainer/analytics" element={<TrainerStudentAnalytics />} />
         <Route path="/trainer/content-library" element={<TrainerContentLibrary />} />

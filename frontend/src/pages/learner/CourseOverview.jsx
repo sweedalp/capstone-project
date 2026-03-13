@@ -207,6 +207,33 @@ const CourseOverview = () => {
                   {enrolling ? <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div> : <span className="material-symbols-outlined">rocket_launch</span>}
                   {enrolling ? 'Enrolling...' : 'Enroll Now'}
                 </button>
+              ) : progressPct === 100 ? (
+                <div className="flex flex-col items-end gap-2">
+                  <button onClick={handleStartCourse} className="flex items-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-bold shadow-xl hover:bg-blue-50 transition-colors">
+                    <span className="material-symbols-outlined">play_arrow</span>
+                    Review Course
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                      const res = await fetch(`/api/v1/courses/${courseId}/certificate`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (!res.ok) { alert('Could not generate certificate. Please try again.'); return; }
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `certificate_${courseId}.html`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-2 bg-yellow-400 text-yellow-900 px-6 py-3 rounded-xl font-bold shadow-xl hover:bg-yellow-300 transition-colors"
+                  >
+                    <span className="material-symbols-outlined">workspace_premium</span>
+                    Download Certificate
+                  </button>
+                </div>
               ) : (
                 <button onClick={handleStartCourse} className="flex items-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-bold shadow-xl hover:bg-blue-50 transition-colors">
                   <span className="material-symbols-outlined">play_arrow</span>

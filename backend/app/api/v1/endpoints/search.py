@@ -116,19 +116,30 @@ def get_suggestions(
     ).limit(3).all()
 
     suggestions = []
+    seen = set()
+
+    def add(s: str):
+        key = s.strip().lower()
+        if key not in seen and len(suggestions) < 5:
+            seen.add(key)
+            suggestions.append(s.strip())
+
     for enr in enrollments:
         course = db.query(Course).filter(Course.id == enr.course_id).first()
-        if course:
-            suggestions.append(f"What is {course.title}?")
-            # Use order_index (not order) to match your Module model
-            first_module = (
-                db.query(Module)
-                .filter(Module.course_id == course.id)
-                .order_by(Module.order_index)
-                .first()
-            )
-            if first_module:
-                suggestions.append(f"Explain {first_module.title}")
+        if not course:
+            continue
+        # Use course title (short enough to be a good suggestion)
+        add(f"What is {course.title}?")
+        # Use first lesson title (more specific than module title)
+        first_lesson = (
+            db.query(Lesson)
+            .join(Module, Module.id == Lesson.module_id)
+            .filter(Module.course_id == course.id)
+            .order_by(Module.order_index, Lesson.order_index)
+            .first()
+        )
+        if first_lesson:
+            add(f"Explain {first_lesson.title}")
 
     generic = [
         "How do loops work?",
@@ -138,10 +149,7 @@ def get_suggestions(
         "What is a function?",
     ]
     for g in generic:
-        if len(suggestions) >= 5:
-            break
-        if g not in suggestions:
-            suggestions.append(g)
+        add(g)
 
     return {"suggestions": suggestions[:5]}
 

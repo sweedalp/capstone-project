@@ -1,5 +1,8 @@
 import whisper
-from moviepy.editor import VideoFileClip
+try:
+    from moviepy import VideoFileClip
+except ImportError:
+    from moviepy.editor import VideoFileClip
 
 model = whisper.load_model("tiny")
 

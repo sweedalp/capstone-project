@@ -59,6 +59,7 @@ def toggle_wishlist(db: Session, user_id: int, course_id: int) -> Enrollment:
             user_id=user_id,
             course_id=course_id,
             is_wishlisted=True,
+            is_enrolled=False,
         )
         db.add(enrollment)
     else:

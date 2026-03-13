@@ -119,19 +119,27 @@ class ConversationManager:
 
             if msg.role == "assistant" and msg.code_blocks:
                 for cb in msg.code_blocks[:3]:
-                    code_preview = "\n".join(cb.get("lines", [])[:8])
-                    lang = cb.get("language", "python")
+                    if isinstance(cb, dict):
+                        code_preview = "\n".join(cb.get("lines", [])[:8])
+                        lang = cb.get("language", "python")
+                    else:
+                        code_preview = str(cb)[:200]
+                        lang = "code"
                     content += f"\n[Code shown ({lang}):\n```\n{code_preview}\n```]"
 
             if msg.role == "assistant" and msg.diagrams:
                 for dg in msg.diagrams[:2]:
-                    dtype = dg.get("type", "diagram")
-                    comps = [c.get("name", "") for c in
-                             dg.get("components", [])[:5]]
+                    if isinstance(dg, dict):
+                        dtype = dg.get("type", "diagram")
+                        comps = [c.get("name", "") if isinstance(c, dict) else str(c) for c in
+                                 dg.get("components", [])[:5]]
+                    else:
+                        dtype = "diagram"
+                        comps = []
                     content += f"\n[Diagram ({dtype}): {', '.join(comps)}]"
 
             if msg.role == "assistant" and msg.practice:
-                ptype = msg.practice.get("type", "exercise")
+                ptype = msg.practice.get("type", "exercise") if isinstance(msg.practice, dict) else "exercise"
                 content += f"\n[Practice exercise generated: {ptype}]"
 
             history.append({"role": msg.role, "content": content})
@@ -148,15 +156,19 @@ class ConversationManager:
         if self.code_memory:
             code_summaries = []
             for cid, c in list(self.code_memory.items())[-5:]:
-                preview = (c.get("lines", [""])[0])[:60]
-                lang = c.get("language", "")
+                if isinstance(c, dict):
+                    preview = (c.get("lines", [""])[0] if c.get("lines") else "")[:60]
+                    lang = c.get("language", "")
+                else:
+                    preview = str(c)[:60]
+                    lang = ""
                 code_summaries.append(f"{cid} ({lang}): {preview}...")
             parts.append("Code shown:\n" + "\n".join(code_summaries))
 
         if self.diagram_memory:
             diag_summaries = []
             for did, d in list(self.diagram_memory.items())[-3:]:
-                dtype = d.get("type", "diagram")
+                dtype = d.get("type", "diagram") if isinstance(d, dict) else "diagram"
                 diag_summaries.append(f"{did}: {dtype}")
             parts.append("Diagrams: " + ", ".join(diag_summaries))
 

@@ -25,7 +25,6 @@ const NAV_ITEMS = [
 
 const PERSONAL_ITEMS = [
     { id: 'saved', label: 'Saved Resources', icon: 'bookmark', path: '/learner/saved' },
-    { id: 'settings', label: 'Settings', icon: 'settings', path: '/learner/settings' },
 ];
 
 export default function LearnerSidebar() {
@@ -79,10 +78,7 @@ export default function LearnerSidebar() {
 
             {/* User Profile Footer */}
             <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                <button
-                    onClick={() => navigate('/learner/settings')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                >
+                <div className="w-full flex items-center gap-3 p-3 rounded-xl">
                     <div className="size-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                         {initials}
                     </div>
@@ -90,8 +86,7 @@ export default function LearnerSidebar() {
                         <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate">{userName}</p>
                         <p className="text-[10px] text-slate-400 truncate">{userEmail || 'Learner'}</p>
                     </div>
-                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover:text-blue-600 ml-auto shrink-0">settings</span>
-                </button>
+                </div>
             </div>
         </aside>
     );

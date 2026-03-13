@@ -20,7 +20,7 @@ from app.crud import course as course_crud
 from app.crud import progress as progress_crud
 from app.schemas.dashboard import (
     DashboardResponse, DashboardCourse, ActivityItem,
-    DeadlineItem, StruggleItem, DailyBriefItem,
+    DeadlineItem, StruggleItem, DailyBriefItem, UpcomingLessonItem,
 )
 
 router = APIRouter()
@@ -136,6 +136,72 @@ def get_dashboard(
             message="Complete some lessons to get your daily brief.",
         )
 
+    # ── Stats card values ─────────────────────────────────────────────
+    total_enrolled = len(enrollments)
+
+    all_progress = (
+        db.query(Progress)
+        .join(Enrollment, Enrollment.id == Progress.enrollment_id)
+        .filter(
+            Enrollment.user_id == user_id,
+            Progress.is_completed == True,
+        )
+        .all()
+    )
+    lessons_completed = len(all_progress)
+    lessons_this_week = progress_crud.get_weekly_completed_count(db, user_id)
+
+    scored = [p.score for p in all_progress if p.score is not None]
+    average_quiz_score = round(sum(scored) / len(scored), 1) if scored else 0.0
+    quiz_trend = 'No change'
+    if len(scored) >= 2:
+        diff = scored[-1] - scored[-2]
+        if diff > 0:
+            quiz_trend = f'+{int(diff)}% vs last quiz'
+        elif diff < 0:
+            quiz_trend = f'{int(diff)}% vs last quiz'
+
+    # Study streak: count consecutive days (up to today) with at least 1 completed lesson
+    study_streak = 0
+    if all_progress:
+        completed_dates = sorted(set(
+            p.completed_at.date()
+            for p in all_progress
+            if p.completed_at
+        ), reverse=True)
+        today = datetime.date.today()
+        check_day = today
+        for d in completed_dates:
+            if d == check_day or d == check_day - datetime.timedelta(days=1):
+                study_streak += 1
+                check_day = d
+            else:
+                break
+
+    # ── Up Next: first uncompleted lesson per enrolled course ──────
+    completed_lesson_ids = {p.lesson_id for p in all_progress}
+    upcoming_lessons = []
+    for enr in enrollments:
+        c = course_crud.get_course_by_id(db, enr.course_id)
+        if not c:
+            continue
+        found = None
+        for mod in sorted(c.modules, key=lambda m: m.order_index):
+            for les in sorted(mod.lessons, key=lambda l: l.order_index):
+                if les.id not in completed_lesson_ids:
+                    found = UpcomingLessonItem(
+                        lesson_id=les.id,
+                        lesson_title=les.title,
+                        lesson_type=les.lesson_type.value,
+                        course_id=c.id,
+                        course_title=c.title,
+                    )
+                    break
+            if found:
+                break
+        if found:
+            upcoming_lessons.append(found)
+
     return DashboardResponse(
         welcome_name=current_user.full_name or current_user.username,
         weekly_goal_percent=weekly_pct,
@@ -145,4 +211,11 @@ def get_dashboard(
         upcoming_deadlines=upcoming_deadlines,
         struggles=struggles,
         daily_brief=daily_brief,
+        total_enrolled=total_enrolled,
+        lessons_completed=lessons_completed,
+        lessons_this_week=lessons_this_week,
+        average_quiz_score=average_quiz_score,
+        quiz_trend=quiz_trend,
+        study_streak=study_streak,
+        upcoming_lessons=upcoming_lessons,
     )

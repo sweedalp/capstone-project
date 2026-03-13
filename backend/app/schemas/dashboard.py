@@ -62,6 +62,15 @@ class DailyBriefItem(BaseModel):
     message: Optional[str] = None
 
 
+class UpcomingLessonItem(BaseModel):
+    """One lesson card in the 'Up Next' sidebar panel"""
+    lesson_id: int
+    lesson_title: str
+    lesson_type: str
+    course_id: int
+    course_title: str
+
+
 class DashboardResponse(BaseModel):
     """Full payload for GET /api/v1/dashboard"""
     welcome_name: str
@@ -72,3 +81,12 @@ class DashboardResponse(BaseModel):
     upcoming_deadlines: List[DeadlineItem]
     struggles: List[StruggleItem]
     daily_brief: DailyBriefItem
+    # ── Stats cards ───────────────────────────────────────────────
+    total_enrolled: int = 0
+    lessons_completed: int = 0
+    lessons_this_week: int = 0
+    average_quiz_score: float = 0.0
+    quiz_trend: str = 'No change'
+    study_streak: int = 0
+    # ── Up Next panel ─────────────────────────────────────────────
+    upcoming_lessons: List[UpcomingLessonItem] = []

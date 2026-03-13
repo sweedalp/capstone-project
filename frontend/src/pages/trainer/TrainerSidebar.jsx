@@ -15,9 +15,8 @@ const TrainerSidebar = ({ courseId }) => {
   const isActive = (id) => {
     if (id === 'dashboard') return path === '/trainer/dashboard' || path === '/dashboard/trainer';
     if (id === 'content') return path.includes('/trainer/content-library');
-    if (id === 'courses') return path.includes('/trainer/courses') && !path.includes('/analytics') && !path.includes('/upload') && !path.includes('/ai-studio');
+    if (id === 'courses') return path.includes('/trainer/courses') && !path.includes('/analytics') && !path.includes('/upload');
     if (id === 'analytics') return path.includes('/analytics');
-    if (id === 'ai-studio') return path.includes('/trainer/ai-studio');
     if (id === 'messages') return path.includes('/trainer/messages');
     if (id === 'meetings') return path.includes('/trainer/meetings');
     return false;
@@ -59,12 +58,6 @@ const TrainerSidebar = ({ courseId }) => {
       label: 'Meetings',
       icon: 'videocam',
       path: '/trainer/meetings',
-    },
-    {
-      id: 'ai-studio',
-      label: 'AI Studio',
-      icon: 'auto_awesome',
-      path: '/trainer/ai-studio',
     },
   ];
 
@@ -122,17 +115,6 @@ const TrainerSidebar = ({ courseId }) => {
 
       {/* Bottom section */}
       <div className="p-4 space-y-3">
-        {/* Upgrade card */}
-        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-          <p className="text-xs font-bold text-blue-600 mb-1 uppercase tracking-tighter">Pro Plan</p>
-          <p className="text-sm text-slate-600 leading-tight mb-3">
-            Upgrade for unlimited AI generations.
-          </p>
-          <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all">
-            Go Premium
-          </button>
-        </div>
-
         {/* Logout button */}
         <button
           onClick={handleLogout}

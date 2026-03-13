@@ -72,6 +72,7 @@ class CourseListResponse(BaseModel):
     category_name: Optional[str] = None
     progress_percent: float = 0.0
     is_wishlisted: bool = False
+    is_enrolled: bool = True
     current_module: Optional[str] = None
 
     class Config:

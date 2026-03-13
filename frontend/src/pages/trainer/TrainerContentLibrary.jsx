@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import TrainerSidebar from "./TrainerSidebar";
-import TrainerProfileDropdown from "./TrainerProfileDropdown";
+import TrainerNotifications from '../../components/TrainerNotifications';
+import TrainerProfileDropdown from './TrainerProfileDropdown';
 import apiClient from "../../services/api";
 
 const Icon = ({ name, className = "" }) => (
@@ -687,6 +688,7 @@ export default function TrainerContentLibrary() {
                     </button>
                   )}
                 </div>
+                <TrainerNotifications />
                 <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
               </div>
             </div>

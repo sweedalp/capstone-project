@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerNotifications from '../../components/LearnerNotifications';
 import apiClient from '../../services/api';
 import LearnerSidebar from '../../components/LearnerSidebar';
 
 export default function Analytics() {
   const navigate = useNavigate();
-  const notificationsRef = useRef(null);
 
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,33 +16,10 @@ export default function Analytics() {
   const [selectedBadge, setSelectedBadge] = useState(null);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const userName = localStorage.getItem('userName') || 'User';
   const userEmail = localStorage.getItem('userEmail') || '';
   const userRole = localStorage.getItem('userRole') || 'learner';
-
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    apiClient.get('/api/v1/notifications/')
-      .then(res => {
-        const items = (res.data.notifications || []).map(n => ({
-          ...n,
-          iconColor: n.icon_color,
-          iconBg: n.icon_bg,
-          unread: !n.is_read,
-          time: new Date(n.created_at).toLocaleString(),
-        }));
-        setNotifications(items);
-        setUnreadCount(res.data.unread_count || 0);
-      })
-      .catch(() => {
-        setNotifications([]);
-        setUnreadCount(0);
-      });
-  }, []);
 
   // Badge rarity config — mock metadata until badge model has rarity field
   const BADGE_RARITY = {
@@ -60,7 +37,7 @@ export default function Analytics() {
     setLoading(true);
     Promise.allSettled([
       apiClient.get(`/api/v1/analytics/overview?days=${timeRange}`),
-      apiClient.get('/api/v1/analytics/weekly'),
+      apiClient.get(`/api/v1/analytics/weekly?days=${timeRange}`),
       apiClient.get('/api/v1/analytics/courses'),
       apiClient.get('/api/v1/analytics/achievements'),
     ]).then(([overviewResult, weeklyResult, coursesResult, achievementsResult]) => {
@@ -80,15 +57,16 @@ export default function Analytics() {
         daily_activity: (weekly.daily_stats || []).map(d => ({
           date: d.date,
           hours: d.hours,
+          lessons_completed: d.lessons_completed || 0,
         })),
         enrolled_courses: (courses.courses || []).map(c => ({
           id: c.course_id,
           title: c.course_title,
           progress_percent: c.progress_percent,
           avg_quiz_score: c.avg_quiz_score,
-          duration_minutes: null,
-          level: '',
-          thumbnail_url: null,
+          duration_minutes: c.duration_minutes ?? null,
+          level: c.level || '',
+          thumbnail_url: c.thumbnail_url || null,
         })),
         achievements: (achievements.badges || []).map((b, i) => ({
           id: b.id,
@@ -99,23 +77,14 @@ export default function Analytics() {
           earned_at: b.earned_date || new Date().toISOString(),
         })),
         current_streak_days: overview.current_streak_days ?? 0,
-        best_streak_days: overview.current_streak_days ?? 0,
-        hours_today: 0,
-        weekly_progress_delta: 0,
+        best_streak_days: overview.best_streak_days ?? overview.current_streak_days ?? 0,
+        hours_today: overview.hours_today ?? 0,
+        weekly_progress_delta: overview.weekly_progress_delta ?? 0,
         ai_content_usage: {},
       });
       setLoading(false);
     });
   }, [timeRange]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target))
-        setShowNotifications(false);
-    };
-    if (showNotifications) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications]);
 
   const overallProgress = analyticsData?.overall_progress_percent ?? 0;
   const totalHours = analyticsData?.hours_learned ?? 0;
@@ -129,12 +98,22 @@ export default function Analytics() {
   const weeklyProgressDelta = analyticsData?.weekly_progress_delta ?? 0;
 
   const maxHours = Math.max(...weeklyActivity.map(d => d.hours || 0), 1);
-  const chartData = weeklyActivity.map(d => ({
-    date: d.date,
-    day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
-    hours: d.hours || 0,
-    height: Math.round(((d.hours || 0) / maxHours) * 95),
-  }));
+  const maxLessons = Math.max(...weeklyActivity.map(d => d.lessons_completed || 0), 1);
+  // Use lessons_completed as chart metric when all hours are zero (time not tracked)
+  const allHoursZero = weeklyActivity.every(d => (d.hours || 0) === 0);
+  const chartMetric = allHoursZero ? 'lessons' : 'hours';
+  const chartMax = chartMetric === 'lessons' ? maxLessons : maxHours;
+  const chartData = weeklyActivity.map(d => {
+    const value = chartMetric === 'lessons' ? (d.lessons_completed || 0) : (d.hours || 0);
+    return {
+      date: d.date,
+      day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      hours: d.hours || 0,
+      lessons: d.lessons_completed || 0,
+      value,
+      height: Math.round((value / chartMax) * 95),
+    };
+  });
 
   // Build streak day indicators from daily_activity
   // Shows last 7 days as circles (real streak calendar — derived from backend data)
@@ -146,7 +125,7 @@ export default function Analytics() {
     return {
       label: d.toLocaleDateString('en-US', { weekday: 'short' })[0],
       date: iso,
-      active: match ? match.hours > 0 : false,
+      active: match ? (match.hours > 0 || match.lessons_completed > 0) : false,
       isToday: i === 6,
     };
   });
@@ -199,52 +178,8 @@ export default function Analytics() {
             </form>
           </div>
           <div className="flex items-center gap-4 ml-8">
-            <button onClick={() => navigate('/learner/ai-hub', { state: { openChat: true } })} className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
-              <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>
-            </button>
-            <div className="relative" ref={notificationsRef}>
-              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">notifications</span>
-                {unreadCount > 0 && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
-              </button>
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-[9999] max-h-[500px] flex flex-col">
-                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                      {unreadCount > 0 && <p className="text-xs text-slate-500">{unreadCount} unread</p>}
-                    </div>
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
-                      <span className="material-symbols-outlined text-lg">close</span>
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto flex-1">
-                    {notifications.map((n) => (
-                      <div key={n.id} className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 ${n.unread ? 'bg-blue-50/50' : ''}`}>
-                        <div className="flex gap-3">
-                          <div className={`flex-shrink-0 w-10 h-10 ${n.iconBg} rounded-full flex items-center justify-center`}>
-                            <span className={`material-symbols-outlined text-lg ${n.iconColor}`}>{n.icon}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-sm font-semibold text-slate-900 line-clamp-1">{n.title}</p>
-                              {n.unread && <span className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-1.5"></span>}
-                            </div>
-                            <p className="text-xs text-slate-600 line-clamp-2 mb-1">{n.message}</p>
-                            <p className="text-xs text-slate-400">{n.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
-                    <button onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-blue-600 hover:text-blue-700 w-full text-center">
-                      View All Notifications
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+
+            <LearnerNotifications />
             <div className="h-8 w-px bg-slate-200 mx-1"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
@@ -285,21 +220,37 @@ export default function Analytics() {
                 </div>
               </div>
 
-              {/* Total Hours */}
+              {/* Total Lessons / Hours */}
               <div className="flex flex-col gap-4 rounded-xl p-6 bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
-                  <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Total Hours Learned</p>
-                  <span className="material-symbols-outlined text-blue-600">schedule</span>
+                  <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">
+                    {totalHours > 0 ? 'Total Hours Learned' : 'Lessons Completed'}
+                  </p>
+                  <span className="material-symbols-outlined text-blue-600">{totalHours > 0 ? 'schedule' : 'menu_book'}</span>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-slate-900">{totalHours.toFixed(1)} <span className="text-lg font-medium text-slate-500">hrs</span></p>
-                  {hoursToday > 0 && (
-                    <p className="text-green-600 text-sm font-medium mt-2 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">trending_up</span>+{hoursToday.toFixed(1)} hrs today
-                    </p>
-                  )}
-                  {hoursToday === 0 && (
-                    <p className="text-slate-400 text-sm mt-2">No activity recorded today yet</p>
+                  {totalHours > 0 ? (
+                    <>
+                      <p className="text-3xl font-bold text-slate-900">{totalHours.toFixed(1)} <span className="text-lg font-medium text-slate-500">hrs</span></p>
+                      {hoursToday > 0 && (
+                        <p className="text-green-600 text-sm font-medium mt-2 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">trending_up</span>+{hoursToday.toFixed(1)} hrs today
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold text-slate-900">
+                        {chartData.reduce((s, d) => s + d.lessons, 0)}
+                        <span className="text-lg font-medium text-slate-500"> lessons</span>
+                      </p>
+                      {chartData.filter(d => d.date === new Date().toISOString().split('T')[0])[0]?.lessons > 0 && (
+                        <p className="text-green-600 text-sm font-medium mt-2 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">trending_up</span>
+                          +{chartData.filter(d => d.date === new Date().toISOString().split('T')[0])[0]?.lessons} today
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -356,10 +307,15 @@ export default function Analytics() {
                   </div>
                 ) : (
                   <div className="relative mt-2 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    {chartMetric === 'lessons' && (
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-2">Lessons Completed per Day</p>
+                    )}
                     <div className="flex gap-3 items-end">
                       <div className="flex flex-col justify-between h-48 pb-6 flex-shrink-0">
-                        {[maxHours, Math.round(maxHours * 0.75), Math.round(maxHours * 0.5), Math.round(maxHours * 0.25), 0].map(v => (
-                          <span key={v} className="text-[9px] text-slate-400 font-medium leading-none">{v}h</span>
+                        {[chartMax, Math.round(chartMax * 0.75), Math.round(chartMax * 0.5), Math.round(chartMax * 0.25), 0].map(v => (
+                          <span key={v} className="text-[9px] text-slate-400 font-medium leading-none">
+                            {chartMetric === 'lessons' ? v : `${v}h`}
+                          </span>
                         ))}
                       </div>
                       <div className="relative flex-1 h-48">
@@ -371,12 +327,15 @@ export default function Analytics() {
                         <div className="absolute inset-0 flex items-end gap-2 pb-6 px-1">
                           {chartData.map((data, index) => {
                             const isHovered = hoveredDay === index;
-                            const isMax = data.hours === maxHours && maxHours > 0;
+                            const isMax = data.value === chartMax && chartMax > 0;
+                            const label = chartMetric === 'lessons'
+                              ? (data.lessons > 0 ? `${data.lessons}` : '')
+                              : (data.hours > 0 ? `${data.hours.toFixed(1)}h` : '');
                             return (
                               <div key={index} className="flex-1 flex flex-col items-center justify-end h-full gap-1"
                                 onMouseEnter={() => setHoveredDay(index)} onMouseLeave={() => setHoveredDay(null)}>
                                 <span className={`text-[9px] font-bold leading-none mb-0.5 transition-all ${isMax ? 'text-blue-600' : isHovered ? 'text-slate-600' : 'text-slate-400'}`}>
-                                  {data.hours > 0 ? `${data.hours.toFixed(1)}h` : ''}
+                                  {label}
                                 </span>
                                 <div className={`w-full rounded-lg cursor-pointer transition-all duration-300 ${isMax ? 'shadow-lg shadow-blue-500/40' : ''}`}
                                   style={{
@@ -402,33 +361,24 @@ export default function Analytics() {
                       </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Total: <strong className="text-slate-700">{totalHours.toFixed(1)}h</strong></span>
+                      {chartMetric === 'lessons' ? (
+                        <span className="text-xs text-slate-500">Total: <strong className="text-slate-700">{chartData.reduce((s, d) => s + d.lessons, 0)} lessons</strong></span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Total: <strong className="text-slate-700">{totalHours.toFixed(1)}h</strong></span>
+                      )}
                       {chartData.length > 0 && (
                         <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">trending_up</span>
-                          Best: {Math.max(...chartData.map(d => d.hours)).toFixed(1)}h
+                          {chartMetric === 'lessons'
+                            ? `Best: ${Math.max(...chartData.map(d => d.lessons))} lessons`
+                            : `Best: ${Math.max(...chartData.map(d => d.hours)).toFixed(1)}h`}
                         </span>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* AI Content Usage */}
-                <div className="mt-6 border-t border-slate-200 pt-6">
-                  <p className="text-sm font-bold text-slate-900 mb-4">AI Content Usage Breakdown</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {aiContentUsage.map((content, index) => (
-                      <div key={index} onClick={() => navigate('/learner/ai-hub', { state: { filter: content.type.toLowerCase() } })}
-                        className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer">
-                        <span className={`material-symbols-outlined ${content.color}`}>{content.icon}</span>
-                        <div>
-                          <p className="text-[10px] text-slate-500 uppercase font-bold">{content.type}</p>
-                          <p className="text-sm font-bold text-slate-900">{content.hours}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
               </div>
 
               {/* Current Courses */}

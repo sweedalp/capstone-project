@@ -1,25 +1,21 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
 import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
-
-const WS_URL = 'ws://localhost:8000/api/voice';
 
 export default function Search() {
   const navigate = useNavigate();
   const location = useLocation();
   const notificationsRef = useRef(null);
 
-  // Voice WebSocket
-  const wsRef = useRef(null);
-  const [wsConnected, setWsConnected] = useState(false);
-
   // Voice modal
   const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceMessages, setVoiceMessages] = useState([]);
   const [voiceLoading, setVoiceLoading] = useState(false);
+  const recognitionRef = useRef(null);
+  const hasProcessedRef = useRef(false);
 
   // Chat
   const [chatMessages, setChatMessages] = useState([]);
@@ -84,48 +80,8 @@ export default function Search() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, chatLoading]);
 
-  // ── WebSocket setup ───────────────────────────────────────────────
-  const connectWS = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
-
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => { setWsConnected(false); setVoiceLoading(false); };
-    ws.onerror = () => { setWsConnected(false); setVoiceLoading(false); };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'connected') {
-          setWsConnected(true);
-        } else if (data.type === 'thinking') {
-          setVoiceLoading(true);
-        } else if (data.type === 'response') {
-          setVoiceLoading(false);
-          const reply = data.text || '';
-          setVoiceMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-          // Speak the response
-          const utterance = new SpeechSynthesisUtterance(reply);
-          utterance.rate = 1;
-          utterance.pitch = 1;
-          window.speechSynthesis.speak(utterance);
-        } else if (data.type === 'error') {
-          setVoiceLoading(false);
-          setVoiceMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.message}` }]);
-        }
-      } catch (e) {
-        console.error('WS parse error', e);
-      }
-    };
-  }, []);
-
   // ── Disconnect WS on unmount ──────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      wsRef.current?.close();
-    };
-  }, []);
+  // (WebSocket removed — voice now uses REST QA API)
 
   // ── Search ────────────────────────────────────────────────────────
   const handleSearch = async (query) => {
@@ -174,47 +130,99 @@ export default function Search() {
     }
   };
 
-  // ── Voice (Web Speech API + backend WebSocket) ────────────────────
+  // ── Strip markdown so speech synthesis reads clean text ─────────
+  const stripMarkdown = (text) => {
+    return text
+      .replace(/#{1,6}\s*/g, '')           // headings: ### Title → Title
+      .replace(/\*\*(.+?)\*\*/g, '$1')      // bold: **text** → text
+      .replace(/\*(.+?)\*/g, '$1')          // italic: *text* → text
+      .replace(/`{1,3}([^`]*)`{1,3}/g, '$1') // inline/block code: `code` → code
+      .replace(/!\[.*?\]\(.*?\)/g, '')      // images
+      .replace(/\[(.+?)\]\(.*?\)/g, '$1')   // links: [text](url) → text
+      .replace(/^\s*[-*+]\s+/gm, '')        // unordered list bullets
+      .replace(/^\s*\d+\.\s+/gm, '')        // ordered list numbers
+      .replace(/^[-_*]{3,}$/gm, '')         // horizontal rules
+      .replace(/>\s*/g, '')                 // blockquotes
+      .replace(/\n{2,}/g, '. ')             // paragraph breaks → pause
+      .replace(/\n/g, ' ')                  // line breaks → space
+      .trim();
+  };
+
+  // ── Voice (Web Speech API + REST QA) ────────────────────────────
   const startVoiceConversation = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert("Your browser doesn't support voice recognition. Please use Chrome.");
       return;
     }
 
-    connectWS();
+    // If already listening, stop and return (toggle off)
+    if (isListening) {
+      recognitionRef.current?.abort();
+      setIsListening(false);
+      return;
+    }
+
+    // Cancel any ongoing speech before starting new recording
+    window.speechSynthesis.cancel();
+
+    // Abort any previous recognition instance
+    recognitionRef.current?.abort();
+
     setShowVoiceDrawer(true);
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.interimResults = false;
+    recognition.interimResults = true;  // needed to detect final vs interim
+    recognition.continuous = false;     // stop after one phrase
+    recognition.maxAlternatives = 1;
+
+    recognitionRef.current = recognition;
+    hasProcessedRef.current = false;    // reset the "already sent" guard
 
     setIsListening(true);
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
+      // Collect best transcript across all result segments
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+
+      const isFinal = event.results[event.results.length - 1].isFinal;
+      if (!isFinal) return; // ignore interim partials
+
+      // Guard: only fire once per session even if onresult fires again
+      if (hasProcessedRef.current) return;
+      hasProcessedRef.current = true;
+
+      transcript = transcript.trim();
+      if (!transcript) { setIsListening(false); return; }
+
       setIsListening(false);
       setVoiceMessages(prev => [...prev, { role: 'user', content: transcript }]);
       setVoiceLoading(true);
 
-      // Send via WebSocket
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'message', text: transcript }));
-      } else {
-        // Fallback to REST if WS not ready
-        apiClient.post('/api/v1/search/qa', { question: transcript })
-          .then(res => {
-            const reply = res.data.answer || "Sorry, I couldn't find an answer.";
-            setVoiceMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-            const utterance = new SpeechSynthesisUtterance(reply);
-            window.speechSynthesis.speak(utterance);
-          })
-          .catch(() => setVoiceMessages(prev => [...prev, { role: 'assistant', content: "Sorry, something went wrong." }]))
-          .finally(() => setVoiceLoading(false));
-      }
+      apiClient.post('/api/v1/search/qa', { question: transcript })
+        .then(res => {
+          const reply = res.data.answer || "Sorry, I couldn't find an answer.";
+          setVoiceMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(stripMarkdown(reply));
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          window.speechSynthesis.speak(utterance);
+        })
+        .catch(() => setVoiceMessages(prev => [...prev, { role: 'assistant', content: "Sorry, something went wrong." }]))
+        .finally(() => setVoiceLoading(false));
     };
 
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone access in your browser settings and reload the page.');
+      }
+      setIsListening(false);
+    };
     recognition.onend = () => setIsListening(false);
     recognition.start();
   };
@@ -244,10 +252,7 @@ export default function Search() {
             </form>
           </div>
           <div className="flex items-center gap-4 ml-8">
-            <button onClick={() => navigate('/learner/ai-hub', { state: { openChat: true } })}
-              className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
-              <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>
-            </button>
+
             <div className="relative" ref={notificationsRef}>
               <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
                 <span className="material-symbols-outlined">notifications</span>
@@ -525,8 +530,8 @@ export default function Search() {
                 <div>
                   <h3 className="text-white font-bold">Voice AI Tutor</h3>
                   <p className="text-white/70 text-xs flex items-center gap-1">
-                    <span className={`w-2 h-2 rounded-full inline-block ${wsConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
-                    {isListening ? 'Listening...' : wsConnected ? 'Connected' : 'Connecting...'}
+                    <span className="w-2 h-2 rounded-full inline-block bg-green-400"></span>
+                    {isListening ? 'Listening...' : 'Ready'}
                   </p>
                 </div>
               </div>

@@ -26,6 +26,7 @@ class Enrollment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     is_wishlisted = Column(Boolean, default=False)
+    is_enrolled = Column(Boolean, default=True)  # False for wishlist-only entries
 
     enrolled_at = Column(DateTime, default=datetime.datetime.utcnow)
 

@@ -494,13 +494,6 @@ const LessonContent = () => {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </form>
-            <button
-              onClick={() => navigate('/learner/ai-hub')}
-              className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold"
-            >
-              <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-              <span>Ask AI</span>
-            </button>
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -1174,20 +1167,7 @@ const LessonContent = () => {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-slate-200 space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Knowledge Level</label>
-                <div className="flex p-1 bg-slate-200 rounded-lg">
-                  {['beginner', 'advanced'].map(level => (
-                    <button
-                      key={level}
-                      onClick={() => setKnowledgeLevel(level)}
-                      className={`flex-1 text-xs font-bold py-1.5 rounded-md capitalize transition-all ${knowledgeLevel === level ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <div className="p-4 bg-white border-t border-slate-200">
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-2">

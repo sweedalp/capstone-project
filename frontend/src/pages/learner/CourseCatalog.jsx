@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProfileDropdown from '../../components/ProfileDropdown';
+import LearnerNotifications from '../../components/LearnerNotifications';
 import LearnerSidebar from '../../components/LearnerSidebar';
 import apiClient from '../../services/api';
 import '../../index.css';
@@ -14,10 +15,8 @@ const CourseCatalog = () => {
   const [selectedAIFeatures, setSelectedAIFeatures] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [favorites, setFavorites] = useState({});
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const notificationsRef = useRef(null);
 
   const [allCourses, setAllCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
@@ -32,15 +31,6 @@ const CourseCatalog = () => {
   const userRole = localStorage.getItem('userRole') || 'Learner';
 
   const AI_FEATURES = ['Audio Summary', 'Video Transcripts', 'Walkthroughs', 'AI Tutor'];
-
-  // Mock notifications (real endpoint not yet built)
-  const notifications = [
-    { id: 1, type: 'deadline', icon: 'schedule', iconColor: 'text-rose-600', iconBg: 'bg-rose-100', title: 'Neural Nets Quiz Due Soon', message: 'Quiz deadline is tomorrow at 11:59 PM', time: '2 hours ago', unread: true },
-    { id: 2, type: 'achievement', icon: 'military_tech', iconColor: 'text-amber-600', iconBg: 'bg-amber-100', title: 'New Badge Earned!', message: 'You earned "Python Master" badge', time: '5 hours ago', unread: true },
-    { id: 3, type: 'ai', icon: 'psychology', iconColor: 'text-blue-600', iconBg: 'bg-blue-100', title: 'AI Generated Summary Ready', message: 'Your study session recap is available', time: 'Yesterday', unread: false },
-    { id: 4, type: 'course', icon: 'auto_stories', iconColor: 'text-purple-600', iconBg: 'bg-purple-100', title: 'New Lesson Available', message: 'Module 4: Deep Learning has been released', time: '2 days ago', unread: false },
-  ];
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
     apiClient.get('/api/v1/courses/categories')
@@ -84,7 +74,7 @@ const CourseCatalog = () => {
   const myCoursesMap = Object.fromEntries(myCourses.map(c => [c.id, c]));
 
   const getDisplayCourses = () => {
-    if (activeTab === 'inProgress') return myCourses.filter(c => c.progress_percent > 0 && c.progress_percent < 100);
+    if (activeTab === 'inProgress') return myCourses.filter(c => c.is_enrolled && c.progress_percent < 100);
     if (activeTab === 'completed') return myCourses.filter(c => c.progress_percent >= 100);
     if (activeTab === 'wishlist') return myCourses.filter(c => c.is_wishlisted);
     return allCourses;
@@ -121,7 +111,7 @@ const CourseCatalog = () => {
   const toggleFavorite = async (e, courseId) => {
     e.stopPropagation();
     try {
-      await apiClient.patch(`/api/v1/enrollments/${courseId}/wishlist`);
+      await apiClient.post('/api/v1/enrollments/wishlist', { course_id: courseId });
       fetchMyCourses();
     } catch {
       setFavorites(prev => ({ ...prev, [courseId]: !prev[courseId] }));
@@ -141,15 +131,6 @@ const CourseCatalog = () => {
     );
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target))
-        setShowNotifications(false);
-    };
-    if (showNotifications) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications]);
-
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       <LearnerSidebar />
@@ -165,54 +146,10 @@ const CourseCatalog = () => {
             </form>
           </div>
           <div className="flex items-center gap-4 ml-8">
-            <button onClick={() => navigate('/learner/ai-hub', { state: { openChat: true } })} className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold">
-              <span className="material-symbols-outlined text-[18px]">smart_toy</span><span>Ask AI</span>
-            </button>
+
 
             {/* Notifications */}
-            <div className="relative" ref={notificationsRef}>
-              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">notifications</span>
-                {unreadCount > 0 && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
-              </button>
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-[9999] max-h-[500px] flex flex-col">
-                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                      {unreadCount > 0 && <p className="text-xs text-slate-500">{unreadCount} unread</p>}
-                    </div>
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
-                      <span className="material-symbols-outlined text-lg">close</span>
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto flex-1">
-                    {notifications.map((n) => (
-                      <div key={n.id} className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 ${n.unread ? 'bg-blue-50/50' : ''}`}>
-                        <div className="flex gap-3">
-                          <div className={`flex-shrink-0 w-10 h-10 ${n.iconBg} rounded-full flex items-center justify-center`}>
-                            <span className={`material-symbols-outlined text-lg ${n.iconColor}`}>{n.icon}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-sm font-semibold text-slate-900 line-clamp-1">{n.title}</p>
-                              {n.unread && <span className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-1.5"></span>}
-                            </div>
-                            <p className="text-xs text-slate-600 line-clamp-2 mb-1">{n.message}</p>
-                            <p className="text-xs text-slate-400">{n.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
-                    <button onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-blue-600 hover:text-blue-700 w-full text-center">
-                      View All Notifications
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <LearnerNotifications />
 
             <div className="h-8 w-px bg-slate-200 mx-1"></div>
             <div className="flex items-center gap-3 pl-2">
@@ -258,26 +195,7 @@ const CourseCatalog = () => {
                 </div>
               </div>
 
-              {/* AI Features Filter — UI ready, backend field pending */}
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">AI Features</h3>
-                <p className="text-[10px] text-slate-400 mb-3 italic">Filter by available AI tools</p>
-                <div className="space-y-2">
-                  {AI_FEATURES.map((feature) => (
-                    <label key={feature} className="flex items-center gap-3 group cursor-pointer">
-                      <input type="checkbox" checked={selectedAIFeatures.includes(feature)} onChange={() => toggleAIFeature(feature)}
-                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
-                      <span className="text-sm text-slate-700 group-hover:text-blue-600 transition-colors">{feature}</span>
-                    </label>
-                  ))}
-                </div>
-                {selectedAIFeatures.length > 0 && (
-                  <p className="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">info</span>
-                    AI feature filtering coming soon
-                  </p>
-                )}
-              </div>
+
             </aside>
 
             {/* Course List */}

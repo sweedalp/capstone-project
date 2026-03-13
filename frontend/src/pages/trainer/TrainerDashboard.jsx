@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TrainerSidebar from './TrainerSidebar';
 import TrainerProfileDropdown from './TrainerProfileDropdown';
+import TrainerNotifications from '../../components/TrainerNotifications';
 import apiClient from '../../services/api';
 
 const TrainerDashboard = () => {
@@ -69,7 +70,7 @@ const TrainerDashboard = () => {
           setUploadProgress(`Uploading ${i + 1}/${contentFiles.length}: ${contentFiles[i].name}`);
           const formData = new FormData();
           formData.append('file', contentFiles[i].file);
-          await apiClient.post('/api/v1/knowledge/upload', formData, {
+          await apiClient.post('/api/v1/admin/knowledge/upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         }
@@ -156,10 +157,7 @@ const TrainerDashboard = () => {
             />
           </div>
           <div className="flex items-center gap-6">
-            <button className="relative text-slate-500 hover:text-blue-600 transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <TrainerNotifications />
             <div className="h-8 w-px bg-slate-200"></div>
             <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
           </div>
@@ -318,31 +316,6 @@ const TrainerDashboard = () => {
               className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all">
               View Detailed Analytics →
             </button>
-          </section>
-
-          {/* AI CONTENT STUDIO */}
-          <section className="bg-slate-900 rounded-2xl p-6 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl"></div>
-            <div className="relative z-10">
-              <h2 className="text-xl font-bold tracking-tight mb-6">🤖 AI CONTENT STUDIO</h2>
-              <div className="mb-6 space-y-3">
-                {[
-                  { icon: 'mic', label: 'Generate Audio Summary', tool: 'audio' },
-                  { icon: 'movie', label: 'Create Video Explainer', tool: 'video' },
-                  { icon: 'route', label: 'Build Interactive Walkthrough', tool: 'walkthrough' },
-                ].map((item, idx) => (
-                  <div key={idx} onClick={() => navigate(`/trainer/ai-studio?tool=${item.tool}`)}
-                    className="flex items-center gap-3 text-sm cursor-pointer hover:opacity-70 transition-opacity">
-                    <span className="material-symbols-outlined text-blue-400">{item.icon}</span>
-                    <span>• {item.label}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => navigate('/trainer/ai-studio')}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all">
-                Open AI Studio →
-              </button>
-            </div>
           </section>
 
           {/* CONTENT LIBRARY */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TrainerSidebar from './TrainerSidebar';
+import TrainerNotifications from '../../components/TrainerNotifications';
 import TrainerProfileDropdown from './TrainerProfileDropdown';
 import apiClient from '../../services/api';
 
@@ -70,7 +71,10 @@ export default function TrainerMeetings() {
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
                     <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="videocam" className="text-blue-600" />Meetings</h2>
-                    <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
+                    <div className="flex items-center gap-4">
+                        <TrainerNotifications />
+                        <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">

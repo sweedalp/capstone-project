@@ -2,7 +2,7 @@
 Analytics Endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import datetime
@@ -62,6 +62,7 @@ def get_overview(
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
     hours_learned = round(total_time_sec / 3600, 1)
     streak = _compute_streak(db, user_id)
+    best_streak = _compute_best_streak(db, user_id)
 
     # Overall progress percent across all enrolled courses
     overall_pct = 0.0
@@ -77,30 +78,81 @@ def get_overview(
                 continue
         overall_pct = round(sum(pcts) / len(pcts), 1) if pcts else 0.0
 
+    # hours_today
+    today = datetime.datetime.utcnow().date()
+    today_secs = (
+        db.query(func.sum(Progress.time_spent_seconds))
+        .join(Enrollment, Enrollment.id == Progress.enrollment_id)
+        .filter(
+            Enrollment.user_id == user_id,
+            Progress.is_completed.is_(True),
+            func.date(Progress.completed_at) == today,
+        )
+        .scalar() or 0
+    )
+    hours_today = round(today_secs / 3600, 2)
+
+    # weekly_progress_delta: compare lessons completed this week vs prior week
+    week_start = today - datetime.timedelta(days=6)
+    prev_start = week_start - datetime.timedelta(days=7)
+    this_week_lessons = (
+        db.query(func.count(Progress.id))
+        .join(Enrollment, Enrollment.id == Progress.enrollment_id)
+        .filter(
+            Enrollment.user_id == user_id,
+            Progress.is_completed.is_(True),
+            func.date(Progress.completed_at) >= week_start,
+        )
+        .scalar() or 0
+    )
+    prev_week_lessons = (
+        db.query(func.count(Progress.id))
+        .join(Enrollment, Enrollment.id == Progress.enrollment_id)
+        .filter(
+            Enrollment.user_id == user_id,
+            Progress.is_completed.is_(True),
+            func.date(Progress.completed_at) >= prev_start,
+            func.date(Progress.completed_at) < week_start,
+        )
+        .scalar() or 0
+    )
+    if prev_week_lessons > 0:
+        weekly_progress_delta = round(
+            ((this_week_lessons - prev_week_lessons) / prev_week_lessons) * 100, 1
+        )
+    elif this_week_lessons > 0:
+        weekly_progress_delta = 100.0
+    else:
+        weekly_progress_delta = 0.0
+
     return {
         "total_enrolled": total_enrolled,
         "completed_courses": completed_courses,
         "in_progress": in_progress,
         "average_score": avg_score,
         "hours_learned": hours_learned,
+        "hours_today": hours_today,
         "current_streak_days": streak,
+        "best_streak_days": best_streak,
         "overall_progress_percent": overall_pct,
+        "weekly_progress_delta": weekly_progress_delta,
     }
 
 
 # ── WEEKLY ──────────────────────────────────────────────────────────
 @router.get("/weekly")
 def get_weekly_stats(
+    days: int = Query(7, ge=7, le=90),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Returns hours studied per day for the last 7 days.
+    Returns hours studied per day for the last `days` days.
     Frontend expects: { daily_stats: [{date, day_label, hours, lessons_completed}] }
     """
     user_id = current_user.id
     today = datetime.datetime.utcnow().date()
-    week_ago = today - datetime.timedelta(days=6)
+    week_ago = today - datetime.timedelta(days=days - 1)
 
     try:
         time_rows = (
@@ -131,10 +183,10 @@ def get_weekly_stats(
         for row in time_rows
     }
 
-    # Fill in all 7 days (including zeros)
+    # Fill in all `days` days (including zeros)
     day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     daily_stats = []
-    for i in range(7):
+    for i in range(days):
         day = week_ago + datetime.timedelta(days=i)
         day_str = str(day)
         entry = data_by_day.get(day_str, {"hours": 0.0, "lessons_completed": 0})
@@ -194,9 +246,9 @@ def get_achievements(
 
             if pct >= 100:
                 completed_courses += 1
-                if enr.updated_at:
-                    if first_course_date is None or enr.updated_at < first_course_date:
-                        first_course_date = enr.updated_at
+                if enr.enrolled_at:
+                    if first_course_date is None or enr.enrolled_at < first_course_date:
+                        first_course_date = enr.enrolled_at
 
             # Match courses by title keyword
             # Replace with category/tag checks if your Course model supports them
@@ -314,11 +366,14 @@ def get_course_analytics(
             results.append({
                 "course_id": c.id,
                 "course_title": c.title,
+                "thumbnail_url": c.thumbnail_url,
+                "level": c.level.value if c.level else "beginner",
+                "duration_minutes": c.duration_minutes or 0,
                 "progress_percent": pct,
                 "completed_lessons": completed,
                 "total_lessons": total,
                 "avg_quiz_score": avg_score,
-                "last_active": enr.updated_at.strftime("%Y-%m-%d") if enr.updated_at else None,
+                "last_active": enr.enrolled_at.strftime("%Y-%m-%d") if enr.enrolled_at else None,
             })
 
         except Exception as e:
@@ -329,7 +384,44 @@ def get_course_analytics(
     return {"courses": results}
 
 
-# ── STREAK HELPER ────────────────────────────────────────────────────
+# ── STREAK HELPERS ───────────────────────────────────────────────────
+def _compute_best_streak(db: Session, user_id: int) -> int:
+    """Return the longest consecutive learning streak in the past year."""
+    year_ago = datetime.datetime.utcnow().date() - datetime.timedelta(days=365)
+    rows = (
+        db.query(func.date(Progress.completed_at))
+        .join(Enrollment, Enrollment.id == Progress.enrollment_id)
+        .filter(
+            Enrollment.user_id == user_id,
+            Progress.is_completed.is_(True),
+            Progress.completed_at >= datetime.datetime.combine(
+                year_ago, datetime.time.min
+            ),
+        )
+        .distinct()
+        .all()
+    )
+    if not rows:
+        return 0
+    dates = sorted(
+        d for (d,) in rows
+        if d is not None
+    )
+    if not dates:
+        return 0
+    best = current = 1
+    for i in range(1, len(dates)):
+        d1 = dates[i - 1] if isinstance(dates[i - 1], datetime.date) else datetime.date.fromisoformat(str(dates[i - 1]))
+        d2 = dates[i] if isinstance(dates[i], datetime.date) else datetime.date.fromisoformat(str(dates[i]))
+        if (d2 - d1).days == 1:
+            current += 1
+            if current > best:
+                best = current
+        else:
+            current = 1
+    return best
+
+
 def _compute_streak(db: Session, user_id: int) -> int:
     today = datetime.datetime.utcnow().date()
     streak = 0

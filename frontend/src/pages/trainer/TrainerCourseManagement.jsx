@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TrainerSidebar from "./TrainerSidebar";
 import TrainerProfileDropdown from "./TrainerProfileDropdown";
+import TrainerNotifications from "../../components/TrainerNotifications";
 import apiClient from "../../services/api";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -762,6 +763,7 @@ export default function TrainerCourseManagement() {
                       className="rounded-lg border-none bg-slate-100 py-2 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 w-56"
                       placeholder="Search courses..." />
                   </div>
+                  <TrainerNotifications />
                   <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
                 </div>
               </div>
@@ -773,10 +775,7 @@ export default function TrainerCourseManagement() {
                     <h1 className="text-3xl font-black text-slate-900 mb-1">Your Courses</h1>
                     <p className="text-slate-400">Create, manage, and publish your courses.</p>
                   </div>
-                  <button onClick={() => setShowCreateCourse(true)}
-                    className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 flex items-center gap-2 shadow-md">
-                    <Icon name="add" className="text-[18px]" />Create New Course
-                  </button>
+
                 </div>
                 {courses.length === 0 ? (
                   <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
@@ -824,11 +823,7 @@ export default function TrainerCourseManagement() {
                         </div>
                       </div>
                     ))}
-                    <button onClick={() => setShowCreateCourse(true)}
-                      className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-600/5 transition-all min-h-[280px] group">
-                      <Icon name="add_circle" className="text-4xl mb-2 group-hover:scale-110 transition-transform" />
-                      <span className="font-bold text-sm">Create New Course</span>
-                    </button>
+
                   </div>
                 )}
               </div>
@@ -875,6 +870,7 @@ export default function TrainerCourseManagement() {
                     className="rounded-lg border-none bg-slate-100 py-2 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 w-56"
                     placeholder="Search..." />
                 </div>
+                <TrainerNotifications />
                 <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
               </div>
             </div>

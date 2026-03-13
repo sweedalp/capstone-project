@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TrainerSidebar from "./TrainerSidebar";
-import TrainerProfileDropdown from "./TrainerProfileDropdown";
+import TrainerNotifications from '../../components/TrainerNotifications';
+import TrainerProfileDropdown from './TrainerProfileDropdown';
 import apiClient from "../../services/api";
 
 function Icon({ name, className = "" }) {
@@ -276,7 +277,7 @@ export default function TrainerAIStudentAnalytics() {
   const [contactModal, setContactModal] = useState(null);
   const [scheduleModal, setScheduleModal] = useState(null);
   const [groupMsgModal, setGroupMsgModal] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+
   const [searchValue, setSearchValue] = useState("");
 
   const addToast = useCallback((msg) => {
@@ -351,50 +352,21 @@ export default function TrainerAIStudentAnalytics() {
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
 
           {/* Header */}
-          <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-10 gap-4">
-            <div>
-              {/* ✅ Fixed: breadcrumb uses /trainer/dashboard */}
-              <div className="flex items-center gap-1 text-xs text-slate-400 mb-1">
-                <button onClick={() => navigate('/trainer/dashboard')} className="hover:text-blue-600">Dashboard</button>
-                <Icon name="chevron_right" className="text-sm" />
-                {courseId && (
-                  <>
-                    <button onClick={() => navigate(`/trainer/courses/${courseId}`)} className="hover:text-blue-600">Course</button>
-                    <Icon name="chevron_right" className="text-sm" />
-                  </>
-                )}
-                <span className="text-slate-600 font-medium">Analytics</span>
-              </div>
-              <p className="text-xs font-medium text-slate-500">Student Analytics & Engagement</p>
+          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <div className="relative w-96">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-600 transition-all"
+                placeholder="Search students..."
+              />
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
-                <input className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                  placeholder="Search students..." value={searchValue} onChange={e => setSearchValue(e.target.value)} />
-              </div>
-              <button onClick={handleExportReport}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200">
-                <Icon name="download" className="text-lg" />Export
-              </button>
-              <div className="relative">
-                <button onClick={() => setNotifOpen(!notifOpen)}
-                  className="size-10 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 relative">
-                  <Icon name="notifications" className="text-xl" />
-                  <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white" />
-                </button>
-                {notifOpen && (
-                  <div className="absolute right-0 top-12 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50">
-                    <p className="font-bold text-slate-900 text-sm mb-3">Notifications</p>
-                    <p className="text-xs text-slate-400 text-center py-2">No new notifications</p>
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-6">
+              <TrainerNotifications />
+              <div className="h-8 w-px bg-slate-200"></div>
               <TrainerProfileDropdown userName={userName} userEmail={userEmail} />
-              <button onClick={() => setGroupMsgModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700">
-                <Icon name="mail" className="text-lg" />Contact Class
-              </button>
             </div>
           </header>
 
@@ -467,8 +439,8 @@ export default function TrainerAIStudentAnalytics() {
               </section>
             )}
 
-            {/* AI Engagement + Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* AI Engagement */}
+            <div className="grid grid-cols-1 gap-6">
               <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-6">
                   <Icon name="psychology" className="text-blue-600" />AI Content Engagement
@@ -503,27 +475,6 @@ export default function TrainerAIStudentAnalytics() {
                 </div>
               </section>
 
-              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-6">
-                  <Icon name="bolt" className="text-blue-600" />Quick Actions
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { icon: "auto_fix_high", label: "Create Content", color: "text-blue-600", bg: "bg-blue-50", action: () => navigate('/trainer/ai-studio') },
-                    { icon: "campaign", label: "Message Class", color: "text-indigo-600", bg: "bg-indigo-50", action: () => setGroupMsgModal(true) },
-                    { icon: "tune", label: "Adjust Pace", color: "text-amber-600", bg: "bg-amber-50", action: () => navigate(courseId ? `/trainer/courses/${courseId}` : '/trainer/dashboard') },
-                    { icon: "download", label: "Export Report", color: "text-rose-600", bg: "bg-rose-50", action: handleExportReport },
-                  ].map((a, i) => (
-                    <button key={i} onClick={a.action}
-                      className="p-4 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition-all group text-left">
-                      <div className={`size-10 rounded-lg ${a.bg} flex items-center justify-center mb-3`}>
-                        <Icon name={a.icon} className={`${a.color} text-xl`} />
-                      </div>
-                      <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{a.label}</p>
-                    </button>
-                  ))}
-                </div>
-              </section>
             </div>
 
           </div>
